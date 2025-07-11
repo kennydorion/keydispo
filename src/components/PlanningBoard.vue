@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, watchEffect } from 'vue';
-import { collection, onSnapshot, updateDoc, doc, setDoc } from 'firebase/firestore';
+import { ref, onMounted } from 'vue';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const props = defineProps({
