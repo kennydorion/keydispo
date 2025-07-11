@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -16,14 +16,20 @@ const days = ref([]); // array of dates as strings
 const planning = ref({}); // {day: {collabId: {status, time, location}}}
 const selectedDay = ref('');
 
+let unsubscribeCollaborators;
+let unsubscribePlanning;
+
 onMounted(() => {
   // listen to collaborators
-  onSnapshot(collection(db, 'collaborators'), (snapshot) => {
-    collaborators.value = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  });
+  unsubscribeCollaborators = onSnapshot(
+    collection(db, 'collaborators'),
+    (snapshot) => {
+      collaborators.value = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+  );
 
   // listen to planning days
-  onSnapshot(collection(db, 'planning'), (snapshot) => {
+  unsubscribePlanning = onSnapshot(collection(db, 'planning'), (snapshot) => {
     const data = {};
     const dayList = [];
     snapshot.forEach((docSnap) => {
@@ -36,6 +42,15 @@ onMounted(() => {
       selectedDay.value = days.value[0];
     }
   });
+});
+
+onUnmounted(() => {
+  if (typeof unsubscribeCollaborators === 'function') {
+    unsubscribeCollaborators();
+  }
+  if (typeof unsubscribePlanning === 'function') {
+    unsubscribePlanning();
+  }
 });
 
 const filteredCollaborators = computed(() => {
@@ -51,9 +66,15 @@ async function toggleStatus(day, collab) {
   const current = dayData[collab.id] || { status: 'dispo' };
   const newStatus = current.status === 'dispo' ? 'indispo' : 'dispo';
   const updated = { ...dayData, [collab.id]: { ...current, status: newStatus } };
-  await setDoc(dayDoc, updated, { merge: true });
+  try {
+    await setDoc(dayDoc, updated, { merge: true });
+  } catch (err) {
+    console.error('Failed to update status:', err);
+    alert('Erreur lors de la mise à jour du statut.');
+  }
 }
 </script>
+
 
 <template>
   <div class="search-bar">
