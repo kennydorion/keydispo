@@ -106,7 +106,6 @@ async function addClient() {
 }
 </script>
 
-
 <template>
   <div class="search-bar">
     <input v-model="search" placeholder="Rechercher" />
@@ -169,6 +168,10 @@ async function addClient() {
 </template>
 
 <style scoped>
+:root {
+  --status-dispo: #c6f6d5;
+  --status-indispo: #fecaca;
+}
 .board {
   display: flex;
   overflow-x: auto;
@@ -206,6 +209,7 @@ async function addClient() {
   position: sticky;
   top: 0;
   z-index: 1;
+  cursor: pointer;
 }
 .cell {
   height: 32px;
@@ -217,17 +221,21 @@ async function addClient() {
   font-size: 0.8rem;
   color: #333;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, filter 0.2s;
   box-shadow: inset 0 0 0 1px #e5e5e5;
 }
 .cell.dispo {
-  background-color: #c6f6d5;
+  background-color: var(--status-dispo, #c6f6d5);
+  color: #1b1b1b;
+  border: 1px solid #16a34a;
 }
 .cell.indispo {
-  background-color: #fecaca;
+  background-color: var(--status-indispo, #fecaca);
+  color: #fff;
+  border: 1px solid #dc2626;
 }
 .cell:hover {
-  filter: brightness(0.95);
+  filter: brightness(0.97);
 }
 .search-bar {
   padding: 8px;
@@ -239,7 +247,6 @@ async function addClient() {
   background: #fff;
   z-index: 3;
 }
-
 .modal {
   position: fixed;
   top: 0;

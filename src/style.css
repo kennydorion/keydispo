@@ -2,9 +2,15 @@
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
+  /* Status colors */
+  --status-dispo: #4ade80;
+  --status-indispo: #f87171;
+
   color-scheme: light;
-  color: #000;
+  color: #213547;
   background-color: #ffffff;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,7 +30,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #ffffff;
+  background: #f5f8fa;
 }
 
 h1 {
@@ -39,13 +45,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #ffffff;
-  color: #000;
+  color: #fff;
+  background-color: #475569;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 button:hover {
-  opacity: 0.8;
+  background-color: #334155;
 }
 button:focus,
 button:focus-visible {
@@ -68,10 +74,15 @@ button:focus-visible {
     color-scheme: dark;
     color: rgba(255, 255, 255, 0.87);
     background-color: #242424;
+    --status-dispo: #4ade80;
+    --status-indispo: #f87171;
+  }
+  body {
+    background: #24282f;
   }
   button {
+    background-color: #334155;
     border-color: #fff;
-    background-color: transparent;
     color: #fff;
   }
   a:hover {
