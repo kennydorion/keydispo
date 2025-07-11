@@ -14,6 +14,7 @@ const search = ref('');
 const collaborators = ref([]); // [{id, name}]
 const days = ref([]); // array of dates as strings
 const planning = ref({}); // {day: {collabId: {status, time, location}}}
+const selectedDay = ref('');
 
 onMounted(() => {
   // listen to collaborators
@@ -31,6 +32,9 @@ onMounted(() => {
     });
     days.value = dayList.sort();
     planning.value = data;
+    if (!selectedDay.value && days.value.length) {
+      selectedDay.value = days.value[0];
+    }
   });
 });
 
@@ -76,7 +80,7 @@ async function toggleStatus(day, collab) {
       </div>
     </div>
     <div class="day-view" v-else>
-      <div class="day-header" v-for="d in days" :key="d" @click="selectedDay = d">
+      <div class="day-header" v-for="d in days" :key="d" @click="selectedDay.value = d">
         {{ d }}
       </div>
       <div v-if="days.length">
@@ -84,10 +88,10 @@ async function toggleStatus(day, collab) {
           class="cell"
           v-for="c in filteredCollaborators()"
           :key="c.id"
-          @click="toggleStatus(days[0], c)"
-          :class="planning[days[0]]?.[c.id]?.status"
+          @click="toggleStatus(selectedDay.value, c)"
+          :class="planning[selectedDay.value]?.[c.id]?.status"
         >
-          {{ planning[days[0]]?.[c.id]?.status || '' }}
+          {{ planning[selectedDay.value]?.[c.id]?.status || '' }}
         </div>
       </div>
     </div>
