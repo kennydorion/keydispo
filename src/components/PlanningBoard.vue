@@ -66,7 +66,12 @@ async function toggleStatus(day, collab) {
   const current = dayData[collab.id] || { status: 'dispo' };
   const newStatus = current.status === 'dispo' ? 'indispo' : 'dispo';
   const updated = { ...dayData, [collab.id]: { ...current, status: newStatus } };
-  await setDoc(dayDoc, updated, { merge: true });
+  try {
+    await setDoc(dayDoc, updated, { merge: true });
+  } catch (err) {
+    console.error('Failed to update status:', err);
+    alert('Erreur lors de la mise \xE0 jour du statut.');
+  }
 }
 </script>
 
