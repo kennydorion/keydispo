@@ -221,13 +221,17 @@ async function addClient() {
   box-shadow: inset 0 0 0 1px #e5e5e5;
 }
 .cell.dispo {
-  background-color: #c6f6d5;
+  background-color: var(--status-dispo);
+  color: #1b1b1b;
+  border: 1px solid #16a34a;
 }
 .cell.indispo {
-  background-color: #fecaca;
+  background-color: var(--status-indispo);
+  color: #fff;
+  border: 1px solid #dc2626;
 }
 .cell:hover {
-  filter: brightness(0.95);
+  filter: brightness(1.05);
 }
 .search-bar {
   padding: 8px;

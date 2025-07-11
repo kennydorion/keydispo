@@ -3,6 +3,9 @@
   line-height: 1.5;
   font-weight: 400;
 
+  --status-dispo: #4ade80;
+  --status-indispo: #f87171;
+
   /* Always use a light background so status colors are visible */
   color-scheme: light;
   color: #213547;
@@ -71,6 +74,8 @@ button:focus-visible {
     color-scheme: dark;
     color: rgba(255, 255, 255, 0.87);
     background-color: #242424;
+    --status-dispo: #4ade80;
+    --status-indispo: #f87171;
   }
   button {
     background-color: #334155;
