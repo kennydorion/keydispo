@@ -19,15 +19,15 @@ L'application est accessible ensuite sur `http://localhost:5173` par défaut.
 Créez un fichier `.env` à la racine avec les variables suivantes :
 
 ```bash
-VITE_FIREBASE_API_KEY=... 
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_API_KEY=your_key
+VITE_FIREBASE_AUTH_DOMAIN=your_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-Ces valeurs sont disponibles dans la console Firebase pour votre projet. Le fichier `.env` est ignoré par Git.
+Ces valeurs sont disponibles dans la console Firebase pour votre projet. Le fichier `.env` est déjà listé dans `.gitignore`.
 
 ## Déploiement
 
