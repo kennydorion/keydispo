@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const props = defineProps({
@@ -15,6 +15,11 @@ const collaborators = ref([]); // [{id, name}]
 const days = ref([]); // array of dates as strings
 const planning = ref({}); // {day: {collabId: {status, time, location}}}
 const selectedDay = ref('');
+
+const showAddCollabModal = ref(false);
+const newCollabName = ref('');
+const showAddClientModal = ref(false);
+const newClientName = ref('');
 
 let unsubscribeCollaborators;
 let unsubscribePlanning;
@@ -73,12 +78,40 @@ async function toggleStatus(day, collab) {
     alert('Erreur lors de la mise à jour du statut.');
   }
 }
+
+async function addCollaborator() {
+  const name = newCollabName.value.trim();
+  if (!name) return;
+  try {
+    await addDoc(collection(db, 'collaborators'), { name });
+    newCollabName.value = '';
+    showAddCollabModal.value = false;
+  } catch (err) {
+    console.error('Failed to add collaborator:', err);
+    alert('Erreur lors de l\'ajout du collaborateur.');
+  }
+}
+
+async function addClient() {
+  const name = newClientName.value.trim();
+  if (!name) return;
+  try {
+    await addDoc(collection(db, 'clients'), { name });
+    newClientName.value = '';
+    showAddClientModal.value = false;
+  } catch (err) {
+    console.error('Failed to add client:', err);
+    alert('Erreur lors de l\'ajout du client.');
+  }
+}
 </script>
 
 
 <template>
   <div class="search-bar">
     <input v-model="search" placeholder="Rechercher" />
+    <button @click="showAddCollabModal = true">Ajouter un collaborateur</button>
+    <button @click="showAddClientModal = true">Ajouter un client</button>
   </div>
   <div class="board" :class="view">
     <div class="collab-column">
@@ -115,6 +148,22 @@ async function toggleStatus(day, collab) {
           {{ planning[selectedDay]?.[c.id]?.status || '' }}
         </div>
       </div>
+    </div>
+  </div>
+  <div v-if="showAddCollabModal" class="modal">
+    <div class="modal-content">
+      <h3>Ajouter un collaborateur</h3>
+      <input v-model="newCollabName" placeholder="Nom" />
+      <button @click="addCollaborator">Enregistrer</button>
+      <button @click="showAddCollabModal = false">Annuler</button>
+    </div>
+  </div>
+  <div v-if="showAddClientModal" class="modal">
+    <div class="modal-content">
+      <h3>Ajouter un client</h3>
+      <input v-model="newClientName" placeholder="Nom" />
+      <button @click="addClient">Enregistrer</button>
+      <button @click="showAddClientModal = false">Annuler</button>
     </div>
   </div>
 </template>
@@ -175,5 +224,26 @@ async function toggleStatus(day, collab) {
   top: 0;
   background: #fff;
   z-index: 3;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.modal-content {
+  background: #fff;
+  padding: 16px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>
