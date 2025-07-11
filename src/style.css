@@ -3,10 +3,10 @@
   line-height: 1.5;
   font-weight: 400;
 
+  /* Status colors */
   --status-dispo: #4ade80;
   --status-indispo: #f87171;
 
-  /* Always use a light background so status colors are visible */
   color-scheme: light;
   color: #213547;
   background-color: #ffffff;
@@ -40,7 +40,7 @@ h1 {
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid #000;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
@@ -77,8 +77,13 @@ button:focus-visible {
     --status-dispo: #4ade80;
     --status-indispo: #f87171;
   }
+  body {
+    background: #24282f;
+  }
   button {
     background-color: #334155;
+    border-color: #fff;
+    color: #fff;
   }
   a:hover {
     color: #747bff;

@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import PlanningBoard from './components/PlanningBoard.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import SidebarMenu from './components/SidebarMenu.vue';
+import CalendarView from './components/CalendarView.vue';
 
 const view = ref('table');
 </script>
@@ -19,8 +20,12 @@ const view = ref('table');
         <button @click="view = 'day'" :class="{ active: view === 'day' }">
           Par jour
         </button>
+        <button @click="view = 'calendar'" :class="{ active: view === 'calendar' }">
+          Calendrier
+        </button>
       </div>
-      <PlanningBoard :view="view" />
+      <PlanningBoard v-if="view !== 'calendar'" :view="view" />
+      <CalendarView v-else />
     </main>
   </div>
 </template>
@@ -49,9 +54,16 @@ const view = ref('table');
   flex: 1;
   padding: 8px;
   cursor: pointer;
+  background: #fff;
+  border: 1px solid #000;
+  color: #000;
+  transition: opacity 0.2s;
+}
+.tabs button:hover {
+  opacity: 0.8;
 }
 .tabs button.active {
-  background: #ececec;
+  background: #e5e5e5;
   font-weight: bold;
 }
 </style>
