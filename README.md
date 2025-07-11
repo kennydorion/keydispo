@@ -16,7 +16,11 @@ L'application est accessible ensuite sur `http://localhost:5173` par défaut.
 
 ## Configuration Firebase
 
-Créez un fichier `.env` à la racine avec les variables suivantes :
+Copiez le fichier `.env.example` en `.env` à la racine puis complétez les variables suivantes :
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 VITE_FIREBASE_API_KEY=your_key
