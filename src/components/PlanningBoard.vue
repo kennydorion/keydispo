@@ -211,12 +211,13 @@ async function addClient() {
   justify-content: center;
   cursor: pointer;
   font-size: 0.8rem;
+  color: #333;
 }
 .cell.dispo {
-  background-color: #d4edda;
+  background-color: #c6f6d5;
 }
 .cell.indispo {
-  background-color: #f8d7da;
+  background-color: #fecaca;
 }
 .search-bar {
   padding: 8px;
