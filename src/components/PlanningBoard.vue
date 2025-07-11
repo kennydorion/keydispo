@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -53,12 +53,12 @@ onUnmounted(() => {
   }
 });
 
-function filteredCollaborators() {
+const filteredCollaborators = computed(() => {
   if (!search.value) return collaborators.value;
   return collaborators.value.filter((c) =>
     c.name.toLowerCase().includes(search.value.toLowerCase())
   );
-}
+});
 
 async function toggleStatus(day, collab) {
   const dayDoc = doc(db, 'planning', day);
@@ -70,10 +70,11 @@ async function toggleStatus(day, collab) {
     await setDoc(dayDoc, updated, { merge: true });
   } catch (err) {
     console.error('Failed to update status:', err);
-    alert('Erreur lors de la mise \xE0 jour du statut.');
+    alert('Erreur lors de la mise à jour du statut.');
   }
 }
 </script>
+
 
 <template>
   <div class="search-bar">
@@ -81,7 +82,7 @@ async function toggleStatus(day, collab) {
   </div>
   <div class="board" :class="view">
     <div class="collab-column">
-      <div class="collab" v-for="c in filteredCollaborators()" :key="c.id">
+      <div class="collab" v-for="c in filteredCollaborators" :key="c.id">
         {{ c.name }}
       </div>
     </div>
@@ -90,7 +91,7 @@ async function toggleStatus(day, collab) {
         <div class="day-header">{{ d }}</div>
         <div
           class="cell"
-          v-for="c in filteredCollaborators()"
+          v-for="c in filteredCollaborators"
           :key="c.id"
           @click="toggleStatus(d, c)"
           :class="planning[d]?.[c.id]?.status"
@@ -106,7 +107,7 @@ async function toggleStatus(day, collab) {
       <div v-if="days.length">
         <div
           class="cell"
-          v-for="c in filteredCollaborators()"
+          v-for="c in filteredCollaborators"
           :key="c.id"
           @click="toggleStatus(selectedDay, c)"
           :class="planning[selectedDay]?.[c.id]?.status"
