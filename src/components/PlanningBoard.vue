@@ -172,6 +172,9 @@ async function addClient() {
 .board {
   display: flex;
   overflow-x: auto;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
 }
 .collab-column {
   position: sticky;
@@ -185,6 +188,7 @@ async function addClient() {
   padding: 4px 8px;
   border-bottom: 1px solid #eee;
   white-space: nowrap;
+  background: #fdfdfd;
 }
 .days {
   display: flex;
@@ -212,6 +216,9 @@ async function addClient() {
   cursor: pointer;
   font-size: 0.8rem;
   color: #333;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  box-shadow: inset 0 0 0 1px #e5e5e5;
 }
 .cell.dispo {
   background-color: #c6f6d5;
@@ -219,8 +226,14 @@ async function addClient() {
 .cell.indispo {
   background-color: #fecaca;
 }
+.cell:hover {
+  filter: brightness(0.95);
+}
 .search-bar {
   padding: 8px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
   position: sticky;
   top: 0;
   background: #fff;
