@@ -80,7 +80,7 @@ async function toggleStatus(day, collab) {
       </div>
     </div>
     <div class="day-view" v-else>
-      <div class="day-header" v-for="d in days" :key="d" @click="selectedDay.value = d">
+      <div class="day-header" v-for="d in days" :key="d" @click="selectedDay = d">
         {{ d }}
       </div>
       <div v-if="days.length">
@@ -88,10 +88,10 @@ async function toggleStatus(day, collab) {
           class="cell"
           v-for="c in filteredCollaborators()"
           :key="c.id"
-          @click="toggleStatus(selectedDay.value, c)"
-          :class="planning[selectedDay.value]?.[c.id]?.status"
+          @click="toggleStatus(selectedDay, c)"
+          :class="planning[selectedDay]?.[c.id]?.status"
         >
-          {{ planning[selectedDay.value]?.[c.id]?.status || '' }}
+          {{ planning[selectedDay]?.[c.id]?.status || '' }}
         </div>
       </div>
     </div>
