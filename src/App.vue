@@ -1,30 +1,39 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { ref } from 'vue';
+import PlanningBoard from './components/PlanningBoard.vue';
+
+const view = ref('table');
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="tabs">
+    <button @click="view = 'table'" :class="{ active: view === 'table' }">
+      Tableau
+    </button>
+    <button @click="view = 'day'" :class="{ active: view === 'day' }">
+      Par jour
+    </button>
   </div>
-  <HelloWorld msg="Vite + Vue" />
+  <PlanningBoard :view="view" />
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 4;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.tabs button {
+  flex: 1;
+  padding: 8px;
+  cursor: pointer;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+.tabs button.active {
+  background: #ececec;
+  font-weight: bold;
 }
 </style>
