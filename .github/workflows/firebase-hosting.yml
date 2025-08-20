@@ -58,8 +58,9 @@ jobs:
         run: npm i -g firebase-tools@13
 
       - name: Deploy Firestore rules
-  run: firebase deploy --only firestore:rules --project keydispo-ec1ba
-  continue-on-error: true
+        continue-on-error: true
+        run: |
+          firebase deploy --only firestore:rules --project keydispo-ec1ba
 
       - name: Deploy to Firebase Hosting (production)
         uses: FirebaseExtended/action-hosting-deploy@v0
