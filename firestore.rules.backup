@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fonction helper pour vérifier l'authentification
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction helper pour obtenir le rôle d'un utilisateur
+    function getUserRole(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur peut lire
+    function canRead(tenantId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur peut écrire
+    function canWrite(tenantId) {
+      return isAuthenticated() && 
+             getUserRole(tenantId) in ['admin', 'editor'];
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur est admin
+    function isAdmin(tenantId) {
+      return isAuthenticated() && 
+             getUserRole(tenantId) == 'admin';
+    }
+
+    // Règles pour la collection des disponibilités
+    match /dispos/{docId} {
+      allow read: if canRead(resource.data.tenantId);
+      
+      allow create: if canWrite(resource.data.tenantId) &&
+                       resource.data.tenantId is string &&
+                       resource.data.nom is string &&
+                       resource.data.prenom is string &&
+                       resource.data.date is string &&
+                       resource.data.lieu is string &&
+                       resource.data.heure_debut is string &&
+                       resource.data.heure_fin is string &&
+                       resource.data.version == 1 &&
+                       resource.data.updatedBy == request.auth.uid;
+      
+      allow update: if canWrite(resource.data.tenantId) &&
+                       resource.data.tenantId == request.resource.data.tenantId &&
+                       request.resource.data.version == resource.data.version + 1 &&
+                       request.resource.data.updatedBy == request.auth.uid;
+      
+      allow delete: if canWrite(resource.data.tenantId);
+    }
+
+    // Règles pour les tenants et leurs utilisateurs
+    match /tenants/{tenantId} {
+      allow read: if canRead(tenantId);
+      allow write: if isAdmin(tenantId);
+      
+      match /users/{userId} {
+        allow read: if canRead(tenantId);
+        allow create: if isAuthenticated() && userId == request.auth.uid;
+        allow update: if isAdmin(tenantId) || 
+                         (userId == request.auth.uid && 
+                          request.resource.data.role == resource.data.role);
+        allow delete: if isAdmin(tenantId) && userId != request.auth.uid;
+      }
+    }
+
+    // Règles pour la collection des collaborateurs (optionnel)
+    match /collaborateurs/{docId} {
+      allow read: if canRead(resource.data.tenantId);
+      allow write: if canWrite(resource.data.tenantId);
+    }
+
+    // Règles pour l'audit trail (optionnel)
+    match /audit/{docId} {
+      allow read: if isAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated();
+      // Pas de mise à jour ou suppression des logs d'audit
+    }
+
+    // Bloquer tout le reste
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

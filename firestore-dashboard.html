@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Firestore - KeyDispo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .data-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .collaborateur {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f9fafb;
+        }
+        .collaborateur-header {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        .collaborateur-info {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        .refresh-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .refresh-btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Dashboard Firestore - KeyDispo</h1>
+            <p>Interface alternative pour visualiser les données de l'émulateur</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Actualiser</button>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="collaborateurs-count">-</div>
+                <div>Collaborateurs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="disponibilites-count">-</div>
+                <div>Disponibilités</div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <h2>📋 Collaborateurs</h2>
+            <div id="collaborateurs-list" class="loading">Chargement...</div>
+        </div>
+
+        <div class="data-section">
+            <h2>📅 Disponibilités (dernières 10)</h2>
+            <div id="disponibilites-list" class="loading">Chargement...</div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                document.getElementById('error-container').innerHTML = '';
+                
+                // Charger les collaborateurs via le proxy
+                const collabResponse = await fetch('/api/collaborateurs');
+                const collabData = await collabResponse.json();
+                
+                // Charger les disponibilités via le proxy
+                const dispoResponse = await fetch('/api/disponibilites');
+                const dispoData = await dispoResponse.json();
+                
+                // Mettre à jour les stats
+                const collaborateursCount = collabData.documents ? collabData.documents.length : 0;
+                const disponibilitesCount = dispoData.documents ? dispoData.documents.length : 0;
+                
+                document.getElementById('collaborateurs-count').textContent = collaborateursCount;
+                document.getElementById('disponibilites-count').textContent = disponibilitesCount;
+                
+                // Afficher les collaborateurs
+                displayCollaborateurs(collabData.documents || []);
+                
+                // Afficher les disponibilités
+                displayDisponibilites(dispoData.documents || []);
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('error-container').innerHTML = 
+                    `<div class="error">❌ Erreur de connexion: ${error.message}</div>`;
+            }
+        }
+
+        function displayCollaborateurs(collaborateurs) {
+            const container = document.getElementById('collaborateurs-list');
+            
+            if (collaborateurs.length === 0) {
+                container.innerHTML = '<p>Aucun collaborateur trouvé</p>';
+                return;
+            }
+            
+            const html = collaborateurs.map(doc => {
+                const data = doc.fields;
+                return `
+                    <div class="collaborateur">
+                        <div class="collaborateur-header">
+                            👤 ${data.nom?.stringValue || ''} ${data.prenom?.stringValue || ''}
+                        </div>
+                        <div class="collaborateur-info">
+                            💼 ${data.metier?.stringValue || ''} | 
+                            📱 ${data.phone?.stringValue || ''} | 
+                            📧 ${data.email?.stringValue || ''} |
+                            🏢 ${data.ville?.stringValue || ''}
+                        </div>
+                        <div class="collaborateur-info">
+                            🆔 ${doc.name.split('/').pop()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function displayDisponibilites(disponibilites) {
+            const container = document.getElementById('disponibilites-list');
+            
+            if (disponibilites.length === 0) {
+                container.innerHTML = '<p>Aucune disponibilité trouvée</p>';
+                return;
+            }
+            
+            // Afficher seulement les 10 dernières
+            const recent = disponibilites.slice(-10);
+            
+            const html = recent.map(doc => {
+                const data = doc.fields;
+                return `
+                    <div class="collaborateur">
+                        <div class="collaborateur-header">
+                            📅 ${data.date?.stringValue || ''} - ${data.collaborateurNom?.stringValue || ''} ${data.collaborateurPrenom?.stringValue || ''}
+                        </div>
+                        <div class="collaborateur-info">
+                            📍 ${data.lieu?.stringValue || ''} | 
+                            ⏰ ${data.heure_debut?.stringValue || ''} - ${data.heure_fin?.stringValue || ''} |
+                            🔄 ${data.statut?.stringValue || ''}
+                        </div>
+                        <div class="collaborateur-info">
+                            🆔 ${doc.name.split('/').pop()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+
+        // Charger les données au démarrage
+        loadData();
+        
+        // Actualiser automatiquement toutes les 5 secondes
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>

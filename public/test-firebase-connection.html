@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Connexion Firebase</title>
+</head>
+<body>
+    <h1>Test de connexion Firebase</h1>
+    <div id="status">Chargement...</div>
+    <div id="results"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getFirestore, connectFirestoreEmulator, collection, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            projectId: 'keydispo-local'
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+
+        function log(message) {
+            console.log(message);
+            statusDiv.innerHTML += '<br>' + message;
+        }
+
+        async function testConnection() {
+            try {
+                log('🔄 Connexion à l\'émulateur...');
+                
+                // Connecter à l'émulateur
+                connectFirestoreEmulator(db, 'localhost', 8081);
+                log('✅ Connecté à l\'émulateur Firestore');
+
+                // Test de requête
+                log('🔍 Test de requête...');
+                const q = query(
+                    collection(db, 'dispos'),
+                    where('tenantId', '==', 'keydispo'),
+                    orderBy('date', 'asc')
+                );
+
+                const snapshot = await getDocs(q);
+                log(`✅ ${snapshot.size} documents trouvés`);
+
+                if (snapshot.size > 0) {
+                    resultsDiv.innerHTML = '<h2>Premiers résultats:</h2>';
+                    snapshot.docs.slice(0, 5).forEach((doc, i) => {
+                        const data = doc.data();
+                        resultsDiv.innerHTML += `<p>${i+1}. ${data.nom} ${data.prenom} - ${data.date} - ${data.lieu}</p>`;
+                    });
+                }
+
+            } catch (error) {
+                log('❌ Erreur: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        testConnection();
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "dispos": {
+    "tenant-dev::doe::john::2025-08-11": {
+      "tenantId": "tenant-dev",
+      "collaborateurId": "c1",
+      "nom": "Doe",
+      "prenom": "John",
+      "date": "2025-08-11",
+      "lieu": "Paris",
+      "heure_debut": "09:00",
+      "heure_fin": "17:00",
+      "version": 1,
+      "updatedAt": { "_seconds": 0, "_nanoseconds": 0 },
+      "updatedBy": "seed"
+    }
+  }
+}

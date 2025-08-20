@@ -1,0 +1,53 @@
+{
+  "name": "keydispo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "packageManager": "yarn@1.22.19",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "start:dev": "./start-dev.sh",
+    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "emu:seed": "npx tsx tools/seed-test-data.ts",
+    "emu:export": "firebase emulators:export ./emulator-data",
+    "import:dry": "ts-node ./tools/import_dispos.ts --csv",
+    "import:run": "ts-node ./tools/import_dispos.ts --emulator",
+    "lint": "eslint . --ext .ts,.tsx,.vue",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@types/node": "^24.2.1",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "express": "^5.1.0",
+    "firebase": "^12.1.0",
+    "firebase-admin": "^12.7.0",
+    "papaparse": "^5.5.3",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1",
+    "vuestic-ui": "^1.10.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/eslint-config-prettier": "^9.0.0",
+    "@vue/eslint-config-typescript": "^13.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "eslint": "^9.9.0",
+    "eslint-plugin-vue": "^9.24.0",
+    "firebase-tools": "^13.29.3",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.0",
+    "vitest": "^2.0.5",
+    "vue-eslint-parser": "^9.4.3",
+    "vue-tsc": "^3.0.5"
+  }
+}

@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  //
+  // Règles KeyDispo – multi-tenant + rôles
+  // Limites: basées sur des champs stockés dans tenants/{tenantId}/users/{uid}. Testez via Firebase Emulator.
+  //
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+
+    function userTenantId() {
+      return isSignedIn() ? request.auth.token.tenantId : null;
+    }
+
+    function userRole() {
+      return isSignedIn() ? request.auth.token.role : null;
+    }
+
+    function isViewer() { return userRole() in ['viewer', 'editor', 'admin']; }
+    function isEditor() { return userRole() in ['editor', 'admin']; }
+    function isAdmin() { return userRole() == 'admin'; }
+
+    // Tenants users document mirrors custom claims for safety/read backing
+    match /tenants/{tenantId}/users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid && userTenantId() == tenantId;
+      allow write: if false; // managed by backend/admin tooling
+    }
+
+    // Collaborateurs: readable by tenant users, writable by editors/admins
+    match /collaborateurs/{id} {
+      allow read: if isSignedIn() && resource.data.tenantId == userTenantId();
+      allow create: if isSignedIn() && isEditor() && request.resource.data.tenantId == userTenantId();
+      allow update: if isSignedIn() && isEditor() && resource.data.tenantId == userTenantId() && request.resource.data.tenantId == userTenantId();
+      allow delete: if isSignedIn() && isAdmin() && resource.data.tenantId == userTenantId();
+    }
+
+    // Dispos: read for same tenant; create/update for editors; delete for admin only
+    match /dispos/{id} {
+      allow read: if isSignedIn() && resource.data.tenantId == userTenantId();
+      allow create: if isSignedIn() && isEditor() && request.resource.data.tenantId == userTenantId();
+      allow update: if isSignedIn() && isEditor() && resource.data.tenantId == userTenantId() && request.resource.data.tenantId == userTenantId();
+      allow delete: if isSignedIn() && isAdmin() && resource.data.tenantId == userTenantId();
+    }
+  }
+}

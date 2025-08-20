@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Minimal</title>
+  </head>
+  <body>
+    <div id="app-test">
+      <h1>{{ message }}</h1>
+      <button @click="count++">Count: {{ count }}</button>
+    </div>
+    
+    <script type="module">
+      import { createApp, ref } from 'vue'
+      
+      createApp({
+        setup() {
+          const message = ref('Vue fonctionne !')
+          const count = ref(0)
+          return { message, count }
+        }
+      }).mount('#app-test')
+    </script>
+  </body>
+</html>

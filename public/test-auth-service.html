@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth Service</title>
+</head>
+<body>
+    <h1>Test AuthService.currentTenantId</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        // Simuler l'environnement Vite en mode DEV
+        const env = {
+            DEV: true,
+            MODE: 'development',
+            VITE_TENANT_ID: 'keydispo'
+        };
+
+        // Simuler import.meta.env
+        window.import = { meta: { env } };
+
+        // Reproduire la logique d'AuthService
+        const currentTenantId = env.VITE_TENANT_ID || 'default';
+
+        document.getElementById('results').innerHTML = `
+            <p><strong>currentTenantId:</strong> ${currentTenantId}</p>
+            <p><strong>VITE_TENANT_ID:</strong> ${env.VITE_TENANT_ID}</p>
+            <p><strong>DEV mode:</strong> ${env.DEV}</p>
+        `;
+
+        console.log('AuthService.currentTenantId would be:', currentTenantId);
+    </script>
+</body>
+</html>

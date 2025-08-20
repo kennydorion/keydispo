@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Règles permissives pour l'émulateur de développement
+    // ⚠️ NE JAMAIS UTILISER EN PRODUCTION ⚠️
+    
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

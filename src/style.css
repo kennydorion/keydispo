@@ -1,0 +1,171 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Fonte app unifiée */
+  --kd-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  /* Variable Vuestic: aligne toute la lib (dont modale) sur la même fonte */
+  --va-font-family: var(--kd-font);
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: block;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--va-font-family);
+}
+
+/* Inputs de temps: masquer l'icône native (souvent noire) pour n'afficher que notre icône personnalisée */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+  -webkit-appearance: none;
+}
+input[type="time"]::-webkit-clear-button {
+  display: none;
+}
+
+/* Forcer la modale Vuestic au-dessus de tout (planning, sticky, overlays) */
+.va-modal__overlay, .va-modal-overlay {
+  z-index: 2147483646 !important; /* au-dessus de tout overlay/app */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+.va-modal, .va-modal__container, .va-modal__dialog {
+  z-index: 2147483647 !important; /* top absolu */
+}
+
+/* S'assurer que les dropdowns/menus Vuestic sont visibles (z-index élevé) */
+/* Élever uniquement les menus des VaSelect (listes d’options) */
+.va-select-dropdown__content,
+.va-select-option-list {
+  z-index: 2147483647 !important;
+}
+/* Laisser les menus génériques (VaDropdown) à leur z-index par défaut */
+.va-dropdown__content,
+.va-dropdown__content-wrapper {
+  z-index: initial !important;
+}
+
+/* Assurer que la modale plein écran mobile dépasse le header sticky (z-index 150) */
+.va-modal--mobile-fullscreen.va-modal,
+.va-modal--mobile-fullscreen,
+.va-modal--mobile-fullscreen .va-modal__container,
+.va-modal--mobile-fullscreen .va-modal__dialog {
+  z-index: 1001 !important;
+}
+
+/* Cas où Vuestic injecte un style inline (z-index: 1) sur les éléments modale */
+[class*="va-modal"][style*="z-index"],
+[class*="va-modal__container"][style*="z-index"],
+[class*="va-modal__dialog"][style*="z-index"] {
+  z-index: 2147483647 !important;
+}
+[class*="va-modal__overlay"][style*="z-index"],
+[class*="va-modal-overlay"][style*="z-index"] {
+  z-index: 2147483646 !important;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.card {
+  padding: 2em;
+}
+
+/* Laisse #app occuper toute la largeur sans padding/marges pour un layout plein écran */
+#app {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Exceptions pour les icônes uniquement */
+.material-icons, .material-icons-outlined, .material-icons-round, .material-icons-sharp, .material-icons-two-tone, 
+.va-icon[class*="material-icons"], [class*="va-icon"] {
+  font-family: 'Material Icons' !important;
+}
+
+/* La modale et tous les composants Vuestic héritent désormais via --va-font-family */
+
+/* Icônes Material (évite l’affichage du texte des icônes) */
+.material-icons {
+  font-family: 'Material Icons' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1em;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+.material-icons-outlined { font-family: 'Material Icons Outlined' !important; }
+.material-icons-round { font-family: 'Material Icons Round' !important; }
+.material-icons-sharp { font-family: 'Material Icons Sharp' !important; }
+.material-icons-two-tone { font-family: 'Material Icons Two Tone' !important; }
+.va-modal .va-icon {
+  font-family: 'Material Icons' !important;
+  font-feature-settings: 'liga' !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}

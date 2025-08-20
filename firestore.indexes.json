@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "dispos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "collaborateurId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dispos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "lieu", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
