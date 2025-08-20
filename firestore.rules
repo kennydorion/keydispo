@@ -1,10 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // RÈGLES TEMPORAIRES POUR DEBUG ÉMULATEUR
-    // ⚠️ ULTRA-PERMISSIVES - À RESTAURER APRÈS DEBUG ⚠️
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTenantMember(tenantId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
+    }
+
+    function userRole(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role;
+    }
+
+    function hasRole(tenantId, allowed) {
+      return isTenantMember(tenantId) && (userRole(tenantId) in allowed);
+    }
+
+    // Gestion des utilisateurs du tenant
+    match /tenants/{tenantId}/users/{userId} {
+      // Lecture: membre du tenant ou l'utilisateur lui-même
+      allow read: if isTenantMember(tenantId) || (isSignedIn() && request.auth.uid == userId);
+
+      // Création: l'utilisateur peut créer son propre doc au premier login
+      allow create: if isSignedIn() && request.auth.uid == userId;
+
+      // Mise à jour: soi-même (ex: lastAccess) ou admin du tenant
+      allow update: if (isSignedIn() && request.auth.uid == userId) || hasRole(tenantId, ['admin']);
+
+      // Suppression: admin uniquement
+      allow delete: if hasRole(tenantId, ['admin']);
+    }
+
+    // Collaborateurs
+    match /tenants/{tenantId}/collaborateurs/{collabId} {
+      allow read: if isTenantMember(tenantId);
+      allow create, update, delete: if hasRole(tenantId, ['admin', 'editor']);
+    }
+
+    // Disponibilités (sous-collection des collaborateurs)
+    match /tenants/{tenantId}/collaborateurs/{collabId}/disponibilites/{dateId} {
+      allow read: if isTenantMember(tenantId);
+      allow create, update, delete: if hasRole(tenantId, ['admin', 'editor']);
+    }
+
+    // Par défaut: tout le reste refusé
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

@@ -48,6 +48,13 @@ jobs:
         run: |
           yarn build
 
+      - name: Deploy Firestore rules
+        uses: w9jds/firebase-action@v13.9.0
+        with:
+          args: deploy --only firestore:rules --project keydispo-ec1ba
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
       - name: Deploy to Firebase Hosting (production)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
