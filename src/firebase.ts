@@ -3,8 +3,9 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 // Firebase client config loaded from Vite env vars
-// Emulator toggle: VITE_USE_EMULATOR=1
-const useEmulator = import.meta.env.VITE_USE_EMULATOR === '1'
+// Emulator toggle: VITE_USE_EMULATOR=1, mais seulement en local (hostname localhost/127.0.0.1)
+const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+const useEmulator = (import.meta.env.VITE_USE_EMULATOR === '1') && isLocalhost
 
 // Provide safe defaults when using the emulator to prevent auth/invalid-api-key
 const firebaseConfig = {
