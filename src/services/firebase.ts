@@ -17,10 +17,29 @@ const firebaseConfig = {
   appId: useEmulator ? 'app-fake' : import.meta.env.VITE_FB_APP_ID,
 } as const
 
-console.log('🔧 Configuration Firebase:', { useEmulator, projectId: firebaseConfig.projectId })
+// Log compact sans exposer les secrets, pour diagnostiquer les manques en prod
+console.log('🔧 Configuration Firebase:', {
+  useEmulator,
+  projectId: firebaseConfig.projectId,
+  hasApiKey: Boolean(firebaseConfig.apiKey),
+  hasAuthDomain: Boolean(firebaseConfig.authDomain),
+  hasAppId: Boolean(firebaseConfig.appId)
+})
 
 if (!firebaseConfig.projectId) {
   console.error('Firebase projectId manquant. Définissez VITE_FB_PROJECT_ID (prod) ou activez VITE_USE_EMULATOR=1 en local.')
+}
+
+// En production, s'assurer que les variables critiques sont présentes
+if (!useEmulator) {
+  const missing: string[] = []
+  if (!firebaseConfig.apiKey) missing.push('VITE_FB_API_KEY')
+  if (!firebaseConfig.authDomain) missing.push('VITE_FB_AUTH_DOMAIN')
+  if (!firebaseConfig.projectId) missing.push('VITE_FB_PROJECT_ID')
+  if (!firebaseConfig.appId) missing.push('VITE_FB_APP_ID')
+  if (missing.length) {
+    console.error('❌ Variables d\'env Firebase manquantes en production:', { missing })
+  }
 }
 
 // Initialize Firebase
