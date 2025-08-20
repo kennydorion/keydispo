@@ -57,17 +57,17 @@ jobs:
       - name: Install Firebase CLI
         run: npm i -g firebase-tools@13
 
-      - name: Deploy Firestore rules
+      - name: Deploy Firestore rules & indexes
         continue-on-error: true
         env:
           FIREBASE_CI_TOKEN: ${{ secrets.FIREBASE_CI_TOKEN }}
         run: |
           if [ -n "${FIREBASE_CI_TOKEN}" ]; then
-            echo "Using FIREBASE_CI_TOKEN for rules deploy"
-            firebase deploy --only firestore:rules --project keydispo-ec1ba --token "$FIREBASE_CI_TOKEN"
+            echo "Using FIREBASE_CI_TOKEN for rules/indexes deploy"
+            firebase deploy --only firestore:rules,firestore:indexes --project keydispo-ec1ba --token "$FIREBASE_CI_TOKEN"
           else
-            echo "Using service account auth for rules deploy"
-            firebase deploy --only firestore:rules --project keydispo-ec1ba
+            echo "Using service account auth for rules/indexes deploy"
+            firebase deploy --only firestore:rules,firestore:indexes --project keydispo-ec1ba
           fi
 
       - name: Deploy to Firebase Hosting (production)

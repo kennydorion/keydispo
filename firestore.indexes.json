@@ -1,6 +1,23 @@
 {
   "indexes": [
     {
+      "collectionGroup": "collaborateurs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nom", "order": "ASCENDING" },
+        { "fieldPath": "prenom", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "collaborateurs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actif", "order": "ASCENDING" },
+        { "fieldPath": "nom", "order": "ASCENDING" },
+        { "fieldPath": "prenom", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "dispos",
       "queryScope": "COLLECTION",
       "fields": [
