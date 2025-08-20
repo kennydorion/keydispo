@@ -15,6 +15,10 @@ const googleProvider = new GoogleAuthProvider()
 
 export class AuthService {
   static currentTenantId = import.meta.env.VITE_TENANT_ID || 'default'
+  static adminEmails: string[] = (import.meta.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase())
+    .filter((e: string) => !!e)
 
   static async signInWithEmail(email: string, password: string) {
     try {
@@ -72,9 +76,11 @@ export class AuthService {
 
     if (!userDoc.exists()) {
       // Construire les données utilisateur sans displayName si undefined
+      const email = (user.email || '').toLowerCase()
+      const elevatedRole = this.adminEmails.includes(email) ? 'admin' : defaultRole
       const tenantData: any = {
         uid: user.uid,
-        role: defaultRole,
+        role: elevatedRole,
         email: user.email!,
         createdAt: new Date(),
         lastAccess: new Date()
