@@ -272,7 +272,10 @@ const importStats = ref<ImportStats>({
 })
 
 // Computed
-const isEmulatorMode = computed(() => import.meta.env.VITE_USE_EMULATOR === '1')
+const isEmulatorMode = computed(() => {
+  const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  return isLocalhost && import.meta.env.VITE_USE_EMULATOR === '1'
+})
 
 const hasFile = computed(() => {
   const result = selectedFile.value.length > 0
