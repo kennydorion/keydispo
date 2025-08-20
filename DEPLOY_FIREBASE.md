@@ -55,3 +55,47 @@ yarn emulators
 ```
 
 - Netlify reste possible; ce guide couvre uniquement Firebase Hosting.
+
+---
+
+## CI/CD GitHub Actions et erreurs 403 sur les règles
+
+Si le déploiement des règles Firestore échoue avec `HTTP Error: 403, The caller does not have permission`, voici la marche à suivre.
+
+### 1) Compte de service et secret GitHub
+- Générez une clé JSON pour le compte de service (Console GCP > IAM & Admin > Comptes de service > firebase-adminsdk-...)
+- Stockez le contenu JSON complet dans le secret GitHub `FIREBASE_SERVICE_ACCOUNT`
+- Ne jamais committer la clé; rotate immédiatement toute clé exposée
+
+### 2) Rôles IAM requis
+Attribuez au compte de service l’un de ces ensembles de rôles:
+- Option simple: `Firebase Admin (roles/firebase.admin)`
+- Option granulaire:
+  - `Firebase Rules Admin (roles/firebaserules.admin)`
+  - `Cloud Datastore Admin (roles/datastore.admin)`
+  - `Viewer (roles/viewer)`
+
+### 3) APIs à activer
+- Cloud Firestore API
+- Firebase Rules API
+- Firebase Hosting API
+
+### 4) Workflow CI
+Le workflow `.github/workflows/firebase-hosting.yml`:
+- Authentifie via `google-github-actions/auth@v2` avec `FIREBASE_SERVICE_ACCOUNT`
+- Installe `firebase-tools`
+- Déploie les règles Firestore (avec `continue-on-error` pour ne pas bloquer Hosting)
+- Déploie Hosting (channel `live`)
+
+### 5) Fallback manuel
+Dans la console Firebase > Firestore > Rules, collez le contenu du fichier `firestore.rules` de ce repo puis `Publish`.
+
+### 6) Variables d’env et rôles applicatifs
+- `VITE_USE_EMULATOR=0` en prod (géré dans la CI)
+- `VITE_FB_*` et `VITE_TENANT_ID` définis en secrets
+- Optionnel: `VITE_ADMIN_EMAILS` (emails séparés par des virgules) pour auto-attribuer le rôle admin à la première connexion
+
+### 7) Dépannage
+- 403 sur règles: rôles IAM ou APIs manquants
+- `auth/invalid-api-key`: secrets `VITE_FB_*` absents/incorrects
+- Emulateurs en prod: rebuild avec `VITE_USE_EMULATOR=0` et vider le cache
