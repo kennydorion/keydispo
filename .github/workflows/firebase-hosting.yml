@@ -59,8 +59,16 @@ jobs:
 
       - name: Deploy Firestore rules
         continue-on-error: true
+        env:
+          FIREBASE_CI_TOKEN: ${{ secrets.FIREBASE_CI_TOKEN }}
         run: |
-          firebase deploy --only firestore:rules --project keydispo-ec1ba
+          if [ -n "${FIREBASE_CI_TOKEN}" ]; then
+            echo "Using FIREBASE_CI_TOKEN for rules deploy"
+            firebase deploy --only firestore:rules --project keydispo-ec1ba --token "$FIREBASE_CI_TOKEN"
+          else
+            echo "Using service account auth for rules deploy"
+            firebase deploy --only firestore:rules --project keydispo-ec1ba
+          fi
 
       - name: Deploy to Firebase Hosting (production)
         uses: FirebaseExtended/action-hosting-deploy@v0

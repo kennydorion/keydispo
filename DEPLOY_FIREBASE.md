@@ -87,6 +87,11 @@ Le workflow `.github/workflows/firebase-hosting.yml`:
 - Déploie les règles Firestore (avec `continue-on-error` pour ne pas bloquer Hosting)
 - Déploie Hosting (channel `live`)
 
+Alternative d’auth pour les règles (si IAM verrouillé)
+- Générez un token CLI: `firebase login:ci` (depuis un compte ayant accès au projet)
+- Ajoutez le secret GitHub `FIREBASE_CI_TOKEN` avec ce token
+- Le workflow utilisera ce token pour `firebase deploy --only firestore:rules`
+
 ### 5) Fallback manuel
 Dans la console Firebase > Firestore > Rules, collez le contenu du fichier `firestore.rules` de ce repo puis `Publish`.
 
