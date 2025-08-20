@@ -614,7 +614,8 @@ function calcMinPastDate() {
 const minPastDate = ref<string>(calcMinPastDate())
 
 // Environnement
-const isEmulator = import.meta.env.VITE_USE_EMULATOR === '1' || import.meta.env.DEV
+const isLocalhostEnv = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+const isEmulator = isLocalhostEnv && import.meta.env.VITE_USE_EMULATOR === '1'
 
 function canonicalizeLieu(lieu: string): string {
   if (!lieu) return ''
