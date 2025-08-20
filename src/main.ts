@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import routes from './router/routes'
+import routes, { setupRouterGuards } from './router/routes'
 import { createVuestic } from 'vuestic-ui'
 import './style.css'
 
@@ -19,6 +19,9 @@ const app = createApp(App)
 // Installation des plugins
 app.use(router)
 app.use(createVuestic())
+
+// Guards de navigation (auth + rôles)
+setupRouterGuards(router)
 
 // Montage de l'application
 app.mount('#app')

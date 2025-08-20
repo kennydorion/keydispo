@@ -23,6 +23,23 @@
           </va-button>
         </va-navbar-item>
       </template>
+      <template #right>
+        <va-navbar-item class="nav-actions">
+          <template v-if="!user">
+            <va-button color="secondary" preset="solid" @click="goToLogin" class="nav-button" style="color: white; border-color: white;">
+              <va-icon name="login" class="mr-2" color="white" />
+              Se connecter
+            </va-button>
+          </template>
+          <template v-else>
+            <span class="user-email">{{ userEmail }}</span>
+            <va-button color="secondary" preset="outline" @click="logout" class="nav-button" style="color: white; border-color: white;">
+              <va-icon name="logout" class="mr-2" color="white" />
+              Se déconnecter
+            </va-button>
+          </template>
+        </va-navbar-item>
+      </template>
     </va-navbar>
 
   <!-- Sous-navigation désactivée pour interface minimaliste -->
@@ -81,8 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import type { User } from 'firebase/auth'
+import { AuthService } from '../services/auth'
 
 // Composables
 const router = useRouter()
@@ -139,6 +158,20 @@ const navigateTo = (targetRoute: any) => {
   router.push(targetRoute.path)
 }
 
+// Auth state
+const user = ref<User | null>(null)
+const userEmail = computed(() => user.value?.email || user.value?.displayName || 'Utilisateur')
+
+function goToLogin() {
+  router.push('/login')
+}
+
+async function logout() {
+  await AuthService.signOut()
+  user.value = null
+  router.push('/login')
+}
+
 // Actions utilisateur avancées retirées pour l'instant
 
 // Gestion des notifications
@@ -176,7 +209,10 @@ const formatTime = (timestamp: number): string => {
 // Indicateurs désactivés pour l'instant
 
 // Lifecycle
-onMounted(() => { console.log('🧭 Navigation montée') })
+onMounted(() => {
+  console.log('🧭 Navigation montée')
+  AuthService.onAuthStateChanged((u) => { user.value = u })
+})
 
 // Watchers
 // Watchers simplifiés, rien à faire pour l'instant

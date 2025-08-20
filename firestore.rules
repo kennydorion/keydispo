@@ -19,6 +19,16 @@ service cloud.firestore {
       return isTenantMember(tenantId) && (userRole(tenantId) in allowed);
     }
 
+    // Helpers basés sur le champ tenantId du document
+    function isTenantMemberByField(tenantId) {
+      return isSignedIn() && tenantId is string &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
+    }
+
+    function hasRoleByField(tenantId, allowed) {
+      return isTenantMemberByField(tenantId) && (userRole(tenantId) in allowed);
+    }
+
     // Gestion des utilisateurs du tenant
     match /tenants/{tenantId}/users/{userId} {
       // Lecture: membre du tenant ou l'utilisateur lui-même
@@ -44,6 +54,24 @@ service cloud.firestore {
     match /tenants/{tenantId}/collaborateurs/{collabId}/disponibilites/{dateId} {
       allow read: if isTenantMember(tenantId);
       allow create, update, delete: if hasRole(tenantId, ['admin', 'editor']);
+    }
+
+    // Disponibilités (collection racine actuelle: 'dispos')
+    // Protège par le champ tenantId présent sur le document
+    match /dispos/{dispoId} {
+      // Lecture si membre du tenant mentionné dans le doc
+      allow read: if isSignedIn() && isTenantMemberByField(resource.data.tenantId);
+
+      // Création: admin/editor du tenant spécifié; empêcher le changement de tenantId à l'update
+      allow create: if isSignedIn() && hasRoleByField(request.resource.data.tenantId, ['admin', 'editor']);
+
+      // Mise à jour: même tenantId, et rôle admin/editor sur ce tenant
+      allow update: if isSignedIn() &&
+        (resource.data.tenantId == request.resource.data.tenantId) &&
+        hasRoleByField(request.resource.data.tenantId, ['admin', 'editor']);
+
+      // Suppression: admin/editor du tenant du doc
+      allow delete: if isSignedIn() && hasRoleByField(resource.data.tenantId, ['admin', 'editor']);
     }
 
     // Par défaut: tout le reste refusé

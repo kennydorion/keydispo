@@ -365,9 +365,10 @@ async function startImport() {
   try {
     console.log('🚀 Début de l\'import Firestore...')
     
+    const tenantId = import.meta.env.VITE_TENANT_ID || 'default'
     const stats = await importToFirestore(
       parseResult.value.data,
-      'keydispo', // TODO: récupérer le vrai tenantId
+      tenantId,
       (progress) => {
         currentProgress.value = progress
       }
