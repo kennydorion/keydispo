@@ -29,15 +29,37 @@
       </li>
     </ul>
     <div class="topnav-actions">
-      <button class="topnav-btn" aria-label="Recherche">
+      <button class="topnav-btn desktop-only" aria-label="Recherche">
         <i class="material-icons">search</i>
       </button>
-      <button class="topnav-btn" aria-label="Notifications">
+      <button class="topnav-btn desktop-only" aria-label="Notifications">
         <i class="material-icons">notifications</i>
       </button>
-      <button class="topnav-btn" aria-label="Profil utilisateur">
-        <i class="material-icons">account_circle</i>
-      </button>
+      <div class="user-menu-wrapper" ref="userMenuRef">
+        <button class="topnav-btn user-btn" aria-label="Profil utilisateur" :aria-expanded="showUserMenu ? 'true' : 'false'" @click="toggleUserMenu">
+          <i class="material-icons">account_circle</i>
+        </button>
+        <transition name="fade-menu">
+          <div v-if="showUserMenu" class="user-menu" role="menu" @keydown.esc.prevent="closeUserMenu">
+            <div class="user-menu-header">
+              <div class="user-avatar">
+                <i class="material-icons" aria-hidden="true">person</i>
+              </div>
+              <div class="user-info">
+                <span class="user-email">{{ currentUserEmail || 'Utilisateur' }}</span>
+              </div>
+            </div>
+            <button class="user-menu-item" role="menuitem" @click="goToParametres">
+              <i class="material-icons" aria-hidden="true">settings</i>
+              <span>Paramètres</span>
+            </button>
+            <button class="user-menu-item" role="menuitem" @click="signOutUser">
+              <i class="material-icons" aria-hidden="true">logout</i>
+              <span>Déconnexion</span>
+            </button>
+          </div>
+        </transition>
+      </div>
     </div>
 
     <!-- Drawer mobile -->
@@ -79,13 +101,13 @@
           </ul>
         </nav>
         <div class="drawer-footer">
-          <button class="drawer-action" aria-label="Notifications">
-            <i class="material-icons" aria-hidden="true">notifications</i>
-            <span>Notifications</span>
+          <button class="drawer-action" aria-label="Paramètres" @click="navigateMobile('/parametres')">
+            <i class="material-icons" aria-hidden="true">settings</i>
+            <span>Paramètres</span>
           </button>
-          <button class="drawer-action" aria-label="Profil utilisateur">
-            <i class="material-icons" aria-hidden="true">account_circle</i>
-            <span>Profil</span>
+          <button class="drawer-action" aria-label="Déconnexion" @click="mobileSignOut">
+            <i class="material-icons" aria-hidden="true">logout</i>
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -96,6 +118,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { auth } from '@/services/firebase'
+import { signOut, onAuthStateChanged, type User } from 'firebase/auth'
 const $route = useRoute()
 const router = useRouter()
 const items = [
@@ -107,12 +131,52 @@ const items = [
 ]
 
 const showMobileMenu = ref(false)
+const showUserMenu = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
+const currentUserEmail = ref<string>('')
 function toggleMobileMenu() { showMobileMenu.value = !showMobileMenu.value }
 function closeMobileMenu() { showMobileMenu.value = false }
 function navigateMobile(path: string) {
   closeMobileMenu()
   if ($route.path !== path) router.push(path)
 }
+
+function toggleUserMenu() { showUserMenu.value = !showUserMenu.value }
+function closeUserMenu() { showUserMenu.value = false }
+function goToParametres() {
+  closeUserMenu()
+  if ($route.path !== '/parametres') router.push('/parametres')
+}
+async function signOutUser() {
+  try {
+    await signOut(auth)
+    closeUserMenu()
+    router.push('/login')
+  } catch (e) {
+    console.error('Erreur déconnexion:', e)
+  }
+}
+async function mobileSignOut() {
+  await signOutUser()
+  closeMobileMenu()
+}
+
+// Fermer le menu utilisateur en cliquant à l'extérieur
+function onClickOutside(e: MouseEvent) {
+  if (!showUserMenu.value) return
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target as Node)) {
+    closeUserMenu()
+  }
+}
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+  onAuthStateChanged(auth, (user: User | null) => {
+    currentUserEmail.value = user?.email || ''
+  })
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onClickOutside)
+})
 
 // Fermer sur changement de route (navigation externe, back/forward)
 watch(() => $route.fullPath, () => {
@@ -252,6 +316,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-size: 20px;
 }
 
+/* User menu */
+.user-menu-wrapper { position: relative; }
+.user-btn { position: relative; }
+.user-menu { position: absolute; top: 48px; right: 0; background: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 12px; padding: 10px 0; min-width: 220px; box-shadow: 0 8px 28px rgba(0,0,0,0.4); z-index: 1600; display:flex; flex-direction:column; }
+.user-menu-header { display:flex; align-items:center; gap:10px; padding:10px 16px 12px; border-bottom:1px solid var(--dark-border); }
+.user-avatar { width:38px; height:38px; background: var(--primary-color); border-radius: 10px; display:flex; align-items:center; justify-content:center; color:#fff; }
+.user-info { display:flex; flex-direction:column; }
+.user-email { font-size:0.85rem; font-weight:600; color: var(--dark-text-primary); max-width:140px; overflow:hidden; text-overflow:ellipsis; }
+.user-menu-item { background:none; border:none; width:100%; text-align:left; display:flex; align-items:center; gap:10px; padding:10px 16px; color: var(--dark-text-secondary); font-size:0.85rem; cursor:pointer; transition:background .2s,color .2s; }
+.user-menu-item i { font-size:18px; }
+.user-menu-item:hover, .user-menu-item:focus-visible { background: rgba(255,255,255,0.08); color: var(--primary-color); outline:none; }
+
+.fade-menu-enter-from, .fade-menu-leave-to { opacity:0; transform: translateY(-4px); }
+.fade-menu-enter-active, .fade-menu-leave-active { transition: all .18s ease; }
+
 /* Mobile drawer */
 .mobile-menu-toggle {
   display: none; /* caché par défaut, visible seulement en mobile */
@@ -317,8 +396,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   .desktop-only { display: none !important; }
   .mobile-menu-toggle { display: flex; }
   .topnav-actions { gap: 4px; }
-  .topnav-actions .topnav-btn:nth-child(1),
-  .topnav-actions .topnav-btn:nth-child(2) { display: none; }
+  .topnav-actions .topnav-btn.desktop-only { display: none; }
 }
 
 @media (max-width: 768px) {
