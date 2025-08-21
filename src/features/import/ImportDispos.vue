@@ -1,237 +1,198 @@
 <template>
-  <div class="import-dispos">
-    <va-card class="import-card">
-      <va-card-title>
-        <h2>📥 Import Excel - Disponibilités</h2>
-        <p class="subtitle">Structure attendue: onglet "Dispos" avec colonnes Nom/Prénom/METIER + dates en colonnes</p>
-      </va-card-title>
+  <div class="import-app">
+      <!-- En-tête -->
+      <div class="header-section">
+        <div class="title-container">
+          <i class="material-icons-outlined">upload_file</i>
+          <h1 class="page-title">Import de données Excel</h1>
+        </div>
+      </div>
 
-      <va-card-content>
-        <!-- Alerte mode émulateur -->
-        <va-alert v-if="isEmulatorMode" color="info" outline class="mb-4">
-          <va-icon name="science" class="mr-2" />
-          <strong>Mode Émulateur</strong> - Tests uniquement, aucune donnée en production
-        </va-alert>
+      <!-- Étapes -->
+      <div class="steps-container">
+        <div class="step" :class="{ active: step === 'select' }">
+          <div class="step-number">1</div>
+          <span>Sélection du fichier</span>
+        </div>
+        <div class="step" :class="{ active: step === 'preview' }">
+          <div class="step-number">2</div>
+          <span>Analyse et validation</span>
+        </div>
+        <div class="step" :class="{ active: step === 'importing' || step === 'completed' }">
+          <div class="step-number">3</div>
+          <span>Import des données</span>
+        </div>
+      </div>
 
+      <!-- Contenu principal -->
+      <div class="main-content">
         <!-- Étape 1: Sélection du fichier -->
         <div v-if="step === 'select'" class="step-content">
-          <h3>📄 Sélectionner le fichier Excel</h3>
-          
-          <!-- Input file simple et fiable -->
-          <div class="file-input-container">
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".xlsx,.xls"
-              @change="onFileSelected"
-              style="display: none"
-            />
-            
-            <va-card 
-              :color="selectedFile.length > 0 ? 'success' : 'secondary'"
-              stripe
-              outlined
-              class="file-dropzone"
-              @click="fileInput?.click()"
-            >
-              <va-card-content class="text-center">
-                <va-icon 
-                  :name="selectedFile.length > 0 ? 'check_circle' : 'cloud_upload'" 
-                  size="3rem" 
-                  :color="selectedFile.length > 0 ? 'success' : 'secondary'"
+          <va-card>
+            <va-card-content>
+              <div class="file-upload-section">
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  @change="onFileSelected"
+                  style="display: none"
                 />
-                
-                <h4 v-if="selectedFile.length === 0">
-                  Cliquez pour sélectionner un fichier Excel
-                </h4>
-                <h4 v-else class="text-success">
-                  ✅ {{ selectedFile[0]?.name }}
-                </h4>
-                
-                <p class="text-secondary">
-                  Formats acceptés: .xlsx, .xls
+                <va-button
+                  @click="fileInput?.click()"
+                  size="large"
+                  color="primary"
+                  icon="upload_file"
+                >
+                  Sélectionner un fichier Excel
+                </va-button>
+                <p class="file-info" v-if="selectedFile.length > 0">
+                  Fichier sélectionné : {{ selectedFile[0]?.name }}
                 </p>
-              </va-card-content>
-            </va-card>
-          </div>
-          
-          <div class="actions">
-            <va-button 
-              :disabled="!hasFile" 
-              @click="parseFile"
-              color="primary"
-              :loading="parsing"
-            >
-              📊 Analyser le fichier
-            </va-button>
-          </div>
+                <div v-if="selectedFile.length > 0" class="file-actions">
+                  <va-button @click="parseFile()" :loading="parsing" color="success">
+                    {{ parsing ? 'Analyse en cours...' : 'Analyser le fichier' }}
+                  </va-button>
+                </div>
+              </div>
+            </va-card-content>
+          </va-card>
         </div>
 
-        <!-- Étape 2: Aperçu et validation -->
+        <!-- Étape 2: Analyse -->
         <div v-if="step === 'preview'" class="step-content">
-          <h3>👀 Aperçu des données</h3>
-          
-          <!-- Statistiques -->
-          <div class="stats-grid">
-            <va-card color="success" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ parseResult.stats.collaborateursUniques }}</h4>
-                  <p>Collaborateurs</p>
+          <va-card>
+            <va-card-content>
+              <div v-if="parsing" class="analyzing-section">
+                <va-progress-circle indeterminate />
+                <p>Analyse du fichier en cours...</p>
+              </div>
+              
+              <div v-if="parseResult.stats.totalRows > 0" class="analysis-result">
+                <h3>Résultat de l'analyse</h3>
+                <div class="stats-grid">
+                  <div class="stat-card">
+                    <div class="stat-number">{{ parseResult.data.length }}</div>
+                    <div class="stat-label">Disponibilités trouvées</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">{{ parseResult.stats.collaborateursUniques }}</div>
+                    <div class="stat-label">Collaborateurs uniques</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">{{ uniqueDatesCount }}</div>
+                    <div class="stat-label">Dates différentes</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">{{ parseResult.stats.warnings.length + validationResult.errors.length }}</div>
+                    <div class="stat-label">Alertes</div>
+                  </div>
                 </div>
-              </va-card-content>
-            </va-card>
-            
-            <va-card color="info" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ parseResult.stats.validRows }}</h4>
-                  <p>Disponibilités</p>
+
+                <!-- Aperçu des données -->
+                <div v-if="previewData.length > 0" class="preview-section">
+                  <h4>Aperçu des données (5 premières entrées)</h4>
+                  <div class="preview-table-container">
+                    <table class="preview-table">
+                      <thead>
+                        <tr>
+                          <th>Collaborateur</th>
+                          <th>Métier</th>
+                          <th>Date</th>
+                          <th>Lieu</th>
+                          <th>Horaires</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(row, index) in previewData" :key="index">
+                          <td>{{ row.prenom }} {{ row.nom }}</td>
+                          <td>{{ row.metier }}</td>
+                          <td>{{ formatDate(row.date) }}</td>
+                          <td>{{ row.lieu || '-' }}</td>
+                          <td>{{ formatHoraires(row.heure_debut, row.heure_fin) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </va-card-content>
-            </va-card>
-            
-            <va-card color="warning" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ parseResult.stats.warnings.length }}</h4>
-                  <p>Avertissements</p>
+
+                <!-- Alertes -->
+                <div v-if="parseResult.stats.warnings.length > 0" class="warnings-section">
+                  <h4>⚠️ Alertes ({{ parseResult.stats.warnings.length }})</h4>
+                  <ul>
+                    <li v-for="warning in parseResult.stats.warnings" :key="warning">{{ warning }}</li>
+                  </ul>
                 </div>
-              </va-card-content>
-            </va-card>
-          </div>
+                
+                <div v-if="validationResult.errors.length > 0" class="errors-section">
+                  <h4>❌ Erreurs bloquantes ({{ validationResult.errors.length }})</h4>
+                  <ul>
+                    <li v-for="error in validationResult.errors" :key="error">{{ error }}</li>
+                  </ul>
+                </div>
 
-          <!-- Avertissements -->
-          <va-alert v-if="parseResult.stats.warnings.length > 0" color="warning" outline class="mt-4">
-            <h4>⚠️ Avertissements détectés:</h4>
-            <ul>
-              <li v-for="warning in parseResult.stats.warnings" :key="warning">{{ warning }}</li>
-            </ul>
-          </va-alert>
-
-          <!-- Erreurs de validation -->
-          <va-alert v-if="validationResult.errors.length > 0" color="danger" outline class="mt-4">
-            <h4>❌ Erreurs bloquantes:</h4>
-            <ul>
-              <li v-for="error in validationResult.errors" :key="error">{{ error }}</li>
-            </ul>
-          </va-alert>
-
-          <!-- Aperçu des données -->
-          <div v-if="parseResult.data.length > 0" class="mt-4">
-            <h4>📋 Aperçu des premières données ({{ Math.min(5, parseResult.data.length) }}/{{ parseResult.data.length }})</h4>
-            
-            <va-data-table
-              :items="previewData"
-              :columns="previewColumns"
-              no-data-html="Aucune donnée"
-              class="preview-table"
-            />
-          </div>
-
-          <!-- Actions -->
-          <div class="actions">
-            <va-button @click="step = 'select'" color="secondary">
-              ← Retour
-            </va-button>
-            
-            <va-button 
-              @click="startImport"
-              color="primary"
-              :disabled="!validationResult.isValid"
-              :loading="importing"
-            >
-              🚀 Lancer l'import
-            </va-button>
-          </div>
+                <div class="actions">
+                  <va-button 
+                    @click="startImport" 
+                    color="success" 
+                    :disabled="validationResult.errors.length > 0 || parseResult.data.length === 0"
+                  >
+                    Importer {{ parseResult.data.length }} disponibilités
+                  </va-button>
+                  <va-button @click="resetImport" color="secondary">
+                    Recommencer
+                  </va-button>
+                </div>
+              </div>
+            </va-card-content>
+          </va-card>
         </div>
 
-        <!-- Étape 3: Import en cours -->
-        <div v-if="step === 'importing'" class="step-content">
-          <h3>⚙️ Import en cours...</h3>
-          
-          <div class="progress-section">
-            <va-progress-bar 
-              :value="progressPercent" 
-              :color="progressColor"
-              class="progress-bar"
-            />
-            
-            <div class="progress-text">
-              {{ currentProgress.message }}
-            </div>
-            
-            <div class="progress-details">
-              {{ currentProgress.current }} / {{ currentProgress.total }}
-            </div>
-          </div>
+        <!-- Étape 3: Import -->
+        <div v-if="step === 'importing' || step === 'completed'" class="step-content">
+          <va-card>
+            <va-card-content>
+              <div v-if="importing" class="importing-section">
+                <va-progress-bar :model-value="progressPercent" />
+                <p class="progress-message">{{ currentProgress.message }}</p>
+              </div>
+
+              <div v-if="step === 'completed'" class="import-result">
+                <div class="result-header">
+                  <i class="material-icons-outlined" :class="(importStats.disposCreated + importStats.disposMerged) > 0 ? 'success-icon' : 'error-icon'">
+                    {{ (importStats.disposCreated + importStats.disposMerged) > 0 ? 'check_circle' : 'error' }}
+                  </i>
+                  <h3>{{ (importStats.disposCreated + importStats.disposMerged) > 0 ? 'Import réussi !' : 'Erreur lors de l\'import' }}</h3>
+                </div>
+                
+                <div class="result-stats">
+                  <p>{{ importStats.disposCreated + importStats.disposMerged }} disponibilités importées</p>
+                  <p>{{ importStats.collaborateursCreated + importStats.collaborateursMerged }} collaborateurs traités</p>
+                  <p v-if="importStats.errors.length > 0">{{ importStats.errors.length }} erreurs rencontrées</p>
+                </div>
+
+                <div class="actions">
+                  <va-button @click="$router.push('/planning')" color="success">
+                    Voir le planning
+                  </va-button>
+                  <va-button @click="resetImport" color="secondary">
+                    Nouvel import
+                  </va-button>
+                </div>
+              </div>
+            </va-card-content>
+          </va-card>
         </div>
-
-        <!-- Étape 4: Résultats -->
-        <div v-if="step === 'completed'" class="step-content">
-          <h3>✅ Import terminé!</h3>
-          
-          <div class="results-grid">
-            <va-card color="success" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ importStats.collaborateursCreated }}</h4>
-                  <p>Collaborateurs créés</p>
-                </div>
-              </va-card-content>
-            </va-card>
-            
-            <va-card color="info" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ importStats.disposCreated }}</h4>
-                  <p>Disponibilités créées</p>
-                </div>
-              </va-card-content>
-            </va-card>
-            
-            <va-card color="secondary" stripe>
-              <va-card-content>
-                <div class="stat">
-                  <h4>{{ Math.round(importStats.duration / 1000) }}s</h4>
-                  <p>Durée d'import</p>
-                </div>
-              </va-card-content>
-            </va-card>
-          </div>
-
-          <!-- Erreurs d'import -->
-          <va-alert v-if="importStats.errors.length > 0" color="danger" outline class="mt-4">
-            <h4>❌ Erreurs durant l'import:</h4>
-            <ul>
-              <li v-for="error in importStats.errors" :key="error">{{ error }}</li>
-            </ul>
-          </va-alert>
-
-          <!-- Actions finales -->
-          <div class="actions">
-            <va-button @click="resetImport" color="secondary">
-              🔄 Nouvel import
-            </va-button>
-            
-            <va-button @click="goToPlanning" color="primary">
-              📅 Voir le planning
-            </va-button>
-          </div>
-        </div>
-      </va-card-content>
-    </va-card>
+      </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+// PlanningLayout retiré : TopNav globale dans App.vue
 import { parseWorkbook } from './parseWorkbook'
 import { importToFirestore, validateImportData } from './importToFirestore'
-import type { ParseResult, ImportStats, ImportProgress, NormalizedRow } from './types'
-
-const router = useRouter()
+import type { ParseResult, ImportStats, ImportProgress } from './types'
 
 // Refs
 const fileInput = ref<HTMLInputElement>()
@@ -272,62 +233,50 @@ const importStats = ref<ImportStats>({
 })
 
 // Computed
-const isEmulatorMode = computed(() => {
-  const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  return isLocalhost && import.meta.env.VITE_USE_EMULATOR === '1'
-})
-
-const hasFile = computed(() => {
-  const result = selectedFile.value.length > 0
-  console.log('🔍 hasFile check:', {
-    length: selectedFile.value.length,
-    hasFile: result,
-    files: selectedFile.value
-  })
-  return result
-})
+// (variables isEmulatorMode / hasFile retirées car non utilisées après refactor)
 
 const progressPercent = computed(() => {
   if (currentProgress.value.total === 0) return 0
   return Math.round((currentProgress.value.current / currentProgress.value.total) * 100)
 })
 
-const progressColor = computed(() => {
-  switch (currentProgress.value.phase) {
-    case 'processing': return 'info'
-    case 'collaborateurs': return 'warning'
-    case 'disponibilites': return 'primary'
-    case 'completed': return 'success'
-    default: return 'info'
-  }
-})
-
 const previewData = computed(() => {
-  return parseResult.value.data.slice(0, 5).map((row: NormalizedRow) => ({
-    collaborateur: `${row.prenom} ${row.nom}`,
-    metier: row.metier,
-    date: row.date,
-    lieu: row.lieu || '-',
-    heure_debut: row.heure_debut || '-',
-    heure_fin: row.heure_fin || '-'
-  }))
+  return parseResult.value.data.slice(0, 5)
 })
 
-const previewColumns = [
-  { key: 'collaborateur', label: 'Collaborateur' },
-  { key: 'metier', label: 'Métier' },
-  { key: 'date', label: 'Date' },
-  { key: 'lieu', label: 'Lieu' },
-  { key: 'heure_debut', label: 'Début' },
-  { key: 'heure_fin', label: 'Fin' }
-]
+const uniqueDatesCount = computed(() => {
+  const dates = new Set(parseResult.value.data.map(row => row.date))
+  return dates.size
+})
 
 // Méthodes
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function formatHoraires(debut?: string, fin?: string): string {
+  if (!debut && !fin) return '-'
+  if (debut && fin) return `${debut} - ${fin}`
+  if (debut) return `${debut} -`
+  if (fin) return `- ${fin}`
+  return '-'
+}
+
 function onFileSelected(event: Event) {
   const target = event.target as HTMLInputElement
   const files = target.files
   if (files && files.length > 0) {
-    console.log('� Fichier sélectionné:', files[0])
+    console.log('📁 Fichier sélectionné:', files[0])
     selectedFile.value = [files[0]]
   }
 }
@@ -365,7 +314,19 @@ async function startImport() {
   try {
     console.log('🚀 Début de l\'import Firestore...')
     
-    const tenantId = import.meta.env.VITE_TENANT_ID || 'default'
+    // Vérification de l'authentification
+    const { auth } = await import('../../firebase')
+    const currentUser = auth.currentUser
+    
+    if (!currentUser) {
+      throw new Error('Utilisateur non authentifié. Veuillez vous connecter.')
+    }
+    
+    console.log('👤 Utilisateur authentifié:', currentUser.email)
+    
+    const tenantId = (import.meta as any).env?.VITE_TENANT_ID || 'keydispo'
+    console.log('🏢 Tenant ID:', tenantId)
+    
     const stats = await importToFirestore(
       parseResult.value.data,
       tenantId,
@@ -404,122 +365,496 @@ function resetImport() {
     duration: 0
   }
 }
-
-function goToPlanning() {
-  router.push('/semaine')
-}
 </script>
 
 <style scoped>
-.import-dispos {
-  max-width: 1200px;
+/* === STYLES MODERNES POUR IMPORT === */
+
+.import-app {
+  padding: 0;
+  background: var(--dark-background);
+  min-height: 100vh;
+  color: var(--dark-text-primary);
+}
+
+/* En-tête modernisé */
+.header-section {
+  background: linear-gradient(135deg, var(--dark-surface) 0%, rgba(45, 56, 79, 0.8) 100%);
+  border-bottom: 1px solid var(--dark-border);
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.title-container i {
+  font-size: 2.5rem;
+  color: var(--primary-400);
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--dark-text-primary);
+  margin: 0;
+}
+
+/* Indicateur d'étapes modernisé */
+.steps-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 3rem;
+  gap: 2rem;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  opacity: 0.6;
+}
+
+.step.active {
+  opacity: 1;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--primary-400);
+}
+
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--dark-surface);
+  border: 2px solid var(--dark-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--dark-text-secondary);
+  transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+  background: var(--primary-400);
+  border-color: var(--primary-400);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.step span {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--dark-text-secondary);
+  text-align: center;
+}
+
+.step.active span {
+  color: var(--primary-400);
+}
+
+/* Contenu principal */
+.main-content {
+  max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
-}
-
-.import-card {
-  margin-bottom: 20px;
-}
-
-.subtitle {
-  color: var(--va-text-secondary);
-  margin-top: 8px;
-  font-size: 0.9rem;
+  padding: 0 1rem;
 }
 
 .step-content {
-  padding: 20px 0;
+  margin-bottom: 2rem;
+  animation: fadeInUp 0.5s ease-out;
 }
 
-.file-upload {
-  margin: 20px 0;
+/* Cards Vuestic avec thème sombre */
+:deep(.va-card) {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
-.file-input-container {
-  margin: 20px 0;
+:deep(.va-card-content) {
+  padding: 2rem !important;
+  color: var(--dark-text-primary) !important;
 }
 
-.file-dropzone {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 150px;
-  display: flex;
-  align-items: center;
-}
-
-.file-dropzone:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-  justify-content: flex-end;
-}
-
-.stats-grid,
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin: 20px 0;
-}
-
-.stat {
+/* Section de téléchargement de fichier */
+.file-upload-section {
   text-align: center;
 }
 
-.stat h4 {
-  font-size: 2rem;
-  font-weight: bold;
-  margin: 0;
-  color: var(--va-primary);
-}
-
-.stat p {
-  margin: 4px 0 0 0;
-  color: var(--va-text-secondary);
-  font-size: 0.9rem;
-}
-
-.progress-section {
-  padding: 20px;
-  text-align: center;
-}
-
-.progress-bar {
-  margin-bottom: 16px;
-}
-
-.progress-text {
-  font-size: 1.1rem;
+.file-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  color: #4ade80;
   font-weight: 500;
-  margin-bottom: 8px;
 }
 
-.progress-details {
-  color: var(--va-text-secondary);
-  font-size: 0.9rem;
+.file-actions {
+  margin-top: 1rem;
+}
+
+/* Section d'analyse */
+.analyzing-section {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.analyzing-section p {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  color: var(--dark-text-secondary);
+}
+
+.analysis-result h3 {
+  color: var(--dark-text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Grille de statistiques */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  border-color: var(--primary-400);
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #60a5fa;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+/* Section d'erreurs */
+.errors-section {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.errors-section h4 {
+  color: #f87171;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.errors-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.errors-section li {
+  padding: 0.5rem 0;
+  color: #fca5a5;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.errors-section li:last-child {
+  border-bottom: none;
+}
+
+/* Section d'alertes/warnings */
+.warnings-section {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.warnings-section h4 {
+  color: #fbbf24;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.warnings-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.warnings-section li {
+  padding: 0.5rem 0;
+  color: #fcd34d;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.warnings-section li:last-child {
+  border-bottom: none;
+}
+
+/* Section de prévisualisation */
+.preview-section {
+  margin: 2rem 0;
+}
+
+.preview-section h4 {
+  color: var(--dark-text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.preview-table-container {
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .preview-table {
-  margin-top: 16px;
+  width: 100%;
+  border-collapse: collapse;
 }
 
+.preview-table th {
+  background: var(--dark-hover);
+  color: var(--dark-text-primary);
+  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--dark-border);
+  font-size: 0.875rem;
+}
+
+.preview-table td {
+  padding: 1rem;
+  color: var(--dark-text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+}
+
+.preview-table tr:last-child td {
+  border-bottom: none;
+}
+
+.preview-table tr:hover {
+  background: var(--dark-hover);
+}
+
+/* Section d'import */
+.importing-section {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.progress-message {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  color: var(--dark-text-secondary);
+}
+
+/* Résultats d'import */
+.import-result {
+  text-align: center;
+}
+
+.result-header {
+  margin-bottom: 2rem;
+}
+
+.result-header i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.result-header i.success-icon {
+  color: var(--success-400);
+}
+
+.result-header i.error-icon {
+  color: var(--error-400);
+}
+
+.result-header h3 {
+  color: var(--dark-text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.result-stats {
+  margin-bottom: 2rem;
+}
+
+.result-stats p {
+  margin: 0.5rem 0;
+  color: var(--dark-text-secondary);
+  font-size: 1.1rem;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* Boutons Vuestic avec style sombre */
+:deep(.va-button) {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  padding: 0.75rem 1.5rem !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.va-button:hover) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+}
+
+:deep(.va-button--primary) {
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%) !important;
+  border: none !important;
+  color: white !important;
+}
+
+:deep(.va-button--success) {
+  background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%) !important;
+  border: none !important;
+  color: white !important;
+}
+
+:deep(.va-button--secondary) {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+:deep(.va-button--secondary:hover) {
+  background: var(--dark-hover) !important;
+  border-color: var(--primary-400) !important;
+}
+
+/* Progress bar personnalisée */
+:deep(.va-progress-bar) {
+  background: var(--dark-surface) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  height: 12px !important;
+}
+
+:deep(.va-progress-bar__overlay) {
+  background: linear-gradient(90deg, var(--primary-500) 0%, var(--primary-400) 100%) !important;
+  border-radius: 8px !important;
+}
+
+/* Progress circle */
+:deep(.va-progress-circle) {
+  --va-progress-circle-color: var(--primary-400) !important;
+}
+
+:deep(.va-progress-circle .va-progress-circle__wrapper) {
+  filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3)) !important;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
-  .import-dispos {
-    padding: 10px;
+  .steps-container {
+    flex-direction: column;
+    gap: 1rem;
   }
   
-  .stats-grid,
-  .results-grid {
+  .step {
+    flex-direction: row;
+    padding: 0.75rem 1.5rem;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .title-container i {
+    font-size: 2rem;
+  }
+  
+  .main-content {
+    padding: 0 0.5rem;
+  }
+  
+  .stats-grid {
     grid-template-columns: 1fr;
   }
   
   .actions {
     flex-direction: column;
+    align-items: center;
   }
+  
+  :deep(.va-button) {
+    width: 100% !important;
+    max-width: 300px !important;
+  }
+}
+
+/* Focus states pour l'accessibilité */
+:deep(.va-button:focus-visible) {
+  outline: 2px solid var(--primary-400) !important;
+  outline-offset: 2px !important;
+}
+
+.step:focus-visible {
+  outline: 2px solid var(--primary-400);
+  outline-offset: 2px;
 }
 </style>
