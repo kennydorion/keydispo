@@ -1,0 +1,332 @@
+<template>
+  <nav class="topnav" aria-label="Navigation principale">
+    <div class="topnav-left">
+      <button
+        class="mobile-menu-toggle"
+        aria-label="Ouvrir le menu"
+        aria-controls="mobile-drawer"
+        :aria-expanded="showMobileMenu ? 'true' : 'false'"
+        @click="toggleMobileMenu"
+      >
+        <i class="material-icons" aria-hidden="true">{{ showMobileMenu ? 'close' : 'menu' }}</i>
+      </button>
+      <div class="topnav-brand">
+        <img src="/keyplacementlogo.svg" alt="Key Placement" />
+        <span class="brand-name">Key Placement</span>
+      </div>
+    </div>
+    <ul class="topnav-list desktop-only">
+      <li v-for="item in items" :key="item.name">
+        <router-link 
+          :to="item.path" 
+          class="topnav-link" 
+          :class="{active: $route.path.startsWith(item.path)}" 
+          :aria-current="$route.path.startsWith(item.path) ? 'page' : undefined"
+        >
+          <i class="material-icons" aria-hidden="true">{{ item.icon }}</i>
+          <span class="topnav-label">{{ item.label }}</span>
+        </router-link>
+      </li>
+    </ul>
+    <div class="topnav-actions">
+      <button class="topnav-btn" aria-label="Recherche">
+        <i class="material-icons">search</i>
+      </button>
+      <button class="topnav-btn" aria-label="Notifications">
+        <i class="material-icons">notifications</i>
+      </button>
+      <button class="topnav-btn" aria-label="Profil utilisateur">
+        <i class="material-icons">account_circle</i>
+      </button>
+    </div>
+
+    <!-- Drawer mobile -->
+    <transition name="drawer-fade">
+      <div
+        v-if="showMobileMenu"
+        class="mobile-backdrop"
+        aria-hidden="true"
+        @click="closeMobileMenu"
+      ></div>
+    </transition>
+    <transition name="drawer-slide">
+      <aside
+        v-if="showMobileMenu"
+        id="mobile-drawer"
+        class="mobile-drawer"
+        role="dialog"
+        aria-label="Menu de navigation"
+      >
+        <div class="drawer-header">
+          <img src="/keyplacementlogo.svg" alt="Key Placement" class="drawer-logo" />
+          <button class="drawer-close" aria-label="Fermer" @click="closeMobileMenu">
+            <i class="material-icons" aria-hidden="true">close</i>
+          </button>
+        </div>
+        <nav class="drawer-nav">
+          <ul>
+            <li v-for="item in items" :key="item.name" @click="navigateMobile(item.path)">
+              <router-link 
+                :to="item.path" 
+                class="drawer-link" 
+                :class="{active: $route.path.startsWith(item.path)}"
+                :aria-current="$route.path.startsWith(item.path) ? 'page' : undefined"
+              >
+                <i class="material-icons" aria-hidden="true">{{ item.icon }}</i>
+                <span class="drawer-label">{{ item.label }}</span>
+              </router-link>
+            </li>
+          </ul>
+        </nav>
+        <div class="drawer-footer">
+          <button class="drawer-action" aria-label="Notifications">
+            <i class="material-icons" aria-hidden="true">notifications</i>
+            <span>Notifications</span>
+          </button>
+          <button class="drawer-action" aria-label="Profil utilisateur">
+            <i class="material-icons" aria-hidden="true">account_circle</i>
+            <span>Profil</span>
+          </button>
+        </div>
+      </aside>
+    </transition>
+  </nav>
+</template>
+
+<script setup lang="ts">
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+const $route = useRoute()
+const router = useRouter()
+const items = [
+  { name: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: 'dashboard' },
+  { name: 'planning', label: 'Planning', path: '/semaine', icon: 'calendar_today' },
+  { name: 'import', label: 'Import', path: '/import', icon: 'upload_file' },
+  { name: 'rapports', label: 'Rapports', path: '/rapports', icon: 'bar_chart' },
+  { name: 'parametres', label: 'Paramètres', path: '/parametres', icon: 'settings' }
+]
+
+const showMobileMenu = ref(false)
+function toggleMobileMenu() { showMobileMenu.value = !showMobileMenu.value }
+function closeMobileMenu() { showMobileMenu.value = false }
+function navigateMobile(path: string) {
+  closeMobileMenu()
+  if ($route.path !== path) router.push(path)
+}
+
+// Fermer sur changement de route (navigation externe, back/forward)
+watch(() => $route.fullPath, () => {
+  if (showMobileMenu.value) closeMobileMenu()
+})
+
+// Empêche le scroll du body quand le drawer est ouvert
+watch(showMobileMenu, (val) => {
+  const body = document?.body
+  if (!body) return
+  if (val) {
+    body.style.overflow = 'hidden'
+    body.style.touchAction = 'none'
+  } else {
+    body.style.overflow = ''
+    body.style.touchAction = ''
+  }
+})
+
+// Gestion touche ESC
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape' && showMobileMenu.value) {
+    closeMobileMenu()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+</script>
+
+<style scoped>
+.topnav-left { display: flex; align-items: center; gap: 8px; }
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--dark-surface);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--dark-border);
+  padding: 0 24px;
+  height: 64px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.topnav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topnav-brand img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.brand-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--dark-text-primary);
+}
+
+.topnav-list {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 8px;
+}
+
+.topnav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: var(--dark-text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.topnav-link:hover,
+.topnav-link:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color);
+}
+
+.topnav-link.active {
+  background: var(--primary-color);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.topnav-link .material-icons {
+  font-size: 18px;
+}
+
+.topnav-label {
+  white-space: nowrap;
+}
+
+.topnav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topnav-btn {
+  background: none;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dark-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.topnav-btn:hover,
+.topnav-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color);
+}
+
+.topnav-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Mobile drawer */
+.mobile-menu-toggle {
+  display: none; /* caché par défaut, visible seulement en mobile */
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  color: var(--dark-text-secondary);
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.mobile-menu-toggle:hover { background: rgba(255,255,255,0.08); color: var(--primary-color); }
+
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1400;
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(78vw, 310px);
+  background: var(--dark-surface);
+  border-right: 1px solid var(--dark-border);
+  box-shadow: 4px 0 18px rgba(0,0,0,0.35);
+  z-index: 1450;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 18px;
+  overflow-y: auto;
+}
+.drawer-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.drawer-logo { width: 40px; height: 40px; border-radius: 10px; }
+.drawer-close { background: none; border: none; color: var(--dark-text-secondary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items:center; justify-content:center; cursor:pointer; }
+.drawer-close:hover { background: rgba(255,255,255,0.08); color: var(--primary-color); }
+.drawer-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.drawer-link { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; color: var(--dark-text-secondary); text-decoration:none; font-weight:500; font-size:0.95rem; transition:background .18s,color .18s; }
+.drawer-link .material-icons { font-size:20px; opacity:0.9; }
+.drawer-link:hover { background: rgba(255,255,255,0.08); color: var(--primary-color); }
+.drawer-link.active { background: var(--primary-color); color:#fff; }
+.drawer-footer { margin-top:auto; display:flex; flex-direction:column; gap:6px; padding-top:14px; border-top:1px solid var(--dark-border); }
+.drawer-action { background:none; border:1px solid var(--dark-border); color: var(--dark-text-secondary); padding:10px 12px; border-radius:10px; display:flex; align-items:center; gap:10px; font-size:0.85rem; cursor:pointer; transition:all .2s; }
+.drawer-action .material-icons { font-size:18px; }
+.drawer-action:hover { background: rgba(255,255,255,0.08); color: var(--primary-color); border-color: var(--primary-color); }
+
+/* Animations */
+.drawer-slide-enter-from { transform: translateX(-110%); opacity: 0; }
+.drawer-slide-enter-active { transition: all .28s cubic-bezier(.4,.0,.2,1); }
+.drawer-slide-leave-active { transition: all .24s cubic-bezier(.4,.0,.2,1); }
+.drawer-slide-leave-to { transform: translateX(-110%); opacity: 0; }
+.drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; }
+.drawer-fade-enter-active, .drawer-fade-leave-active { transition: opacity .25s; }
+
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .mobile-menu-toggle { display: flex; }
+  .topnav-actions { gap: 4px; }
+  .topnav-actions .topnav-btn:nth-child(1),
+  .topnav-actions .topnav-btn:nth-child(2) { display: none; }
+}
+
+@media (max-width: 768px) {
+  .topnav { padding: 0 6px; height: 50px; }
+  .topnav-brand img { width: 30px; height: 30px; }
+  .brand-name { display: none; }
+  .topnav-link { padding: 6px 10px; }
+  .topnav-btn { width: 38px; height: 38px; }
+  .topnav-btn .material-icons { font-size: 18px; }
+}
+</style>

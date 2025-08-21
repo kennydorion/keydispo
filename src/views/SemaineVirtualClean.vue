@@ -761,7 +761,7 @@ async function openQuickAdd(collaborateurId: string, date: string, e?: MouseEven
   if (!scroller) return
   // Pas de scroll: on ouvre directement le Quick Add proche du clic
   const baseRect = scroller.getBoundingClientRect()
-  const defaultX = baseRect.left + stickyLeftWidth + (scroller.clientWidth - stickyLeftWidth) / 2 + 12
+  const defaultX = baseRect.left + stickyLeftWidth.value + (scroller.clientWidth - stickyLeftWidth.value) / 2 + 12
   const defaultY = baseRect.top + (scroller.clientHeight) / 2 - 80
   const x = e?.clientX ? e.clientX + 10 : defaultX
   const y = e?.clientY ? e.clientY + 10 : defaultY
@@ -964,12 +964,47 @@ function openFullModalFromQuick() {
   closeQuickAdd()
 }
 
-// Configuration optimisée
-const dayWidth = 124
-const rowHeight = 56
-// Pas vertical réel d'une ligne (height + 1px de bordure-bas)
-const rowPitch = rowHeight + 1
-const stickyLeftWidth = 260 // largeur de la colonne collaborateurs réduite
+// Responsive dynamique
+const isMobileView = ref(false)
+const dayWidthRef = ref(124)
+const stickyLeftWidthRef = ref(260)
+const rowHeightRef = ref(56)
+const rowPitchRef = computed(() => rowHeightRef.value + 1)
+
+function computeResponsive() {
+  const w = window.innerWidth
+  isMobileView.value = w <= 900
+  let sticky = 260
+  let day = 124
+  let rowH = 56
+  if (w <= 390) { // iPhone 12 width
+    sticky = 72; day = Math.max(44, Math.min(60, Math.floor((w - sticky - 8)/7))); rowH = 48
+  } else if (w <= 430) {
+    sticky = 78; day = Math.max(48, Math.min(64, Math.floor((w - sticky - 10)/7))); rowH = 50
+  } else if (w <= 520) {
+    sticky = 90; day = Math.max(54, Math.min(70, Math.floor((w - sticky - 12)/7))); rowH = 52
+  } else if (w <= 640) {
+    sticky = 110; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 16)/7))); rowH = 54
+  } else if (w <= 900) {
+    sticky = 140; day = Math.max(70, Math.min(96, Math.floor((w - sticky - 20)/7))); rowH = 56
+  }
+  dayWidthRef.value = day
+  stickyLeftWidthRef.value = sticky
+  rowHeightRef.value = rowH
+  nextTick(() => planningScroll.value && recomputeWindow(planningScroll.value))
+}
+
+onMounted(() => {
+  computeResponsive()
+  window.addEventListener('resize', computeResponsive)
+})
+onUnmounted(() => window.removeEventListener('resize', computeResponsive))
+
+// Aliases simples
+const dayWidth = computed(() => dayWidthRef.value)
+const stickyLeftWidth = computed(() => stickyLeftWidthRef.value)
+const rowHeight = computed(() => rowHeightRef.value)
+const rowPitch = computed(() => rowPitchRef.value)
 
 // Visible days = fenêtre dynamique basée sur loadedDays
 const visibleDays = computed(() => {
@@ -985,21 +1020,22 @@ const visibleDays = computed(() => {
   }
   return days
 })
-const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth) + 'px')
+const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth.value) + 'px')
 
 // Virtualisation horizontale des jours
 const windowStartIndex = ref(0)
 const windowEndIndex = ref(0)
 const windowPaddingCols = 8 // cols tampon de chaque côté
-const windowOffsetPx = computed(() => windowStartIndex.value * dayWidth)
+const windowOffsetPx = computed(() => windowStartIndex.value * dayWidth.value)
 const windowedDays = computed(() => visibleDays.value.slice(windowStartIndex.value, Math.min(windowEndIndex.value + 1, visibleDays.value.length)))
 
 function recomputeWindow(scroller?: HTMLElement | null) {
   const el = scroller || planningScroll.value
   if (!el) return
   const { scrollLeft, clientWidth } = el
-  const firstIdx = Math.max(0, Math.floor(scrollLeft / dayWidth) - windowPaddingCols)
-  const lastIdx = Math.min(visibleDays.value.length - 1, Math.ceil((scrollLeft + clientWidth) / dayWidth) + windowPaddingCols)
+  const dw = dayWidth.value
+  const firstIdx = Math.max(0, Math.floor(scrollLeft / dw) - windowPaddingCols)
+  const lastIdx = Math.min(visibleDays.value.length - 1, Math.ceil((scrollLeft + clientWidth) / dw) + windowPaddingCols)
   windowStartIndex.value = firstIdx
   windowEndIndex.value = lastIdx
 }
@@ -1025,8 +1061,8 @@ const dayPitchHeaderPx = ref<number>(0)
 const dayPitchBodyPx = ref<number>(0)
 const dayWidthMeasuredPx = ref<number>(0)
 // Pas/hauteur mesurés des lignes (compense bordure/margin réels)
-const rowPitchPx = ref<number>(rowPitch)
-const rowHeightMeasuredPx = ref<number>(rowHeight + 1)
+const rowPitchPx = ref<number>(rowPitch.value)
+const rowHeightMeasuredPx = ref<number>(rowHeight.value + 1)
 
 function measureGridOrigins() {
   const scroller = planningScroll.value
@@ -1076,7 +1112,7 @@ function measureRowPitch() {
     const pitch = Math.round(r2.top - r1.top)
     if (pitch > 0) rowPitchPx.value = pitch
   } else {
-    rowPitchPx.value = rowPitch
+  rowPitchPx.value = rowPitch.value
   }
   const scroller = planningScroll.value
   if (scroller) {
@@ -1109,8 +1145,8 @@ function onGridMouseMove(e: MouseEvent) {
     const rect = scroller.getBoundingClientRect()
   // X → index de colonne (origine: bord gauche mesuré de la première colonne)
   const xContent = _lastPointerX - rect.left + scroller.scrollLeft
-  const gridLeft = (gridLeftBodyPx.value || (stickyLeftWidth + 1))
-  const pitch = dayPitchBodyPx.value || (dayWidth + 1)
+  const gridLeft = (gridLeftBodyPx.value || (stickyLeftWidth.value + 1))
+  const pitch = dayPitchBodyPx.value || (dayWidth.value + 1)
   const absColIdx = Math.floor((xContent - gridLeft) / pitch)
     const colX = absColIdx * pitch
     if (absColIdx < 0 || absColIdx >= visibleDays.value.length) {
@@ -2289,7 +2325,7 @@ function scrollToDate(dateStr: string, behavior: ScrollBehavior = 'auto') {
     // Si la date n'est toujours pas présente (hors borne min), ne rien faire
     return
   }
-  const centerOffset = Math.max(0, idx * dayWidth - (scroller.clientWidth - stickyLeftWidth) / 2)
+  const centerOffset = Math.max(0, idx * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
   if (behavior === 'smooth' && 'scrollTo' in scroller) {
     scroller.scrollTo({ left: centerOffset, behavior })
   } else {
@@ -2307,7 +2343,7 @@ function goToToday() {
   if (!scroller) return
   const todayIndex = loadedDays.value.findIndex(d => d.isToday)
   if (todayIndex < 0) return
-  const centerOffset = Math.max(0, todayIndex * dayWidth - (scroller.clientWidth - stickyLeftWidth) / 2)
+  const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
   scroller.scrollTo({ left: centerOffset, behavior: 'smooth' })
   updateTodayOverlayX()
 }
@@ -2509,7 +2545,7 @@ async function ensureRightBuffer(scroller: HTMLElement) {
   const bufferPx = clientWidth * 3
   const missingPx = Math.max(0, (scrollLeft + clientWidth + bufferPx) - scrollWidth)
   if (missingPx <= 0) return
-  const colsNeeded = Math.ceil(missingPx / dayWidth)
+  const colsNeeded = Math.ceil(missingPx / dayWidth.value)
   const toAdd = Math.max(14, colsNeeded)
   const lastDate = loadedDays.value[loadedDays.value.length - 1]?.date
   await appendDays(toAdd)
@@ -2541,8 +2577,8 @@ async function onScrollExtend(e: Event) {
   scrollDebounceTimer = setTimeout(() => {
     const { scrollLeft, clientWidth } = scroller
   const totalCols = loadedDays.value.length
-    const firstVisibleIdx = Math.floor(scrollLeft / dayWidth)
-    const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scrollLeft + clientWidth) / dayWidth))
+  const firstVisibleIdx = Math.floor(scrollLeft / dayWidth.value)
+  const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scrollLeft + clientWidth) / dayWidth.value))
 
   // Réserves en jours pour un scroll fluide (augmentées): cible 150 (~5 mois), mini 90 (~3 mois)
   const targetLeftReserve = 150
@@ -2554,7 +2590,7 @@ async function onScrollExtend(e: Event) {
     const leftReserve = firstVisibleIdx
     if (leftReserve < minLeftReserve && !extending.value) {
       extending.value = true
-      const beforeWidth = loadedDays.value.length * dayWidth
+  const beforeWidth = loadedDays.value.length * dayWidth.value
       const firstDate = loadedDays.value[0]?.date
       if (firstDate) {
         // Ne pas dépasser la borne minimale
@@ -2567,7 +2603,7 @@ async function onScrollExtend(e: Event) {
           prependDays(needed)
           generateDisponibilitesForDateRange(newFirst, dayBeforeFirst)
           // Conserver la colonne apparente
-          const afterWidth = loadedDays.value.length * dayWidth
+          const afterWidth = loadedDays.value.length * dayWidth.value
           scroller.scrollLeft += afterWidth - beforeWidth
         }
       }
@@ -2605,8 +2641,8 @@ function updateHoverOnScroll(scroller: HTMLElement) {
   if (!_lastPointerX && !_lastPointerY) return
   const rect = scroller.getBoundingClientRect()
   const xContent = _lastPointerX - rect.left + scroller.scrollLeft
-  const gridLeft = (gridLeftBodyPx.value || (stickyLeftWidth + 1))
-  const pitch = dayPitchBodyPx.value || (dayWidth + 1)
+  const gridLeft = (gridLeftBodyPx.value || (stickyLeftWidth.value + 1))
+  const pitch = dayPitchBodyPx.value || (dayWidth.value + 1)
   const colIdx = Math.floor((xContent - gridLeft) / pitch)
   const colX = colIdx * pitch
   if (colIdx < 0 || colIdx >= visibleDays.value.length) {
@@ -2722,14 +2758,14 @@ async function prependDays(count: number) {
 // Décharge les jours (et données) trop à gauche pour garder l'UI fluide
 function prunePastIfFar(scroller: HTMLElement) {
   const leftBufferDays = 150 // garder ~5 mois de tampon à gauche
-  const firstVisibleIdx = Math.floor(scroller.scrollLeft / dayWidth)
+  const firstVisibleIdx = Math.floor(scroller.scrollLeft / dayWidth.value)
   if (firstVisibleIdx <= leftBufferDays) return
   const removeCount = firstVisibleIdx - leftBufferDays
   if (removeCount <= 0) return
 
   // Supprimer les premiers jours et ajuster le scroll pour éviter le saut
   loadedDays.value.splice(0, removeCount)
-  scroller.scrollLeft -= removeCount * dayWidth
+  scroller.scrollLeft -= removeCount * dayWidth.value
   // Ne pas toucher aux plages chargées: on conserve l'information pour éviter de re-fetch
 }
 
@@ -2737,7 +2773,7 @@ function prunePastIfFar(scroller: HTMLElement) {
 function pruneFutureIfFar(scroller: HTMLElement) {
   const rightBufferDays = 150 // garder ~5 mois de tampon à droite
   const totalCols = loadedDays.value.length
-  const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scroller.scrollLeft + scroller.clientWidth) / dayWidth))
+  const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scroller.scrollLeft + scroller.clientWidth) / dayWidth.value))
   const targetMaxIdx = lastVisibleIdx + rightBufferDays
   if (totalCols - 1 <= targetMaxIdx) return
   const removeFrom = targetMaxIdx + 1
@@ -2772,7 +2808,7 @@ function updateTodayOverlayX() {
     scroller.style.setProperty('--today-x-local', `-9999px`)
     return
   }
-  const pitch = dayPitchBodyPx.value || (dayWidth + 1)
+  const pitch = dayPitchBodyPx.value || (dayWidth.value + 1)
   const x = todayIdx * pitch
   scroller.style.setProperty('--today-x-local', `${x}px`)
 }
@@ -2834,7 +2870,7 @@ onMounted(async () => {
     const todayIndex = loadedDays.value.findIndex(d => d.isToday)
     if (todayIndex >= 0) {
       const scroller = planningScroll.value
-      const centerOffset = Math.max(0, todayIndex * dayWidth - (scroller.clientWidth - 300) / 2)
+  const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - 300) / 2)
       scroller.scrollLeft = centerOffset
   // Positionner l'overlay du jour (offset local)
   // today overlay via CSS vars

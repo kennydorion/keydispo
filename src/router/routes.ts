@@ -4,18 +4,36 @@ import { auth } from '../services/firebase'
 import { AuthService } from '../services/auth'
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/semaine' },
+  { path: '/', redirect: '/dashboard' },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: () => import('../views/Dashboard.vue'),
+    meta: { title: 'Tableau de bord', icon: 'dashboard', requiresAuth: true }
+  },
   {
     path: '/semaine',
     name: 'Semaine',
     component: () => import('../views/SemaineVirtualClean.vue'),
-    meta: { title: 'Planning', icon: 'va-calendar' }
+    meta: { title: 'Planning', icon: 'calendar_month', requiresAuth: true }
   },
   {
     path: '/import',
     name: 'Import',
     component: () => import('../features/import/ImportDispos.vue'),
-    meta: { title: 'Import Excel', icon: 'va-upload', requiresAuth: true, roles: ['admin', 'editor'] }
+    meta: { title: 'Import', icon: 'upload', requiresAuth: true }
+  },
+  {
+    path: '/rapports',
+    name: 'Rapports',
+    component: () => import('../views/Rapports.vue'),
+    meta: { title: 'Rapports', icon: 'bar_chart', requiresAuth: true }
+  },
+  {
+    path: '/parametres',
+    name: 'Parametres',
+    component: () => import('../views/Parametres.vue'),
+    meta: { title: 'Paramètres', icon: 'settings', requiresAuth: true }
   },
   {
     path: '/login',
@@ -23,8 +41,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Login.vue'),
     meta: { title: 'Connexion', public: true }
   },
-  // Pages mises en pause pour simplifier l'interface
-  { path: '/:pathMatch(.*)*', redirect: '/semaine' },
+  { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ]
 
 function waitForAuthState(): Promise<User | null> {
@@ -52,8 +69,8 @@ export function setupRouterGuards(router: Router) {
       const tenantUser = await AuthService.getUserRole(user.uid)
       const role = tenantUser?.role
       if (!role || !allowedRoles.includes(role)) {
-        // Accès refusé, retourne au planning
-        return { path: '/semaine' }
+        // Accès refusé, retourne au dashboard
+        return { path: '/dashboard' }
       }
     }
 

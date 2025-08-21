@@ -1,5 +1,17 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Thème sombre avec gris anthracite */
+  --dark-background: #2e3440;
+  --dark-surface: #3b4252;
+  --dark-surface-secondary: #434c5e;
+  --dark-border: #4c566a;
+  --dark-text-primary: #eceff4;
+  --dark-text-secondary: #d8dee9;
+  --primary-color: #5e81ac;
+  --primary-hover: #81a1c1;
+  --success-color: #a3be8c;
+  --warning-color: #ebcb8b;
+  --error-color: #bf616a;
+
   /* Fonte app unifiée */
   --kd-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   /* Variable Vuestic: aligne toute la lib (dont modale) sur la même fonte */
@@ -7,9 +19,46 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Palette cohérente, claire et apaisante */
+  --kd-primary: #0e8388;
+  --kd-primary-600: color-mix(in srgb, var(--kd-primary) 90%, black);
+  --kd-secondary: #d65745;
+  --kd-success: #22c55e;
+  --kd-warning: #f59e0b;
+  --kd-error: #ef4444;
+  --kd-info: #3b82f6;
+
+  --kd-gray-50: #fafafa;
+  --kd-gray-100: #f5f5f5;
+  --kd-gray-200: #e5e5e5;
+  --kd-gray-300: #d4d4d4;
+  --kd-gray-400: #a3a3a3;
+  --kd-gray-500: #737373;
+  --kd-gray-600: #525252;
+  --kd-gray-700: #404040;
+  --kd-gray-800: #262626;
+  --kd-gray-900: #171717;
+
+  /* Fond de page gris anthracite pour un look moderne */
+  --kd-app-bg: #2e3440;
+  --kd-surface: rgba(255, 255, 255, 0.95);
+  --kd-surface-border: rgba(255, 255, 255, 0.1);
+  --kd-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --kd-shadow-md: 0 8px 25px rgba(0, 0, 0, 0.25);
+
+  /* Harmonisation Vuestic (sans impacter planning) */
+  --va-primary: var(--kd-primary);
+  --va-primary-dark: var(--kd-primary-600);
+  --va-background-primary: var(--kd-surface);
+  --va-background-secondary: var(--kd-app-bg);
+  --va-background-element: var(--kd-surface);
+  --va-background-border: var(--kd-surface-border);
+  --va-text-primary: var(--kd-gray-900);
+  --va-text-secondary: var(--kd-gray-600);
+
+  color-scheme: dark;
+  color: var(--dark-text-primary);
+  background-color: #2e3440;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -26,12 +75,25 @@ a:hover {
   color: #535bf2;
 }
 
-body {
+/* Reset global pour éliminer les marges et assurer que le fond couvre tout */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
   margin: 0;
-  display: block;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--dark-background);
+}
+
+body {
   min-width: 320px;
   min-height: 100vh;
   font-family: var(--va-font-family);
+  background: var(--dark-background);
+  color: var(--dark-text-primary);
 }
 
 /* Inputs de temps: masquer l'icône native (souvent noire) pour n'afficher que notre icône personnalisée */
@@ -94,22 +156,26 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  border-radius: 10px;
+  border: 1px solid var(--kd-gray-300);
+  padding: 0.6em 1.1em;
+  font-size: 1rem;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #fff;
+  color: var(--kd-gray-800);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.2s ease;
 }
 button:hover {
-  border-color: #646cff;
+  background: var(--kd-gray-50);
+  border-color: var(--kd-gray-400);
+  transform: translateY(-1px);
+  box-shadow: var(--kd-shadow-sm);
 }
-button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--kd-primary);
+  outline-offset: 2px;
 }
 
 .card {
@@ -117,10 +183,29 @@ button:focus-visible {
 }
 
 /* Laisse #app occuper toute la largeur sans padding/marges pour un layout plein écran */
-#app {
-  width: 100%;
-  margin: 0;
-  padding: 0;
+#app { width: 100%; margin: 0; padding: 0; }
+
+/* Inputs de formulaire de base (unifiés) */
+input, select, textarea {
+  border: 1px solid var(--kd-gray-300);
+  border-radius: 10px;
+  padding: 0.6em 0.8em;
+  background: #fff;
+  color: var(--kd-gray-900);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--kd-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kd-primary) 20%, transparent);
+  outline: none;
+}
+
+/* Cartes/blocs */
+.kd-surface {
+  background: var(--kd-surface);
+  border: 1px solid var(--kd-surface-border);
+  border-radius: 16px;
+  box-shadow: var(--kd-shadow-sm);
 }
 
 /* Exceptions pour les icônes uniquement */
@@ -157,15 +242,84 @@ button:focus-visible {
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Mode clair priorisé pour la lisibilité continue */
+
+/* Styles globaux pour les dropdowns Vuestic - thème sombre uniforme */
+.va-select-dropdown__content,
+.va-select-option-list,
+.va-dropdown__content {
+  z-index: 10000 !important;
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Options de dropdown - texte clair sur fond sombre */
+.va-select-option {
+  background: transparent !important;
+  color: var(--dark-text-primary) !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--dark-border) !important;
+}
+
+.va-select-option:hover {
+  background: var(--dark-surface-secondary) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.va-select-option--selected {
+  background: var(--kd-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Assurer que les dropdowns dans les composants de filtres utilisent le thème sombre */
+.filters-section .va-select-dropdown__content,
+.filters-section .va-select-option-list {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+.filters-section .va-select-option {
+  background: transparent !important;
+  color: var(--dark-text-primary) !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--dark-border);
+}
+
+.filters-section .va-select-option:hover {
+  background: var(--dark-surface-secondary) !important;
+}
+
+.filters-section .va-select-option--selected {
+  background: var(--kd-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Styles globaux pour LieuCombobox - thème sombre uniforme */
+.lieu-combobox .cbx-list {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  z-index: 10000 !important;
+}
+
+.lieu-combobox .cbx-item {
+  background: transparent !important;
+  color: var(--dark-text-primary) !important;
+  border-bottom: 1px solid var(--dark-border) !important;
+}
+
+.lieu-combobox .cbx-item:hover,
+.lieu-combobox .cbx-item.active {
+  background: var(--dark-surface-secondary) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.lieu-combobox .cbx-item.create {
+  color: var(--kd-primary) !important;
+  border-top: 1px dashed var(--dark-border) !important;
 }
