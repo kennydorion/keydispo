@@ -26,6 +26,11 @@ console.log('🔧 Configuration Firebase:', {
   hasAppId: Boolean(firebaseConfig.appId)
 })
 
+// Détection d'une apiKey factice en prod
+if (!useEmulator && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('fake')) {
+  console.error('❌ apiKey Firebase invalide (valeur factice). Vérifiez vos variables VITE_FB_API_KEY.*')
+}
+
 if (!firebaseConfig.projectId) {
   console.error('Firebase projectId manquant. Définissez VITE_FB_PROJECT_ID (prod) ou activez VITE_USE_EMULATOR=1 en local.')
 }
