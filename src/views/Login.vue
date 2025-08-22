@@ -69,6 +69,8 @@
           <div v-if="error" class="error-message">
             {{ error }}
           </div>
+
+          <p class="switch-link">Pas encore de compte ? <router-link to="/register">Créer un compte</router-link></p>
         </div>
         
         <!-- Section administrateur (uniquement sur émulateur) -->
@@ -398,6 +400,10 @@ const loginAsTestUser = async () => {
   height: 1px;
   background: #e5e7eb;
 }
+
+.switch-link { margin-top:18px; font-size:.85rem; text-align:center; color:#374151; }
+.switch-link a { color:#2563eb; font-weight:600; text-decoration:none; }
+.switch-link a:hover { text-decoration:underline; }
 
 .divider span {
   padding: 0 16px;

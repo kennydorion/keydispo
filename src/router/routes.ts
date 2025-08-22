@@ -41,6 +41,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Login.vue'),
     meta: { title: 'Connexion', public: true }
   },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.vue'),
+    meta: { title: 'Inscription', public: true }
+  },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ]
 
