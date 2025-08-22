@@ -166,33 +166,86 @@ function highlightPrev() {
 .lieu-combobox {
   position: relative;
 }
-.cbx-icn { color: var(--va-secondary); }
+
+.cbx-icn { 
+  color: var(--dark-text-secondary); 
+}
+
 .cbx-list {
   position: absolute;
-  z-index: 4000;
+  z-index: 10000;
   left: 0;
   right: 0;
   margin-top: 4px;
-  background: var(--va-background-primary);
-  border: 1px solid var(--va-border-color);
-  border-radius: 6px;
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
   max-height: 220px;
   overflow: auto;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
+
 .cbx-item {
-  padding: 8px 10px;
+  padding: 12px 16px;
   cursor: pointer;
+  color: var(--dark-text-primary);
+  background: transparent;
+  border-bottom: 1px solid var(--dark-border);
+  transition: background-color 0.2s ease;
 }
+
+.cbx-item:last-child {
+  border-bottom: none;
+}
+
 .cbx-item.active {
-  background: var(--va-primary-opacity-10);
+  background: var(--dark-surface-secondary);
+  color: var(--dark-text-primary);
 }
+
 .cbx-item.create {
-  color: var(--va-primary);
+  color: var(--primary-color);
   font-weight: 500;
-  border-top: 1px dashed var(--va-border-color);
+  border-top: 1px dashed var(--dark-border);
+  background: transparent;
 }
+
+.cbx-item.create.active {
+  background: var(--dark-surface-secondary);
+  color: var(--primary-color);
+}
+
 .lieu-combobox.small .va-input__container {
   min-height: 32px;
+}
+
+/* Assurer que l'input utilise le thème sombre */
+:deep(.va-input) {
+  --va-background-color: var(--dark-card);
+  --va-color: var(--dark-text-primary);
+  --va-border-color: var(--dark-border);
+}
+
+:deep(.va-input__container) {
+  background: var(--dark-card) !important;
+  color: var(--dark-text-primary) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:deep(.va-input__container:hover) {
+  border-color: var(--primary-color) !important;
+}
+
+:deep(.va-input__container:focus-within) {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2) !important;
+}
+
+:deep(.va-input-wrapper__text) {
+  color: var(--dark-text-primary) !important;
+}
+
+:deep(.va-input__label) {
+  color: var(--dark-text-secondary) !important;
 }
 </style>

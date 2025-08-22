@@ -1,44 +1,97 @@
 <template>
-  <header class="app-header">
-    <div class="header-content">
+  <header class="modern-planning-header">
+    <!-- Header principal -->
+    <div class="header-main">
       <div class="header-left">
-        <h1 class="app-title">
-          <va-icon name="calendar_today" class="title-icon" />
-          Planning Équipe
-        </h1>
-        <div class="period-display" v-if="viewMode !== 'table'">{{ period }}</div>
+        <div class="app-title">
+          <div class="title-icon">
+            <span class="material-icons">calendar_today</span>
+          </div>
+          <div class="title-content">
+            <div class="period-display">Planning</div>
+          </div>
+        </div>
       </div>
       
       <div class="header-right">
-        <va-button-group>
-          <va-button :color="viewMode === 'week' ? 'primary' : 'secondary'" icon="view_week" size="small" @click="$emit('update:viewMode','week')"><span class="btn-text">Semaine</span></va-button>
-          <va-button :color="viewMode === 'month' ? 'primary' : 'secondary'" icon="calendar_view_month" size="small" @click="$emit('update:viewMode','month')"><span class="btn-text">Mois</span></va-button>
-          <va-button :color="viewMode === 'table' ? 'primary' : 'secondary'" icon="table_chart" size="small" @click="$emit('update:viewMode','table')"><span class="btn-text">Tableau</span></va-button>
-        </va-button-group>
-        <va-button class="mobile-filter-btn" icon="tune" color="secondary" size="small" @click="$emit('openMobileFilters')">Filtres</va-button>
+        <!-- Bouton filtres mobile -->
+        <button class="mobile-filter-btn" @click="$emit('openMobileFilters')">
+          <span class="material-icons filter-icon">search</span>
+          <span>Filtres</span>
+        </button>
       </div>
     </div>
     
-    <div class="filters-desktop">
-      <div class="filters-grid">
-        <va-input v-model="local.search" placeholder="Rechercher un collaborateur..." class="search-field">
-          <template #prependInner><va-icon name="search" /></template>
-        </va-input>
-        <va-select v-model="local.metier" :options="metiers" placeholder="Métier" clearable class="filter-field" />
-        <va-select v-model="local.lieu" :options="lieux" placeholder="Lieu" clearable class="filter-field" />
-        <va-select v-model="local.statut" :options="statuts" placeholder="Statut" clearable class="filter-field" />
-        <va-input v-model="local.dateFrom" type="date" placeholder="Du" class="filter-field" />
-        <va-input v-model="local.dateTo" type="date" placeholder="Au" class="filter-field" />
-      </div>
-      <div class="nav-stats-row">
-        <div class="navigation-controls" v-if="viewMode !== 'table'">
-          <va-button icon="chevron_left" preset="secondary" size="small" @click="$emit('prev')" />
-          <va-button preset="primary" size="small" @click="$emit('today')">Aujourd'hui</va-button>
-          <va-button icon="chevron_right" preset="secondary" size="small" @click="$emit('next')" />
+    <!-- Section filtres -->
+    <div class="filters-section">
+      <div class="filters-container">
+        <!-- Barre de recherche principale -->
+        <div class="search-container">
+          <div class="search-wrapper">
+            <div class="search-icon">
+              <span class="material-icons">search</span>
+            </div>
+            <input 
+              v-model="local.search" 
+              type="text"
+              placeholder="Rechercher un collaborateur..."
+              class="search-input"
+            />
+          </div>
         </div>
-        <div class="stats-info">
-          <va-chip color="info" size="small">{{ statsCollaborateurs }} collaborateurs</va-chip>
-          <va-chip color="success" size="small">{{ statsDispos }} disponibilités</va-chip>
+        
+        <!-- Filtres avancés -->
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label class="filter-label">Métier</label>
+            <va-select 
+              v-model="local.metier" 
+              :options="metiers" 
+              placeholder="Tous les métiers" 
+              clearable 
+              class="modern-select" 
+            />
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Lieu</label>
+            <va-select 
+              v-model="local.lieu" 
+              :options="lieux" 
+              placeholder="Tous les lieux" 
+              clearable 
+              class="modern-select" 
+            />
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Statut</label>
+            <va-select 
+              v-model="local.statut" 
+              :options="statuts" 
+              placeholder="Tous les statuts" 
+              clearable 
+              class="modern-select" 
+            />
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Du</label>
+            <input 
+              v-model="local.dateFrom" 
+              type="date" 
+              class="date-input"
+            />
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Au</label>
+            <input 
+              v-model="local.dateTo" 
+              type="date" 
+              class="date-input"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -55,8 +108,6 @@ const props = defineProps<{
   lieux: Array<{text:string,value:string}>,
   statuts: Array<{text:string,value:string}>,
   modelValue: { search: string; metier: string; lieu: string; statut: string; dateFrom?: string; dateTo?: string },
-  statsCollaborateurs: number,
-  statsDispos: number,
 }>()
 
 const emit = defineEmits(['update:viewMode','update:modelValue','openMobileFilters','prev','today','next'])
@@ -67,13 +118,385 @@ watch(local, () => emit('update:modelValue', { ...local }))
 </script>
 
 <style scoped>
-/* styles allégés, s'appuie sur ceux existants dans la page */
-.app-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); }
-.header-content { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; }
-.app-title { margin:0; display:flex; align-items:center; gap:.75rem; font-size:1.5rem; font-weight:700; }
-.filters-desktop { padding:1rem 1.5rem; }
-.filters-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; }
-.nav-stats-row { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
-.mobile-filter-btn { display:none; }
-@media (max-width: 768px) { .filters-desktop{ display:none; } .mobile-filter-btn{ display:flex; } }
+.modern-planning-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--dark-surface);
+  border-bottom: 1px solid var(--dark-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  gap: 24px;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.title-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-color);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.title-icon .material-icons {
+  font-size: 24px;
+}
+
+.title-content h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--dark-text-primary);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.period-display {
+  font-size: 1.5rem; /* Plus gros comme sur les autres pages */
+  color: var(--dark-text-primary); /* Couleur plus claire */
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mobile-filter-btn {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  background: var(--dark-card);
+  color: var(--dark-text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-filter-btn:hover {
+  background: var(--dark-surface);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.mobile-filter-btn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.filter-icon {
+  font-size: 1.1rem;
+}
+
+.filters-section {
+  background: var(--dark-surface);
+  border-top: 1px solid var(--dark-border);
+}
+
+.filters-container {
+  padding: 24px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.search-container {
+  margin-bottom: 24px;
+}
+
+.search-wrapper {
+  position: relative;
+  max-width: 500px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.1rem;
+  color: var(--dark-text-secondary);
+  z-index: 2;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 20px 16px 48px;
+  border: 1px solid var(--dark-border);
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--dark-card);
+  color: var(--dark-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--dark-text-secondary);
+}
+
+.search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--dark-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modern-select {
+  --va-select-border-radius: 12px;
+  --va-select-padding: 12px 16px;
+}
+
+/* Styles pour les dropdowns des filtres - thème sombre */
+:deep(.va-select) {
+  --va-background-color: var(--dark-card);
+  --va-color: var(--dark-text-primary);
+  --va-border-color: var(--dark-border);
+}
+
+:deep(.va-select__anchor) {
+  background: var(--dark-card) !important;
+  color: var(--dark-text-primary) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:deep(.va-select__anchor:hover) {
+  border-color: var(--primary-color) !important;
+}
+
+:deep(.va-select__anchor:focus-within) {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2) !important;
+}
+
+/* Dropdown menu - fond sombre avec texte clair */
+:deep(.va-select-dropdown__content),
+:deep(.va-select-option-list) {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  z-index: 10000 !important;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Options dans le dropdown - texte clair sur fond sombre */
+:deep(.va-select-option) {
+  background: transparent !important;
+  color: var(--dark-text-primary) !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--dark-border);
+  transition: background-color 0.2s ease;
+}
+
+:deep(.va-select-option:last-child) {
+  border-bottom: none;
+}
+
+:deep(.va-select-option:hover) {
+  background: var(--dark-surface-secondary) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+:deep(.va-select-option--selected) {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+:deep(.va-select-option--selected:hover) {
+  background: var(--primary-color) !important;
+  opacity: 0.9;
+}
+
+/* Texte du placeholder */
+:deep(.va-select__content-wrapper .va-select__placeholder) {
+  color: var(--dark-text-secondary) !important;
+}
+
+/* Icône de dropdown */
+:deep(.va-select__content-wrapper .va-select__append .va-select__toggle-icon) {
+  color: var(--dark-text-secondary) !important;
+}
+
+/* Clear button */
+:deep(.va-select__clear) {
+  color: var(--dark-text-secondary) !important;
+}
+
+:deep(.va-select__clear:hover) {
+  color: var(--dark-text-primary) !important;
+}
+
+.date-input {
+  padding: 12px 16px;
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--dark-card);
+  color: var(--dark-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.date-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+}
+
+.actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.main-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-primary, .btn-secondary, .btn-icon {
+  position: relative;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  padding: 14px 20px;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(108, 92, 231, 0.4);
+}
+
+.btn-secondary {
+  background: var(--dark-card);
+  color: var(--dark-text-primary);
+  padding: 14px 20px;
+  border: 1px solid var(--dark-border);
+}
+
+.btn-secondary:hover {
+  background: var(--dark-surface);
+  transform: translateY(-1px);
+}
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--dark-border);
+  color: var(--dark-text-secondary);
+  padding: 14px;
+  border-radius: 12px;
+  min-width: 50px;
+  min-height: 50px;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: var(--dark-card);
+  color: var(--dark-text-primary);
+  border-color: var(--primary-color);
+}
+
+@media (max-width: 1024px) {
+  .header-main {
+    padding: 16px 24px;
+  }
+  
+  .filters-container {
+    padding: 20px 24px;
+  }
+  
+  .filters-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .filters-section {
+    display: none;
+  }
+  
+  .mobile-filter-btn {
+    display: flex;
+  }
+  
+  .header-main {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .app-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-main {
+    padding: 12px 16px;
+  }
+}
 </style>
