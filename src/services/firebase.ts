@@ -4,7 +4,12 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 // Activer l'émulateur uniquement en local ET si VITE_USE_EMULATOR=1
 const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
-const useEmulator = (import.meta.env.VITE_USE_EMULATOR === '1') && isLocalhost
+let useEmulator = (import.meta.env.VITE_USE_EMULATOR === '1') && isLocalhost
+
+// Sécurité: si on détecte un projectId prod forcé dans variables, on désactive l'émulateur
+if (import.meta.env.VITE_FB_PROJECT_ID && String(import.meta.env.VITE_FB_PROJECT_ID).includes('-ec1ba')) {
+  useEmulator = false
+}
 
 // Configuration Firebase
 const firebaseConfig = {
