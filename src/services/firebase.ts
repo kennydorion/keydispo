@@ -31,6 +31,22 @@ if (!useEmulator && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('f
   console.error('❌ apiKey Firebase invalide (valeur factice). Vérifiez vos variables VITE_FB_API_KEY.*')
 }
 
+// Calcul statut de configuration (utile au front pour désactiver inscription)
+const missingVars: string[] = []
+if (!useEmulator) {
+  if (!firebaseConfig.apiKey) missingVars.push('VITE_FB_API_KEY')
+  if (!firebaseConfig.authDomain) missingVars.push('VITE_FB_AUTH_DOMAIN')
+  if (!firebaseConfig.projectId) missingVars.push('VITE_FB_PROJECT_ID')
+  if (!firebaseConfig.appId) missingVars.push('VITE_FB_APP_ID')
+}
+const fakeKey = !useEmulator && !!firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('fake')
+export const firebaseStatus = {
+  useEmulator,
+  missing: missingVars,
+  fakeKey,
+  configValid: useEmulator || (missingVars.length === 0 && !fakeKey)
+} as const
+
 if (!firebaseConfig.projectId) {
   console.error('Firebase projectId manquant. Définissez VITE_FB_PROJECT_ID (prod) ou activez VITE_USE_EMULATOR=1 en local.')
 }

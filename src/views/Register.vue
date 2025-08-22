@@ -31,13 +31,16 @@
               <input id="password2" v-model="password2" type="password" class="form-input" placeholder="••••••••" required />
             </div>
 
-            <button type="submit" class="submit-button" :disabled="isLoading">
+            <button type="submit" class="submit-button" :disabled="isLoading || !configValid">
               <span v-if="isLoading" class="loading-spinner"></span>
               <span v-else>S'inscrire</span>
             </button>
           </form>
 
           <div v-if="error" class="error-message">{{ error }}</div>
+          <div v-if="!configValid" class="error-message" style="margin-top:8px;">
+            Configuration Firebase invalide / incomplète ({{ missingVarsDisplay }}). Inscription désactivée.
+          </div>
           <div v-if="success" class="success-message">Compte créé ! Vous pouvez maintenant vous connecter.</div>
 
           <p class="switch-link">
@@ -53,6 +56,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '../services/auth'
+import { firebaseStatus } from '../services/firebase'
 
 const router = useRouter()
 
@@ -63,6 +67,8 @@ const password2 = ref('')
 const isLoading = ref(false)
 const error = ref('')
 const success = ref(false)
+const configValid = firebaseStatus.configValid
+const missingVarsDisplay = firebaseStatus.missing.length ? firebaseStatus.missing.join(', ') : (firebaseStatus.fakeKey ? 'apiKey factice' : 'variables OK')
 
 async function handleRegister() {
   error.value = ''
