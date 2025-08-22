@@ -315,7 +315,8 @@ async function startImport() {
     console.log('🚀 Début de l\'import Firestore...')
     
     // Vérification de l'authentification
-    const { auth } = await import('../../firebase')
+  // Utiliser le service firebase centralisé
+  const { auth } = await import('../../services/firebase')
     const currentUser = auth.currentUser
     
     if (!currentUser) {
