@@ -1045,7 +1045,26 @@ function updateCellInitials(cellId: string) {
     // Vérifier si la cellule est lockée
     const isLocked = lockedCells.value.has(cellId)
     
-    // Priorité 1: Obtenir l'utilisateur qui a un lock sur cette cellule
+    // Obtenir les utilisateurs qui survolent cette cellule (priorité haute pour l'interactivité)
+    const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
+    if (hoveringUsers && hoveringUsers.length > 0) {
+      // Prendre le premier utilisateur qui survole
+      const user = hoveringUsers[0]
+      const initials = getUserInitials(user)
+      
+      // Définir les initiales via attribut data pour utilisation CSS
+      cellElement.setAttribute('data-initials', initials)
+      
+      // Appliquer le style approprié selon l'état de la cellule
+      if (isLocked) {
+        cellElement.classList.add('has-initials-locked') // Orange si cellule lockée
+      } else {
+        cellElement.classList.remove('has-initials-locked') // Bleu si cellule libre
+      }
+      return
+    }
+    
+    // Priorité 2: Obtenir l'utilisateur qui a un lock sur cette cellule (seulement si pas de hover)
     const lockData = collaborationService.getCellLock(collaborateurId, date)
     if (lockData) {
       const initials = getUserInitials({ userEmail: lockData.userName })
@@ -1054,7 +1073,7 @@ function updateCellInitials(cellId: string) {
       return
     }
     
-    // Priorité 2: Obtenir l'utilisateur qui a sélectionné cette cellule (multiselect)
+    // Priorité 3: Obtenir l'utilisateur qui a sélectionné cette cellule (multiselect)
     const selectionData = collaborationService.getCellSelection(collaborateurId, date)
     if (selectionData) {
       const initials = getUserInitials({ userEmail: selectionData.userEmail })
@@ -1063,25 +1082,9 @@ function updateCellInitials(cellId: string) {
       return
     }
     
-    // Priorité 3: Obtenir les utilisateurs qui survolent cette cellule
-    const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
-    if (hoveringUsers && hoveringUsers.length > 0) {
-      // Prendre le premier utilisateur
-      const user = hoveringUsers[0]
-      const initials = getUserInitials(user)
-      
-      // Définir les initiales via attribut data pour utilisation CSS
-      cellElement.setAttribute('data-initials', initials)
-      
-      // Ajouter la classe de transition si la cellule est lockée
-      if (isLocked) {
-        cellElement.classList.add('has-initials-locked')
-      }
-    } else {
-      // Pas d'utilisateur : nettoyer les initiales
-      cellElement.removeAttribute('data-initials')
-      cellElement.classList.remove('has-initials-locked')
-    }
+    // Aucune activité : nettoyer les initiales
+    cellElement.removeAttribute('data-initials')
+    cellElement.classList.remove('has-initials-locked')
   }
 }
 
@@ -6874,14 +6877,6 @@ onUnmounted(() => {
     0 0 30px color-mix(in srgb, var(--va-primary) 45%, transparent),
     0 4px 16px color-mix(in srgb, var(--va-primary) 35%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-}
-
-/* Effet de survol sur cellules verrouillées */
-.excel-cell.locked:hover {
-  transform: scale(1.03);
-  box-shadow: 
-    0 4px 12px color-mix(in srgb, var(--va-warning) 35%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Animation d'apparition pour nouvelles présences */
