@@ -690,6 +690,7 @@ const notificationService = useMultiUserNotifications()
 // Variables pour cleanup des listeners de collaboration
 const activityUnsubscribe = ref<(() => void) | null>(null)
 const lockUnsubscribe = ref<(() => void) | null>(null)
+const selectionUnsubscribe = ref<(() => void) | null>(null)
 const { users: realConnectedUsers, stats: sessionStats } = useSessionDisplay()
 
 // Ouvre le sélecteur d'heure natif en cliquant sur l'icône append
@@ -802,12 +803,18 @@ watch(isDraggingSelection, (newValue) => {
   }
 })
 
-// Watcher pour la sélection de cellules (mettre à jour les initiales)
+// Watcher pour la sélection de cellules (mettre à jour les initiales + transmettre aux autres)
 watch(selectedCells, () => {
   // Utiliser nextTick pour s'assurer que le DOM est mis à jour
   nextTick(() => {
     updatePresenceInitials()
   })
+  
+  // Transmettre les sélections aux autres utilisateurs via RTDB
+  if (collaborationService.isActive) {
+    collaborationService.updateSelectedCells(selectedCells.value)
+    console.log('📋 Sélections transmises:', selectedCells.value.size, 'cellules')
+  }
 }, { deep: true })
 
 // Services (pour les futures fonctionnalités temps réel)
@@ -1038,7 +1045,25 @@ function updateCellInitials(cellId: string) {
     // Vérifier si la cellule est lockée
     const isLocked = lockedCells.value.has(cellId)
     
-    // Obtenir les utilisateurs qui survolent cette cellule
+    // Priorité 1: Obtenir l'utilisateur qui a un lock sur cette cellule
+    const lockData = collaborationService.getCellLock(collaborateurId, date)
+    if (lockData) {
+      const initials = getUserInitials({ userEmail: lockData.userName })
+      cellElement.setAttribute('data-initials', initials)
+      cellElement.classList.add('has-initials-locked')
+      return
+    }
+    
+    // Priorité 2: Obtenir l'utilisateur qui a sélectionné cette cellule (multiselect)
+    const selectionData = collaborationService.getCellSelection(collaborateurId, date)
+    if (selectionData) {
+      const initials = getUserInitials({ userEmail: selectionData.userEmail })
+      cellElement.setAttribute('data-initials', initials)
+      cellElement.classList.add('has-initials-locked') // Traiter comme un lock temporaire
+      return
+    }
+    
+    // Priorité 3: Obtenir les utilisateurs qui survolent cette cellule
     const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
     if (hoveringUsers && hoveringUsers.length > 0) {
       // Prendre le premier utilisateur
@@ -1052,6 +1077,10 @@ function updateCellInitials(cellId: string) {
       if (isLocked) {
         cellElement.classList.add('has-initials-locked')
       }
+    } else {
+      // Pas d'utilisateur : nettoyer les initiales
+      cellElement.removeAttribute('data-initials')
+      cellElement.classList.remove('has-initials-locked')
     }
   }
 }
@@ -3508,6 +3537,13 @@ async function initializePresence() {
     lockUnsubscribe.value = collaborationService.onLockChange(() => {
       debouncedUpdatePresenceSets()  
     })
+    
+    // S'abonner aux changements de sélections distantes
+    selectionUnsubscribe.value = collaborationService.onSelectionChange(() => {
+      console.log('📋 Sélections distantes mises à jour')
+      debouncedUpdatePresenceSets()
+      updatePresenceInitials()
+    })
     }
     
     console.log('✅ Présence utilisateur initialisée avec le système unifié')
@@ -3596,7 +3632,10 @@ function isCellLockedByOther(collaborateurId: string, date: string): boolean {
   // Fallback sur le service
   const isLockedInService = collaborationService.isCellLocked(collaborateurId, date)
   
-  const isLocked = isLockedInUsers || isLockedInService
+  // Vérifier si la cellule est sélectionnée par d'autres utilisateurs (multiselect)
+  const isSelectedByOthers = collaborationService.isCellSelectedByOthers(collaborateurId, date)
+  
+  const isLocked = isLockedInUsers || isLockedInService || isSelectedByOthers
   
   return isLocked
 }
@@ -4281,6 +4320,12 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
 function clearSelection() {
   selectedCells.value.clear()
   selectedCells.value = new Set() // Déclencher la réactivité
+  
+  // Nettoyer aussi les sélections distantes
+  if (collaborationService.isActive) {
+    collaborationService.clearSelectedCells()
+  }
+  
   console.log('🧹 Sélection vidée')
 }
 
@@ -4936,6 +4981,9 @@ onUnmounted(() => {
   }
   if (lockUnsubscribe.value) {
     lockUnsubscribe.value()
+  }
+  if (selectionUnsubscribe.value) {
+    selectionUnsubscribe.value()
   }
 })
 </script>

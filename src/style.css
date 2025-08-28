@@ -115,6 +115,46 @@ input[type="time"]::-webkit-clear-button {
   width: 100vw !important;
   height: 100vh !important;
 }
+
+/* SUPPRESSION COMPLÈTE DE TOUS LES OVERLAYS DE MODALES */
+.va-modal__overlay,
+.va-modal__overlay--lowest,
+.va-modal__overlay--top,
+.va-modal-overlay {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Correction spécifique pour la modale batch */
+.batch-modal .va-modal__overlay,
+.batch-modal .va-modal__overlay--lowest,
+.batch-modal .va-modal__overlay--top {
+  display: none !important; /* Suppression complète de l'overlay */
+}
+
+/* Suppression globale des fonds noirs/overlays de toutes les modales */
+.va-modal__overlay,
+.va-modal-overlay {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+.va-modal__container::before {
+  display: none !important;
+}
+
+/* Styles spécifiques pour différents types de modales */
+.va-modal {
+  background: transparent !important;
+}
+
+.batch-modal.va-modal,
+.batch-modal .va-modal__container,
+.batch-modal .va-modal__dialog {
+  z-index: 2147483649 !important; /* bien au-dessus de tout */
+}
+
 .va-modal, .va-modal__container, .va-modal__dialog {
   z-index: 2147483647 !important; /* top absolu */
 }
@@ -147,6 +187,78 @@ input[type="time"]::-webkit-clear-button {
 }
 [class*="va-modal__overlay"][style*="z-index"],
 [class*="va-modal-overlay"][style*="z-index"] {
+  display: none !important;
+
+/* ===== FIX TOASTS/NOTIFICATIONS Z-INDEX ===== */
+/* Forcer les toasts Vuestic au-dessus de tout */
+.va-toast,
+.va-toast__content,
+.va-toast__group,
+.va-toast__container,
+.va-toasts-container,
+.va-notification,
+.va-notification__content,
+.va-notification__container,
+[class*="va-toast"],
+[class*="va-notification"] {
+  z-index: 2147483648 !important; /* Au-dessus même des modals */
+  position: fixed !important;
+}
+
+/* Toast container spécifique pour position top-right */
+.va-toast[style*="position"] {
+  z-index: 2147483648 !important;
+}
+
+/* Alerte/Alert dialogs génériques */
+.va-alert,
+.va-alert-dialog,
+[role="alertdialog"],
+[role="alert"] {
+  z-index: 2147483648 !important;
+  position: relative !important;
+}
+
+/* S'assurer que les toasts ne sont jamais cachés par transform ou isolation */
+.va-toast {
+  isolation: auto !important;
+  transform: none !important;
+}
+
+/* Pour les toasts téléportés */
+[data-va-toast] {
+  z-index: 2147483648 !important;
+}
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* SUPPRESSION TOTALE DE TOUS LES OVERLAYS - Sélecteurs par attributs */
+[class*="va-modal__overlay"],
+[class*="modal-overlay"],
+div[class*="overlay"]:not([class*="today"]):not([class*="hover"]):not([class*="grid"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* Correction pour les dropdowns dans les modales - ils doivent être au-dessus de l'overlay */
+.va-select-dropdown__content,
+.va-dropdown__content,
+.va-popover__content,
+.va-select-option-list,
+.va-dropdown__content-wrapper {
+  z-index: 2147483648 !important;
+}
+
+/* Correction spécifique : le contenu de la modale doit être au-dessus de son propre overlay */
+.va-modal__dialog {
+  z-index: 2147483647 !important;
+}
+
+.va-modal__overlay {
   z-index: 2147483646 !important;
 }
 
@@ -248,7 +360,7 @@ input:focus, select:focus, textarea:focus {
 .va-select-dropdown__content,
 .va-select-option-list,
 .va-dropdown__content {
-  z-index: 10000 !important;
+  z-index: 2000 !important; /* Sous les toasts/notifications */
   background: var(--dark-surface) !important;
   border: 1px solid var(--dark-border) !important;
   border-radius: 12px !important;
@@ -304,7 +416,7 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--dark-border) !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
-  z-index: 10000 !important;
+  z-index: 2000 !important; /* Sous les toasts/notifications */
 }
 
 .lieu-combobox .cbx-item {
@@ -323,3 +435,176 @@ input:focus, select:focus, textarea:focus {
   color: var(--kd-primary) !important;
   border-top: 1px dashed var(--dark-border) !important;
 }
+
+/* Z-index spécifique pour les dropdowns dans les modales */
+.va-modal .va-select-dropdown__content,
+.va-modal .va-dropdown__content,
+.va-modal .va-popover__content,
+.va-modal .va-select-option-list,
+.va-modal .va-dropdown__content-wrapper {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}
+
+/* S'assurer que tous les éléments téléportés de Vuestic ont un z-index élevé */
+[data-va-teleport] {
+  z-index: 2147483647 !important;
+}
+
+/* Z-index spécifique pour les modales de batch */
+.va-modal--batch-disponibilite .va-select-dropdown__content,
+.va-modal--batch-disponibilite .va-dropdown__content,
+.va-modal--batch-disponibilite .va-popover__content,
+.va-modal--batch-disponibilite .va-select-option-list {
+  z-index: 2147483648 !important;
+  position: fixed !important;
+}
+
+/* ===== RÈGLE FINALE POUR TOASTS/ALERTDIALOGS ===== */
+/* Force absolue pour que les toasts soient toujours visibles */
+.va-toast,
+.va-toasts-container,
+[class*="va-toast"],
+[data-va-toast],
+.va-notification,
+[class*="va-notification"],
+[role="alertdialog"],
+[role="alert"] {
+  z-index: 2147483648 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: fixed !important;
+}
+
+/* Forcer les toasts à être attachés au body */
+body > .va-toast,
+body > .va-toasts-container,
+body > [class*="va-toast"],
+body > [data-va-toast] {
+  z-index: 2147483649 !important; /* Encore plus haut si directement dans body */
+}
+
+/* ===== STYLES MULTI-UTILISATEURS ===== */
+/* Styles pour les cellules hovérées par d'autres utilisateurs */
+.cell-hover-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 201;
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: fadeInMultiUser 0.3s ease-in-out;
+}
+
+.cell-hover-indicator.editing-mode {
+  background: rgba(239, 68, 68, 0.9);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.hover-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: pulseHover 2s infinite;
+}
+
+@keyframes pulseHover {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.hover-user-name {
+  position: absolute;
+  top: -25px;
+  right: 0;
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 202;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: fadeInMultiUser 0.3s ease-in-out;
+}
+
+.editing-mode .hover-user-name {
+  background: rgba(239, 68, 68, 0.9);
+}
+
+.editing-lock-icon {
+  font-size: 8px !important;
+}
+
+/* Styles pour les cellules verrouillées */
+.cell-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  pointer-events: none;
+  z-index: 300;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-icon {
+  color: rgba(239, 68, 68, 0.8);
+  font-size: 16px !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Classes pour les cellules dans différents états */
+.planning-cell.locked {
+  background-color: rgba(239, 68, 68, 0.05) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.planning-cell.hovered-by-other {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Animation pour les indicateurs */
+.cell-hover-indicator,
+.cell-lock-overlay {
+  animation: fadeInMultiUser 0.3s ease-in-out;
+}
+
+@keyframes fadeInMultiUser {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Couleurs dynamiques pour différents utilisateurs via CSS variables */
+.cell-hover-indicator[style*="--user-color"] {
+  background-color: var(--user-color, rgba(59, 130, 246, 0.9)) !important;
+}
+
+.editing-mode .hover-user-name[style*="--user-color"] {
+  background-color: var(--user-color, rgba(239, 68, 68, 0.9)) !important;
+}
+

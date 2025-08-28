@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Mode émulateur - règles simplifiées pour les tests
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdminUser() {
+      return isSignedIn() && request.auth.token.email in [
+        'kdorion@thecompagnie.eu',
+        'admin@test.com'
+      ];
+    }
+    
+    function isTenantMember(tenantId) {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
+    }
+    
+    function hasValidRole(tenantId) {
+      let userDoc = /databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid);
+      return exists(userDoc) && 
+        get(userDoc).data.role in ['admin', 'editor'];
+    }
+
+    // Gestion des utilisateurs du tenant
+    match /tenants/{tenantId}/users/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Collaborateurs
+    match /tenants/{tenantId}/collaborateurs/{collabId} {
+      allow read, write: if isSignedIn() && (isAdminUser() || hasValidRole(tenantId));
+    }
+
+    // Disponibilités (sous-collection des collaborateurs)
+    match /tenants/{tenantId}/collaborateurs/{collabId}/disponibilites/{dateId} {
+      allow read, write: if isSignedIn() && (isAdminUser() || hasValidRole(tenantId));
+    }
+
+    // Disponibilités (collection racine: 'dispos')
+    match /dispos/{dispoId} {
+      // Mode permissif pour les tests d'import
+      allow read, write: if isSignedIn() && (
+        isAdminUser() || 
+        (resource != null && isTenantMember(resource.data.tenantId) && hasValidRole(resource.data.tenantId)) ||
+        (request.resource != null && isTenantMember(request.resource.data.tenantId) && hasValidRole(request.resource.data.tenantId))
+      );
+    }
+
+    // Par défaut: refuser
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -28,13 +28,40 @@
         </router-link>
       </li>
     </ul>
+    
+    <!-- Barre de statut des sessions multi-utilisateur (Phase 3) -->
+    <div v-if="showSessionStatus" class="session-status-wrapper">
+      <div class="session-avatars">
+        <div 
+          v-for="user in displayUsers.slice(0, 3)" 
+          :key="user.uid"
+          class="user-avatar-mini"
+          :style="{ backgroundColor: user.color }"
+          :title="`${user.displayName} (${user.sessionCount} session${user.sessionCount > 1 ? 's' : ''})`"
+        >
+          {{ user.displayName?.charAt(0)?.toUpperCase() || '?' }}
+        </div>
+        <div v-if="totalUsers > 3" class="more-users">
+          +{{ totalUsers - 3 }}
+        </div>
+      </div>
+      <div class="session-count">
+        {{ totalUsers }} utilisateur{{ totalUsers > 1 ? 's' : '' }}
+      </div>
+    </div>
+    
+    <!-- Indicateur de debug pour voir si le système est actif -->
+    <div v-if="!showSessionStatus && $route.path.includes('/semaine')" class="debug-indicator">
+      🔄 Multi-User: {{ totalUsers }} users
+    </div>
+    
     <div class="topnav-actions">
       <button class="topnav-btn desktop-only" aria-label="Recherche">
         <i class="material-icons">search</i>
       </button>
-      <button class="topnav-btn desktop-only" aria-label="Notifications">
-        <i class="material-icons">notifications</i>
-      </button>
+      
+      <!-- Composant de notifications multi-utilisateur (Phase 4) -->
+      <NotificationBell class="desktop-only" />
       <div class="user-menu-wrapper" ref="userMenuRef">
         <button class="topnav-btn user-btn" aria-label="Profil utilisateur" :aria-expanded="showUserMenu ? 'true' : 'false'" @click="toggleUserMenu">
           <i class="material-icons">account_circle</i>
@@ -116,17 +143,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/services/firebase'
 import { signOut, onAuthStateChanged, type User } from 'firebase/auth'
+import { useSessionDisplay } from '../services/sessionDisplayService'
+import NotificationBell from './NotificationBell.vue'
 const $route = useRoute()
 const router = useRouter()
 const items = [
   { name: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: 'dashboard' },
   { name: 'planning', label: 'Planning', path: '/semaine', icon: 'calendar_today' },
   { name: 'import', label: 'Import', path: '/import', icon: 'upload_file' },
-  { name: 'rapports', label: 'Rapports', path: '/rapports', icon: 'bar_chart' },
   { name: 'parametres', label: 'Paramètres', path: '/parametres', icon: 'settings' }
 ]
 
@@ -134,6 +162,14 @@ const showMobileMenu = ref(false)
 const showUserMenu = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
 const currentUserEmail = ref<string>('')
+
+// Session multi-utilisateur (Phase 3)
+const sessionDisplay = useSessionDisplay()
+
+// Utiliser seulement les vraies données du système
+const displayUsers = computed(() => sessionDisplay.users.value || [])
+const totalUsers = computed(() => sessionDisplay.stats.value.uniqueUsers || 0)
+const showSessionStatus = computed(() => displayUsers.value.length > 0) // Afficher seulement s'il y a de vrais utilisateurs
 function toggleMobileMenu() { showMobileMenu.value = !showMobileMenu.value }
 function closeMobileMenu() { showMobileMenu.value = false }
 function navigateMobile(path: string) {
@@ -406,5 +442,72 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   .topnav-link { padding: 6px 10px; }
   .topnav-btn { width: 38px; height: 38px; }
   .topnav-btn .material-icons { font-size: 18px; }
+  .session-status-wrapper { display: none; }
+}
+
+/* Session Status Bar Styles (Phase 3) */
+.session-status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.session-avatars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.user-avatar-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-avatar-mini:hover {
+  transform: scale(1.1);
+}
+
+.more-users {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.session-count {
+  color: var(--dark-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Debug indicator */
+.debug-indicator {
+  padding: 4px 8px;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  color: #ffc107;
+  font-size: 11px;
+  font-weight: 500;
 }
 </style>

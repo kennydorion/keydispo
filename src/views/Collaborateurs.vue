@@ -31,7 +31,7 @@
               </span>
               <span class="meta-item">
                 <span class="material-symbols-outlined">phone</span>
-                06 12 34 56 78
+                <a href="tel:0612345678" class="phone-link">06 12 34 56 78</a>
               </span>
             </div>
           </div>
@@ -59,7 +59,7 @@
               </span>
               <span class="meta-item">
                 <span class="material-symbols-outlined">phone</span>
-                06 98 76 54 32
+                <a href="tel:0698765432" class="phone-link">06 98 76 54 32</a>
               </span>
             </div>
           </div>

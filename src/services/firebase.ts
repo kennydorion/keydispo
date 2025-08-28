@@ -1,6 +1,7 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApp, getApps } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database'
 
 // Activer l'émulateur uniquement en local ET si VITE_USE_EMULATOR=1
 const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -17,6 +18,7 @@ const firebaseConfig = {
   projectId: (import.meta.env.VITE_FB_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID) || (useEmulator ? 'keydispo-dev' : ''),
   apiKey: useEmulator ? 'fake-api-key' : import.meta.env.VITE_FB_API_KEY,
   authDomain: useEmulator ? 'localhost' : import.meta.env.VITE_FB_AUTH_DOMAIN,
+  databaseURL: useEmulator ? 'http://127.0.0.1:9000?ns=keydispo-dev-default-rtdb' : import.meta.env.VITE_FB_DATABASE_URL,
   storageBucket: useEmulator ? '' : import.meta.env.VITE_FB_STORAGE_BUCKET,
   messagingSenderId: useEmulator ? '0' : import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
   appId: useEmulator ? 'app-fake' : import.meta.env.VITE_FB_APP_ID,
@@ -68,27 +70,92 @@ if (!useEmulator) {
   }
 }
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig)
+// Initialize Firebase with singleton pattern protection
+declare global {
+  interface Window {
+    __FIREBASE_APP__: any
+  }
+}
+
+let app: any
+
+// Protection globale contre les multiples initialisations
+if (typeof window !== 'undefined') {
+  if (window.__FIREBASE_APP__) {
+    app = window.__FIREBASE_APP__
+    console.log('🔄 Firebase App récupérée depuis cache global')
+  } else {
+    try {
+      // Vérifier si des apps existent déjà
+      const existingApps = getApps()
+      if (existingApps.length > 0) {
+        app = existingApps[0]
+        console.log('🔄 Firebase App existante récupérée')
+      } else {
+        app = initializeApp(firebaseConfig)
+        console.log('🆕 Nouvelle Firebase App initialisée')
+      }
+      // Stocker dans le cache global
+      window.__FIREBASE_APP__ = app
+    } catch (error: any) {
+      if (error.code === 'app/duplicate-app') {
+        app = getApp()
+        window.__FIREBASE_APP__ = app
+        console.log('🔄 Firebase App récupérée après erreur duplicate')
+      } else {
+        throw error
+      }
+    }
+  }
+} else {
+  // Mode SSR/Node.js
+  try {
+    const existingApps = getApps()
+    if (existingApps.length > 0) {
+      app = existingApps[0]
+    } else {
+      app = initializeApp(firebaseConfig)
+    }
+  } catch (error: any) {
+    if (error.code === 'app/duplicate-app') {
+      app = getApp()
+    } else {
+      throw error
+    }
+  }
+}
+
+export { app }
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+export const rtdb = getDatabase(app)
 
 // Connexion aux émulateurs (local uniquement)
 if (useEmulator) {
   console.log('🧪 Connexion aux émulateurs Firebase...')
   const firestorePort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || '8080')
   const authPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || '9099')
+  const rtdbPort = parseInt(import.meta.env.VITE_DATABASE_EMULATOR_PORT || '9000')
+  
   try {
     connectAuthEmulator(auth, `http://127.0.0.1:${authPort}`, { disableWarnings: true })
     console.log(`✅ Émulateur Auth connecté sur 127.0.0.1:${authPort}`)
   } catch (error) {
     console.warn('⚠️ Auth émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
   }
+  
   try {
     connectFirestoreEmulator(db, '127.0.0.1', firestorePort)
     console.log(`✅ Émulateur Firestore connecté sur 127.0.0.1:${firestorePort}`)
   } catch (error) {
     console.warn('⚠️ Firestore émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
+  }
+  
+  try {
+    connectDatabaseEmulator(rtdb, '127.0.0.1', rtdbPort)
+    console.log(`✅ Émulateur Realtime Database connecté sur 127.0.0.1:${rtdbPort}`)
+  } catch (error) {
+    console.warn('⚠️ Realtime Database émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
   }
 } else {
   console.log('📡 Mode production - services Firebase réels')

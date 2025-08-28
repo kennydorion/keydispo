@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Rapide Multi-Utilisateur - Keydispo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        
+        .status {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success { border-left: 4px solid #4ECDC4; }
+        .error { border-left: 4px solid #ff6b6b; }
+        .warning { border-left: 4px solid #ffa726; }
+        
+        .log-output {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            background: #4ECDC4;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn:hover {
+            background: #45B7AA;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Rapide - Système Multi-Utilisateur</h1>
+    
+    <div class="status success">
+        <h3>✅ Objectif</h3>
+        <p>Vérifier que les erreurs JavaScript ont été corrigées après l'ajout des méthodes manquantes.</p>
+    </div>
+    
+    <div class="status warning">
+        <h3>🎯 Tests à effectuer</h3>
+        <ul>
+            <li>Ouvrir la console du navigateur (F12)</li>
+            <li>Charger l'application principale</li>
+            <li>Vérifier qu'il n'y a plus d'erreurs "function is not a function"</li>
+            <li>Tester quelques interactions (survol, clic)</li>
+        </ul>
+    </div>
+    
+    <div style="text-align: center; margin: 20px 0;">
+        <button class="btn" onclick="openMainApp()">🚀 Ouvrir l'Application Principale</button>
+        <button class="btn" onclick="checkConsoleErrors()">🔍 Vérifier Erreurs Console</button>
+        <button class="btn" onclick="testMethods()">🧪 Test Méthodes Service</button>
+    </div>
+    
+    <div class="log-output" id="log-output">📝 Console de test...\n</div>
+
+    <script type="module">
+        function log(message, type = 'info') {
+            const output = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📝';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function openMainApp() {
+            log('🚀 Ouverture de l\'application principale...');
+            window.open('http://localhost:3001/', '_blank');
+            log('💡 Vérifiez la console de l\'onglet principal pour les erreurs');
+        }
+        
+        function checkConsoleErrors() {
+            log('🔍 Vérification des erreurs dans cette console...');
+            
+            // Capture des erreurs JavaScript
+            window.addEventListener('error', (e) => {
+                log(`❌ ERREUR JS: ${e.message} (${e.filename}:${e.lineno})`, 'error');
+            });
+            
+            // Capture des promesses rejetées
+            window.addEventListener('unhandledrejection', (e) => {
+                log(`❌ PROMESSE REJETÉE: ${e.reason}`, 'error');
+            });
+            
+            log('👂 Écouteurs d\'erreurs configurés');
+            log('💡 Ouvrez l\'application principale et surveillez cette console');
+        }
+        
+        async function testMethods() {
+            try {
+                log('🧪 Test d\'import du service...');
+                
+                const { multiUserMigrationService } = await import('/src/services/multiUserMigrationService.ts');
+                log('✅ Service importé avec succès', 'success');
+                
+                // Test des méthodes principales
+                const methods = [
+                    'init', 
+                    'getHoveringUsers', 
+                    'isCellLocked', 
+                    'getCellLock',
+                    'onLockChange',
+                    'onMouseLeavePlanning',
+                    'updateHoveredCell',
+                    'getStats'
+                ];
+                
+                methods.forEach(method => {
+                    if (typeof multiUserMigrationService[method] === 'function') {
+                        log(`✅ Méthode ${method}: DISPONIBLE`, 'success');
+                    } else {
+                        log(`❌ Méthode ${method}: MANQUANTE`, 'error');
+                    }
+                });
+                
+                // Test rapide des stats
+                const stats = multiUserMigrationService.getStats();
+                log(`📊 Stats: ${JSON.stringify(stats)}`);
+                
+                log('🎉 Tests terminés avec succès', 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur lors du test: ${error.message}`, 'error');
+                console.error('Erreur détaillée:', error);
+            }
+        }
+        
+        // Exposer les fonctions globalement
+        window.openMainApp = openMainApp;
+        window.checkConsoleErrors = checkConsoleErrors;
+        window.testMethods = testMethods;
+        
+        // Démarrage automatique
+        log('🏁 Page de test chargée');
+        log('🔧 Prêt à tester les corrections');
+    </script>
+</body>
+</html>

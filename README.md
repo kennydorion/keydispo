@@ -17,14 +17,23 @@ Application web Vue 3 pour la gestion des disponibilités des collaborateurs ave
 - Interface d'import Excel dans l'app - import fonctionnel en CLI
 - Services optimisés V2 - partiellement implémentés
 
-### 🚀 Démarrage Rapide
+### 🚀 Démarrage Ultra-Simple
 ```bash
 yarn install
-yarn start:dev  # ou ./start-dev.sh
+npm start    # 🆕 NOUVELLE COMMANDE : Lance Vite + Firebase + persistance !
 ```
-- Application : http://localhost:3000
-- Admin Firebase : http://127.0.0.1:4001
-- Vue Semaine : http://localhost:3000/#/semaine
+
+### 🚀 Démarrage Alternatif
+```bash
+yarn start:dev  # ou ./start-dev.sh (méthode classique avec seeding)
+```
+
+**URLs importantes :**
+- **Application** : http://localhost:5173
+- **Admin Firebase** : http://localhost:4001
+- **Vue Semaine** : http://localhost:5173/#/semaine
+
+💾 **Persistance automatique** : Vos données (comptes, dispos) sont sauvegardées automatiquement !
 
 ## 🚀 Stack Technique
 

@@ -24,12 +24,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Import', icon: 'upload', requiresAuth: true }
   },
   {
-    path: '/rapports',
-    name: 'Rapports',
-    component: () => import('../views/Rapports.vue'),
-    meta: { title: 'Rapports', icon: 'bar_chart', requiresAuth: true }
-  },
-  {
     path: '/parametres',
     name: 'Parametres',
     component: () => import('../views/Parametres.vue'),
@@ -46,6 +40,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Register',
     component: () => import('../views/Register.vue'),
     meta: { title: 'Inscription', public: true }
+  },
+  {
+    path: '/test-toasts',
+    name: 'TestToasts',
+    component: () => import('../views/TestToasts.vue'),
+    meta: { title: 'Test Toasts Z-Index', requiresAuth: true }
   },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ]

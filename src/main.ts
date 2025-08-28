@@ -3,9 +3,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import routes, { setupRouterGuards } from './router/routes'
 import { createVuestic } from 'vuestic-ui'
+import { installMultiUserSystem } from './services/multiUserPlugin'
 import './style.css'
-
-console.log('🚀 Démarrage de l\'application KeyDispo...')
 
 // Création du routeur
 const router = createRouter({
@@ -20,10 +19,11 @@ const app = createApp(App)
 app.use(router)
 app.use(createVuestic())
 
+// Installation du système multi-utilisateur unifié
+app.use(installMultiUserSystem)
+
 // Guards de navigation (auth + rôles)
 setupRouterGuards(router)
 
 // Montage de l'application
 app.mount('#app')
-
-console.log('✅ Application montée avec succès')

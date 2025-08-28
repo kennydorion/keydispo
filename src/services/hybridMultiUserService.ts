@@ -111,6 +111,7 @@ class HybridMultiUserService {
   private presenceChangeCallbacks: ((presence: Map<string, UserPresence>) => void)[] = []
   private userChangeCallbacks: ((users: Map<string, UserSession>) => void)[] = []
   private activityChangeCallbacks: ((activities: Map<string, CellActivity>) => void)[] = []
+  private selectionChangeCallbacks: ((selections: Map<string, any>) => void)[] = []
   
   // État local réactif
   private _isActive = false
@@ -118,6 +119,7 @@ class HybridMultiUserService {
   private _presence = new Map<string, UserPresence>()
   private _activities = new Map<string, CellActivity>()
   private _locks = new Map<string, CellLock>()
+  private _remoteSelections = new Map<string, any>() // Sélections des autres utilisateurs
   private _currentHover: { collaborateurId: string; date: string } | null = null
   
   // Listeners pour cleanup
@@ -132,6 +134,7 @@ class HybridMultiUserService {
   get presence() { return new Map(this._presence) }
   get activities() { return new Map(this._activities) }
   get locks() { return new Map(this._locks) }
+  get remoteSelections() { return new Map(this._remoteSelections) }
   get currentHover() { return this._currentHover }
 
   // ==========================================
@@ -178,6 +181,16 @@ class HybridMultiUserService {
     }
   }
 
+  onSelectionChange(callback: (selections: Map<string, any>) => void): () => void {
+    this.selectionChangeCallbacks.push(callback)
+    return () => {
+      const index = this.selectionChangeCallbacks.indexOf(callback)
+      if (index > -1) {
+        this.selectionChangeCallbacks.splice(index, 1)
+      }
+    }
+  }
+
   // ==========================================
   // MÉTHODES PRIVÉES DE NOTIFICATION
   // ==========================================
@@ -196,6 +209,10 @@ class HybridMultiUserService {
 
   private notifyActivityChanges() {
     this.activityChangeCallbacks.forEach(callback => callback(new Map(this._activities)))
+  }
+
+  private notifySelectionChanges() {
+    this.selectionChangeCallbacks.forEach(callback => callback(new Map(this._remoteSelections)))
   }
 
   // ==========================================
@@ -340,6 +357,27 @@ class HybridMultiUserService {
       this.notifyLockChanges()
     })
     this.rtdbListeners.push(() => off(locksRef, 'value', locksListener))
+
+    // 5. Écouter les sélections multiples des autres utilisateurs
+    const selectionsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}`)
+    const selectionsListener = onValue(selectionsRef, (snapshot) => {
+      this._remoteSelections.clear()
+      if (snapshot.exists()) {
+        const selections = snapshot.val()
+        Object.entries(selections).forEach(([sessionId, sessionSelections]: [string, any]) => {
+          // Ignorer ses propres sélections
+          if (sessionId === this.currentSessionId) return
+          
+          // Ajouter les sélections des autres utilisateurs
+          Object.entries(sessionSelections).forEach(([cellKey, selection]: [string, any]) => {
+            const selectionId = `${sessionId}_${cellKey}`
+            this._remoteSelections.set(selectionId, selection)
+          })
+        })
+      }
+      this.notifySelectionChanges()
+    })
+    this.rtdbListeners.push(() => off(selectionsRef, 'value', selectionsListener))
   }
 
   // ==========================================
@@ -465,6 +503,66 @@ class HybridMultiUserService {
   }
 
   // ==========================================
+  // GESTION DES SÉLECTIONS MULTIPLES
+  // ==========================================
+
+  async updateSelectedCells(selectedCells: Set<string>) {
+    if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+
+    try {
+      const selectedCellsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}/${this.currentSessionId}`)
+      
+      if (selectedCells.size === 0) {
+        // Supprimer toutes les sélections si aucune cellule sélectionnée
+        await remove(selectedCellsRef)
+        console.log('🧹 Sélections supprimées de RTDB')
+        return
+      }
+
+      // Convertir le Set en objet pour RTDB
+      const cellsData: Record<string, any> = {}
+      selectedCells.forEach(cellId => {
+        // Extraire collaborateurId et date du format "id-date"
+        const parts = cellId.split('-')
+        const date = parts.slice(-3).join('-') // Dernières 3 parties pour YYYY-MM-DD
+        const collaborateurId = parts.slice(0, -3).join('-') // Tout le reste
+        
+        cellsData[cellId] = {
+          cellId: `${collaborateurId}_${date}`, // Format pour compatibilité avec locks
+          collaborateurId,
+          date,
+          userId: this.currentUserId!,
+          userName: this.currentUserName!,
+          userEmail: this.currentUserEmail!,
+          sessionId: this.currentSessionId,
+          selectedAt: rtdbServerTimestamp(),
+          tenantId: this.currentTenantId,
+          type: 'multiselect'
+        }
+      })
+
+      await set(selectedCellsRef, cellsData)
+      await onDisconnect(selectedCellsRef).remove()
+      
+      console.log('📋 Sélections transmises à RTDB:', selectedCells.size, 'cellules')
+    } catch (error) {
+      console.warn('⚠️ Erreur transmission sélections:', error)
+    }
+  }
+
+  async clearSelectedCells() {
+    if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+    
+    try {
+      const selectedCellsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}/${this.currentSessionId}`)
+      await remove(selectedCellsRef)
+      console.log('🧹 Sélections supprimées de RTDB')
+    } catch (error) {
+      console.warn('⚠️ Erreur suppression sélections:', error)
+    }
+  }
+
+  // ==========================================
   // MÉTHODES DE COMPATIBILITÉ (ancien API)
   // ==========================================
 
@@ -476,6 +574,16 @@ class HybridMultiUserService {
   getCellLock(collaborateurId: string, date: string): CellLock | null {
     const cellId = `${collaborateurId}_${date}`
     return Array.from(this._locks.values()).find(lock => lock.cellId === cellId) || null
+  }
+
+  isCellSelectedByOthers(collaborateurId: string, date: string): boolean {
+    const cellId = `${collaborateurId}_${date}`
+    return Array.from(this._remoteSelections.values()).some(selection => selection.cellId === cellId)
+  }
+
+  getCellSelection(collaborateurId: string, date: string): any | null {
+    const cellId = `${collaborateurId}_${date}`
+    return Array.from(this._remoteSelections.values()).find(selection => selection.cellId === cellId) || null
   }
 
   getHoveringUsers(collaborateurId: string, date: string): any[] {
@@ -554,12 +662,14 @@ class HybridMultiUserService {
     this.presenceChangeCallbacks = []
     this.userChangeCallbacks = []
     this.activityChangeCallbacks = []
+    this.selectionChangeCallbacks = []
     
     // Nettoyer l'état local
     this._users.clear()
     this._presence.clear()
     this._activities.clear()
     this._locks.clear()
+    this._remoteSelections.clear()
     this._currentHover = null
     
     // Marquer comme inactif

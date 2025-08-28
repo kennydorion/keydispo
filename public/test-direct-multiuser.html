@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Direct Multi-Utilisateur</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #0056b3; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; background: #333; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Direct Multi-Utilisateur</h1>
+    
+    <div class="status" id="status">
+        ⏳ Chargement...
+    </div>
+    
+    <button class="button" onclick="activateMultiUser()">🚀 Activer Système Multi-Utilisateur</button>
+    <button class="button" onclick="addTestUser()">👤 Ajouter Utilisateur Test</button>
+    <button class="button" onclick="simulateActivity()">⚡ Simuler Activité</button>
+    <button class="button" onclick="checkTopNav()">🔍 Vérifier TopNav</button>
+    
+    <div id="results"></div>
+
+    <script type="module">
+        function log(message) {
+            const results = document.getElementById('results');
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(p);
+        }
+        
+        window.activateMultiUser = function() {
+            log('🚀 Tentative d\'activation du système multi-utilisateur...');
+            
+            // Essayer d'accéder aux services
+            try {
+                // Simuler une session utilisateur
+                log('✅ Simulation d\'une session utilisateur');
+                document.getElementById('status').textContent = '✅ Système activé (simulation)';
+                
+                // Rediriger vers la page planning pour déclencher l'affichage
+                setTimeout(() => {
+                    window.location.href = '/semaine';
+                }, 1000);
+                
+            } catch (error) {
+                log('❌ Erreur: ' + error.message);
+            }
+        };
+        
+        window.addTestUser = function() {
+            log('👤 Ajout d\'un utilisateur test...');
+            // Logique d'ajout d'utilisateur test
+        };
+        
+        window.simulateActivity = function() {
+            log('⚡ Simulation d\'activité utilisateur...');
+            // Logique de simulation d'activité
+        };
+        
+        window.checkTopNav = function() {
+            log('🔍 Vérification du TopNav...');
+            // Retourner à la page principale pour voir le TopNav
+            window.location.href = '/';
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            log('📋 Page de test chargée');
+            document.getElementById('status').textContent = '✅ Prêt pour les tests';
+        });
+    </script>
+</body>
+</html>

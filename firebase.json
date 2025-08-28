@@ -14,12 +14,18 @@
       {
         "source": "/index.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       }
     ],
     "rewrites": [
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ],
     "cleanUrls": true
   },
@@ -31,13 +37,23 @@
       "port": 8080,
       "rules": "firestore-emulator.rules"
     },
+    "database": {
+      "port": 9000,
+      "rules": "database.rules.json"
+    },
     "ui": {
       "enabled": true,
       "port": 4001
     },
     "singleProjectMode": false,
+    "import": {
+      "path": "./emulator-data"
+    },
     "export": {
       "path": "./emulator-data"
     }
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }
