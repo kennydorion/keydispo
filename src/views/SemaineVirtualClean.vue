@@ -802,6 +802,14 @@ watch(isDraggingSelection, (newValue) => {
   }
 })
 
+// Watcher pour la sélection de cellules (mettre à jour les initiales)
+watch(selectedCells, () => {
+  // Utiliser nextTick pour s'assurer que le DOM est mis à jour
+  nextTick(() => {
+    updatePresenceInitials()
+  })
+}, { deep: true })
+
 // Services (pour les futures fonctionnalités temps réel)
 
 function isDayLoaded(date: string): boolean {
@@ -1006,33 +1014,45 @@ function updatePresenceInitials() {
     
     // Parcourir les cellules avec présence dans hoveredCells
     hoveredCells.value.forEach(cellId => {
-      const cellElement = document.querySelector(`[data-cell-id="${cellId}"]`)
-      if (cellElement) {
-        // Extraire collaborateurId et date du cellId
-        const [collaborateurId, date] = cellId.split('_')
-        
-        // Vérifier si la cellule est lockée
-        const isLocked = lockedCells.value.has(cellId)
-        
-        // Obtenir les utilisateurs qui survolent cette cellule
-        const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
-        if (hoveringUsers && hoveringUsers.length > 0) {
-          // Prendre le premier utilisateur
-          const user = hoveringUsers[0]
-          const initials = getUserInitials(user)
-          
-          // Définir les initiales via attribut data pour utilisation CSS
-          cellElement.setAttribute('data-initials', initials)
-          
-          // Ajouter la classe de transition si la cellule est lockée
-          if (isLocked) {
-            cellElement.classList.add('has-initials-locked')
-          }
-        }
-      }
+      updateCellInitials(cellId)
+    })
+    
+    // Parcourir aussi les cellules sélectionnées
+    selectedCells.value.forEach(cellKey => {
+      // Convertir le format de clé selectedCells (collaborateur.id-date) vers cellId (collaborateur.id_date)
+      const cellId = cellKey.replace('-', '_')
+      updateCellInitials(cellId)
     })
   } catch (err) {
     console.warn('Erreur lors de la mise à jour des initiales:', err)
+  }
+}
+
+// Fonction helper pour mettre à jour les initiales d'une cellule
+function updateCellInitials(cellId: string) {
+  const cellElement = document.querySelector(`[data-cell-id="${cellId}"]`)
+  if (cellElement) {
+    // Extraire collaborateurId et date du cellId
+    const [collaborateurId, date] = cellId.split('_')
+    
+    // Vérifier si la cellule est lockée
+    const isLocked = lockedCells.value.has(cellId)
+    
+    // Obtenir les utilisateurs qui survolent cette cellule
+    const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
+    if (hoveringUsers && hoveringUsers.length > 0) {
+      // Prendre le premier utilisateur
+      const user = hoveringUsers[0]
+      const initials = getUserInitials(user)
+      
+      // Définir les initiales via attribut data pour utilisation CSS
+      cellElement.setAttribute('data-initials', initials)
+      
+      // Ajouter la classe de transition si la cellule est lockée
+      if (isLocked) {
+        cellElement.classList.add('has-initials-locked')
+      }
+    }
   }
 }
 
@@ -6867,6 +6887,34 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 10;
+}
+
+/* Cellule sélectionnée avec initiales de présence */
+.excel-cell.selected[data-initials]::after {
+  content: attr(data-initials);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--va-primary);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: initialsAppear 0.3s ease-out;
+}
+
+/* Cellule sélectionnée avec initiales en mode lock */
+.excel-cell.selected[data-initials].has-initials-locked::after {
+  background: var(--va-warning);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
+  animation: lockTransition 0.5s ease-out;
 }
 
 /* Effet hover pour les cellules pendant la sélection */
