@@ -18,6 +18,9 @@
       @update:modelValue="updateFilters"
     />
 
+  <!-- Contenu principal -->
+  <div class="main-content">
+
   <!-- Indicateur de chargement (désactivé: UX non-bloquante, on utilise des placeholders gris) -->
 
     <!-- Suggestions contextuelles -->
@@ -36,6 +39,54 @@
     <!-- Badge d'environnement: émulateur local -->
   <div v-if="isEmulator" class="env-badge">
       Émulateur Firebase actif
+    </div>
+
+    <!-- Panneau d'état centralisé -->
+    <div class="system-status-panel">
+      <!-- Sync temps réel -->
+      <div v-if="isRealtimeActive" class="status-item realtime" @click="showRealtimeStats">
+        <va-icon name="sync" spin size="14px" />
+        <span>Temps réel</span>
+        <span class="count">{{ realtimeListeners.length }}</span>
+      </div>
+
+      <!-- Utilisateurs connectés -->
+      <div v-if="connectedUsers.length > 0" class="status-item users">
+        <va-icon name="people" size="14px" />
+        <span>{{ getUniqueUsersCount() }} utilisateur{{ getUniqueUsersCount() > 1 ? 's' : '' }}</span>
+        <span v-if="getTotalSessionsCount() > getUniqueUsersCount()" class="count">
+          {{ getTotalSessionsCount() }} sessions
+        </span>
+        
+        <!-- Avatars simplifiés -->
+        <div class="mini-avatars">
+          <div 
+            v-for="user in connectedUsers.slice(0, 4)" 
+            :key="user.uid"
+            class="mini-avatar"
+            :style="{ backgroundColor: getUserColor(user.uid) }"
+            :title="getUserStatusTooltip(user)"
+          >
+            {{ user.displayName?.charAt(0) || '?' }}
+          </div>
+          <div v-if="connectedUsers.length > 4" class="mini-avatar more">
+            +{{ connectedUsers.length - 4 }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode émulateur -->
+      <div v-if="isEmulatorMode" class="status-item emulator">
+        <va-icon name="developer_mode" size="14px" />
+        <span>Émulateur</span>
+        <va-button 
+          size="small" 
+          preset="plain" 
+          icon="cleaning_services"
+          @click="cleanupSessions"
+          title="Nettoyer sessions expirées"
+        />
+      </div>
     </div>
 
     <!-- Barre de statut de sélection améliorée -->
@@ -58,7 +109,6 @@
           icon="clear"
           class="clear-selection-btn"
           @click="clearSelection"
-          title="Effacer la sélection"
         />
       </div>
     </div>
@@ -90,20 +140,6 @@
       size="small"
       class="ml-2"
     />
-  </div>
-
-  <!-- Bouton flottant pour corriger les missions overnight -->
-  <div class="overnight-fix-fab">
-    <va-button 
-      preset="secondary" 
-      icon="schedule"
-      @click="detectAndFixExistingOvernightMissions(true)"
-      size="small"
-      color="warning"
-      title="Détecter et corriger les missions overnight existantes"
-    >
-      🌙 Corriger
-    </va-button>
   </div>
 
   <div class="excel-scroll" ref="planningScroll" :class="{ panning: isPanning, loading: isBusy }" @scroll="onScrollExtend" @mousemove="onGridMouseMove" @mouseleave="onGridMouseLeave" @mousedown="onPanStart" @touchstart="onTouchStart" :style="{ '--day-width': dayWidth + 'px', '--sticky-left': stickyLeftWidth + 'px', '--day-pitch': (dayWidth + 1) + 'px' }" :aria-busy="isBusy">
@@ -199,7 +235,6 @@
                 <div 
                   class="collaborateur-name clickable-name" 
                   @click="openCollaborateurInfo(collaborateur)"
-                  title="Cliquer pour voir les informations du collaborateur"
                 >
                   {{ collaborateur.prenom }} {{ collaborateur.nom }}
                 </div>
@@ -226,6 +261,7 @@
                   :key="`${collaborateur.id}-${day.date}`"
                   class="excel-cell"
                   :data-day-date="day.date"
+                  :data-cell-id="`${collaborateur.id}_${day.date}`"
                   :class="[
                     {
                       'today': day.isToday,
@@ -234,21 +270,39 @@
                       'loading-placeholder': !isDayLoaded(day.date),
                       'week-boundary-right': isWeekBoundary(day.date),
                       'selected': selectedCells.has(`${collaborateur.id}-${day.date}`),
-                      'locked': isCellLocked(collaborateur.id, day.date)
+                      'locked': isCellLockedByOther(collaborateur.id, day.date),
+                      // Indicateur générique (hover OU lock) pour activer le style visuel
+                      'has-indicator': (() => {
+                        const isLocked = isLockedByOthers(collaborateur.id, day.date)
+                        const hasHover = isHoveredByOthers(collaborateur.id, day.date)
+                        // TEST protection: if first visible cell, keep test marker
+                        const firstCollab = paginatedCollaborateurs.value?.[0]
+                        const firstDay = visibleDays.value?.[0]
+                        const isTestCell = firstCollab && firstDay && collaborateur.id === firstCollab.id && day.date === firstDay.date
+                        const result = isLocked || hasHover || isTestCell
+                        return result
+                      })(),
+                      // Présence active (uniquement hover d'autres utilisateurs)
+                      'has-presence': (() => {
+                        return isHoveredByOthers(collaborateur.id, day.date)
+                      })()
                     },
-                    getCellKindClass(collaborateur.id, day.date)
+                    getCellKindClass(collaborateur.id, day.date),
+                    getCellLockClasses(collaborateur.id, day.date)
                   ]"
                   :style="{ width: dayWidth + 'px' }"
                   @click.stop="handleCellClickNew(collaborateur.id, day.date, $event)"
                   @mousedown.stop="handleCellMouseDown(collaborateur.id, day.date, $event)"
                   @mouseenter="handleCellMouseEnter(collaborateur.id, day.date)"
+                  @mouseleave="handleCellHoverEnd()"
                   @mouseup="handleCellMouseUp()"
                 >
-                  <!-- Indicateur de verrou -->
-                  <div v-if="isCellLocked(collaborateur.id, day.date)" class="cell-lock-indicator" :title="`Verrouillé par ${getCellLockInfo(collaborateur.id, day.date)?.userName}`">
-                    <va-icon name="lock" size="12px" />
+                  <!-- Icône de verrouillage simple -->
+                  <div v-if="isCellLockedByOther(collaborateur.id, day.date)" class="cell-lock-overlay">
+                    <va-icon name="lock" class="lock-icon" />
                   </div>
                   
+                  <!-- Indicateur de survol collaboratif -->
                   <div class="dispo-bars" :class="getDispoBarsLayoutClass(collaborateur.id, day.date)">
                     <template v-for="dispo in getCellDisposSorted(collaborateur.id, day.date)" :key="(dispo as any).id || (dispo as any)._key">
                           <div
@@ -259,7 +313,8 @@
                             :title="getDispoBarTitle(dispo as any, day.date)"
                             @click.stop="editDispo(dispo, day.date)"
                           >
-                        <span v-if="isOvernightContinuation(dispo, day.date)" class="cont-flag left" title="Continue depuis la veille">↜</span>
+                        <span v-if="isOvernightContinuation(dispo, day.date)" class="cont-flag left" title="Continue">↜</span>
+                        <span v-if="isOvernightStart(dispo, day.date)" class="cont-flag right" title="Débute ici">→</span>
                         <template v-if="resolveDispoKind(dispo).type === 'mission'">
                           <va-icon name="work" size="12px" class="dispo-icn" />
                           <template v-if="resolveDispoKind(dispo).timeKind === 'slot' && resolveDispoKind(dispo).slots?.length">
@@ -288,7 +343,7 @@
                             {{ dispo.heure_debut.substring(0,2) }}-{{ dispo.heure_fin.substring(0,2) }}h
                           </span>
                         </template>
-                        <span v-if="isOvernightStart(dispo, day.date)" class="cont-flag right" title="Se prolonge au lendemain">↝</span>
+                        <span v-if="isOvernightStart(dispo, day.date)" class="cont-flag right" title="Continue">↝</span>
                           </div>
                     </template>
                     <div 
@@ -585,7 +640,23 @@
     @edit-collaborateur="handleEditCollaborateur"
     @save-notes="handleSaveCollaborateurNotes"
   />
-</div>
+
+  <!-- Indicateurs de cellules en cours d'édition -->
+  <div class="active-editing-indicators">
+    <div
+      v-for="user in connectedUsers.filter((u: DisplayUser) => u.sessions.some((s: any) => s.currentAction?.type === 'editing'))"
+      :key="`editing-${user.uid}`"
+      class="editing-indicator"
+      :data-user="user.displayName"
+      :style="{ '--user-color': getUserColor(user.uid) }"
+    >
+      <va-icon name="edit" size="12px" />
+      <span class="editing-user">{{ user.displayName }} édite</span>
+    </div>
+  </div>
+  
+  </div> <!-- Fin main-content -->
+</div> <!-- Fin planning-app -->
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
@@ -596,10 +667,30 @@ import BatchDisponibiliteModal from '../components/BatchDisponibiliteModal.vue'
 import CollaborateurInfoModal from '../components/CollaborateurInfoModal.vue'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
-import { db } from '../services/firebase'
+import { db, auth } from '../services/firebase'
 import { collection, query, where, orderBy, getDocs, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import { realtimeSync } from '../services/realtimeSync'
+
+// Service de collaboration - nouveau système unifié multi-utilisateur (Phase 2)
+import { hybridMultiUserService as collaborationService } from '../services/hybridMultiUserService'
+import { multiUserService } from '../services/multiUserService'
+import type { DisplayUser } from '../services/sessionDisplayService'
+import { useSessionDisplay } from '../services/sessionDisplayService'
+import { useMultiUserNotifications } from '../services/multiUserNotificationService'
 import type { Collaborateur } from '../types/planning'
+
+// Flag pour tester le nouveau système
+const USE_NEW_COLLABORATION = true
+
 const { notify } = useToast()
+
+// Initialisation des services multi-utilisateur (Phase 4)
+const notificationService = useMultiUserNotifications()
+
+// Variables pour cleanup des listeners de collaboration
+const activityUnsubscribe = ref<(() => void) | null>(null)
+const lockUnsubscribe = ref<(() => void) | null>(null)
+const { users: realConnectedUsers, stats: sessionStats } = useSessionDisplay()
 
 // Ouvre le sélecteur d'heure natif en cliquant sur l'icône append
 function openTimePickerFromIcon(e: MouseEvent) {
@@ -665,6 +756,7 @@ const collaborateurs = ref<Collaborateur[]>([])
 const batchModalOpen = ref(false)
 const selectedCells = ref<Set<string>>(new Set())
 const cellLocks = ref<Map<string, { userId: string, userName: string, expiresAt: number }>>(new Map())
+const lockUpdateCounter = ref(0) // Force la réactivité des verrous
 
 // Modal d'informations collaborateur
 const collaborateurInfoModal = ref({
@@ -787,10 +879,289 @@ function detectSlotsFromText(text: string): string[] {
 }
 
 // Hover entièrement géré par CSS (:hover) et overlay de colonne
+
+// Debug: fonction globale pour diagnostiquer l'état
+function diagnoseMutliUser() {
+
+  
+  if (collaborationService) {
+
+  }
+  
+  return {
+    useNewCollaboration: USE_NEW_COLLABORATION,
+    serviceExists: !!collaborationService,
+    currentUser: auth.currentUser?.uid,
+    connectedUsers: connectedUsers.value.length,
+    sessionStats: sessionStats.value
+  }
+}
+
+// Exposer globalement pour debug
+if (typeof window !== 'undefined') {
+  (window as any).diagnoseMutliUser = diagnoseMutliUser
+}
+
 // Données principales
 const allCollaborateurs = ref<Collaborateur[]>([])
 const loadingCollaborateurs = ref(true)
 const disponibilitesCache = ref<Map<string, Disponibilite[]>>(new Map())
+
+// Synchronisation temps réel
+const realtimeListeners = ref<string[]>([])
+const isRealtimeActive = ref(false)
+
+// Présence utilisateur - utilise maintenant le service unifié
+const connectedUsers = computed(() => {
+  const users = realConnectedUsers.value
+  
+
+  
+  return users
+})
+const totalUsers = computed(() => sessionStats.value.uniqueUsers)
+let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let hoverEndGraceTimer: ReturnType<typeof setTimeout> | null = null
+// Cache local pour indicateurs de cellules (reconstruit toutes les 200ms)
+// ==========================================
+// NOUVEAU SYSTÈME RÉACTIF DE PRÉSENCE
+// ==========================================
+
+// Sets réactifs pour tracking des cellules
+const hoveredCells = ref(new Set<string>())
+const lockedCells = ref(new Set<string>())
+
+// Debounce pour les listeners de collaboration
+let listenersDebounceTimer: number | null = null
+
+function debouncedUpdatePresenceSets() {
+  if (listenersDebounceTimer) clearTimeout(listenersDebounceTimer)
+  listenersDebounceTimer = setTimeout(updatePresenceSets, 50) // Petit debounce pour éviter les cascades
+}
+
+// Fonctions helpers pour vérifier les états
+function isHoveredByOthers(collaborateurId: string, date: string): boolean {
+  const cellId = `${collaborateurId}_${date}`
+  return hoveredCells.value.has(cellId)
+}
+
+function isLockedByOthers(collaborateurId: string, date: string): boolean {
+  const cellId = `${collaborateurId}_${date}`
+  return lockedCells.value.has(cellId)
+}
+
+// Fonction pour obtenir les initiales de l'utilisateur
+function getUserInitials(user: any): string {
+  if (!user) return '?'
+  
+  // Si displayName existe, on l'utilise
+  if (user.displayName && user.displayName.trim()) {
+    const words = user.displayName.trim().split(/\s+/)
+    if (words.length === 1) {
+      // Un seul mot : prendre les 2 premières lettres
+      return words[0].substring(0, 2).toUpperCase()
+    } else {
+      // Plusieurs mots : prendre la première lettre de chaque mot (max 2)
+      return words.slice(0, 2).map((word: string) => word[0]).join('').toUpperCase()
+    }
+  }
+  
+  // Si userName existe (nom complet), on l'utilise
+  if (user.userName && user.userName.trim()) {
+    const words = user.userName.trim().split(/\s+/)
+    if (words.length === 1) {
+      // Un seul mot : prendre les 2 premières lettres
+      return words[0].substring(0, 2).toUpperCase()
+    } else {
+      // Plusieurs mots : prendre la première lettre de chaque mot (max 2)
+      return words.slice(0, 2).map((word: string) => word[0]).join('').toUpperCase()
+    }
+  }
+  
+  // Sinon, utiliser l'email
+  if (user.email || user.userEmail) {
+    const email = user.email || user.userEmail
+    const emailPart = email.split('@')[0]
+    const initials = emailPart.split(/[._-]/).slice(0, 2).map((part: string) => part[0]).join('')
+    return initials.toUpperCase() || emailPart.substring(0, 2).toUpperCase()
+  }
+  
+  return '?'
+}
+
+// Fonction pour mettre à jour les initiales dans les cellules
+function updatePresenceInitials() {
+  if (!collaborationService) return
+  
+  try {
+    // Supprimer toutes les initiales existantes (DOM injecté)
+    const existingInitials = document.querySelectorAll('.presence-initials')
+    existingInitials.forEach(el => el.remove())
+    
+    // Nettoyer tous les attributs data-initials précédents
+    document.querySelectorAll('[data-initials]').forEach(el => {
+      el.removeAttribute('data-initials')
+      el.classList.remove('has-initials-locked')
+    })
+    
+    // Parcourir les cellules avec présence dans hoveredCells
+    hoveredCells.value.forEach(cellId => {
+      const cellElement = document.querySelector(`[data-cell-id="${cellId}"]`)
+      if (cellElement) {
+        // Extraire collaborateurId et date du cellId
+        const [collaborateurId, date] = cellId.split('_')
+        
+        // Vérifier si la cellule est lockée
+        const isLocked = lockedCells.value.has(cellId)
+        
+        // Obtenir les utilisateurs qui survolent cette cellule
+        const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
+        if (hoveringUsers && hoveringUsers.length > 0) {
+          // Prendre le premier utilisateur
+          const user = hoveringUsers[0]
+          const initials = getUserInitials(user)
+          
+          // Définir les initiales via attribut data pour utilisation CSS
+          cellElement.setAttribute('data-initials', initials)
+          
+          // Ajouter la classe de transition si la cellule est lockée
+          if (isLocked) {
+            cellElement.classList.add('has-initials-locked')
+          }
+        }
+      }
+    })
+  } catch (err) {
+    console.warn('Erreur lors de la mise à jour des initiales:', err)
+  }
+}
+
+// Fonction pour gérer les transitions d'état des initiales
+function handleInitialsTransition(cellId: string, newState: 'hover' | 'lock') {
+  const cellElement = document.querySelector(`[data-cell-id="${cellId}"]`)
+  
+  if (cellElement && cellElement.hasAttribute('data-initials')) {
+    if (newState === 'lock') {
+      // Transition vers lock : changement de couleur avec animation
+      cellElement.classList.add('has-initials-locked')
+    } else {
+      // Retour vers hover : retour à la couleur normale
+      cellElement.classList.remove('has-initials-locked')
+    }
+  }
+}
+
+// Fonction pour mettre à jour les Sets à partir des données RTDB
+function updatePresenceSets() {
+  if (!collaborationService) return
+  
+  const newHoveredCells = new Set<string>()
+  const newLockedCells = new Set<string>()
+  let debugInfo = { hoveredCount: 0, lockedCount: 0 }
+  
+  // Récupérer toutes les activités hover
+  try {
+    const days = Array.isArray(visibleDays.value) ? visibleDays.value : []
+    const collabs = Array.isArray(paginatedCollaborateurs.value) ? paginatedCollaborateurs.value : []
+    
+    for (const day of days) {
+      for (const collab of collabs) {
+        const cellId = `${collab.id}_${day.date}`
+        
+        // Vérifier hover
+        const hoveringUsers = collaborationService.getHoveringUsers(collab.id, day.date)
+        if (hoveringUsers && hoveringUsers.length > 0) {
+          newHoveredCells.add(cellId)
+          debugInfo.hoveredCount++
+        }
+        
+        // Vérifier lock
+        const isLocked = collaborationService.isCellLocked(collab.id, day.date)
+        if (isLocked) {
+          newLockedCells.add(cellId)
+          debugInfo.lockedCount++
+        }
+      }
+    }
+  } catch (err) {
+    // Erreur silencieuse
+  }
+  
+  // Détection de changements précise : vérifier les contenus, pas seulement la taille
+  let hoveredChanged = hoveredCells.value.size !== newHoveredCells.size
+  let lockedChanged = lockedCells.value.size !== newLockedCells.size
+  
+  // Détecter les transitions hover → lock et lock → hover
+  const transitionCells = new Set<string>()
+  
+  // Si même taille, vérifier si le contenu a changé
+  if (!hoveredChanged && hoveredCells.value.size > 0) {
+    hoveredChanged = [...hoveredCells.value].some(id => !newHoveredCells.has(id)) ||
+                     [...newHoveredCells].some(id => !hoveredCells.value.has(id))
+  }
+  
+  if (!lockedChanged && lockedCells.value.size > 0) {
+    lockedChanged = [...lockedCells.value].some(id => !newLockedCells.has(id)) ||
+                    [...newLockedCells].some(id => !lockedCells.value.has(id))
+  }
+  
+  // Détecter les cellules qui passent de hover à lock ou inversement
+  if (hoveredChanged || lockedChanged) {
+    // Cellules qui deviennent lockées (étaient en hover, maintenant en lock)
+    newHoveredCells.forEach(cellId => {
+      if (hoveredCells.value.has(cellId) && newLockedCells.has(cellId) && !lockedCells.value.has(cellId)) {
+        transitionCells.add(cellId)
+      }
+    })
+    
+    // Cellules qui ne sont plus lockées (étaient en lock, maintenant seulement en hover)
+    hoveredCells.value.forEach(cellId => {
+      if (lockedCells.value.has(cellId) && !newLockedCells.has(cellId) && newHoveredCells.has(cellId)) {
+        transitionCells.add(cellId)
+      }
+    })
+  }
+
+  if (hoveredChanged) {
+    hoveredCells.value = newHoveredCells
+    // Debug conditionnel seulement si présence active
+    if (debugInfo.hoveredCount > 0) {
+      console.log('🔄 Hover update:', [...newHoveredCells])
+    }
+  }
+  if (lockedChanged) {
+    lockedCells.value = newLockedCells
+    // Debug conditionnel seulement si locks actifs
+    if (debugInfo.lockedCount > 0) {
+      console.log('🔒 Lock update:', [...newLockedCells])
+    }
+  }
+  
+  // Gérer les transitions d'état pour les cellules concernées
+  if (transitionCells.size > 0) {
+    transitionCells.forEach(cellId => {
+      const isNowLocked = newLockedCells.has(cellId)
+      handleInitialsTransition(cellId, isNowLocked ? 'lock' : 'hover')
+    })
+  }
+  
+  // Mettre à jour les initiales après changement de présence
+  if (hoveredChanged) {
+    // Utiliser nextTick pour s'assurer que le DOM est mis à jour
+    nextTick(() => {
+      updatePresenceInitials()
+    })
+  }
+}
+
+// Détection mode émulateur
+const isEmulatorMode = computed(() => {
+  return window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1' ||
+         window.location.port === '3000' ||
+         window.location.href.includes('emulator')
+})
+
 const loadingDisponibilites = ref(false)
 const fetchingRanges = ref(false)
 // Busy state: quand on charge des plages ou qu'on étend
@@ -886,7 +1257,7 @@ const newDispo = ref<Disponibilite>({
 function openModalForCollaborateur(collaborateurId: string, date: string) {
   // Ne pas ouvrir si on est en mode multiselect
   if (isSelectionMode.value) {
-    console.log('🚫 Ouverture modale bloquée - mode multiselect actif')
+
     return
   }
   
@@ -1121,7 +1492,7 @@ function logHover(tStart: number, idx: number, row: number | string) {
     if (_hoverRafId) cancelAnimationFrame(_hoverRafId)
     _hoverRafId = requestAnimationFrame(() => {
       const toFrame = performance.now() - tStart
-      console.log('[hover]', 'Δmove', dMove.toFixed(1)+'ms', '| compute', compute.toFixed(2)+'ms', '| toFrame', toFrame.toFixed(1)+'ms', '| idx', idx, '| row', row)
+
     })
   }
 }
@@ -1221,9 +1592,11 @@ const suggestions = computed(() => {
   // Si un seul collaborateur reste après filtre nom/métier, proposer sa prochaine dispo
   if (filteredCollaborateurs.value.length === 1) {
     const c = filteredCollaborateurs.value[0]
-    const from = end || start || toDateStr(new Date())
-    const next = findNextAvailability(c.id, from)
-    if (next) lines.push(`Prochaine disponibilité pour ${c.prenom} ${c.nom} : ${next}`)
+    if (c) {
+      const from = end || start || toDateStr(new Date())
+      const next = findNextAvailability(c.id, from)
+      if (next) lines.push(`Prochaine disponibilité pour ${c.prenom} ${c.nom} : ${next}`)
+    }
   }
   return lines
 })
@@ -1254,6 +1627,7 @@ const formatCurrentPeriod = computed(() => {
   if (visibleDays.value.length === 0) return ''
   const first = visibleDays.value[0]
   const last = visibleDays.value[visibleDays.value.length - 1]
+  if (!first || !last) return ''
   return `${first.date} → ${last.date}`
 })
 
@@ -1355,6 +1729,9 @@ function onGridMouseLeave() {
   colHoverEl.value && (colHoverEl.value.style.transform = 'translate3d(-9999px,0,0)')
   colHoverHeaderEl.value && (colHoverHeaderEl.value.style.transform = 'translate3d(-9999px,0,0)')
   rowHoverEl.value && (rowHoverEl.value.style.transform = 'translate3d(0,-9999px,0)')
+  
+  // Nettoyer le hover collaboratif quand on sort du planning
+  collaborationService.onMouseLeavePlanning()
 }
 
 // Plus aucune synchronisation JS nécessaire: header et colonne gauche sont sticky
@@ -1374,6 +1751,9 @@ function getDisponibilites(collaborateurId: string, date: string): Disponibilite
       // Détection rapide: si déjà marqué overnight
       if (d.timeKind === 'overnight') return true
       
+      // Détection pour les slots "night"
+      if (d.timeKind === 'slot' && d.slots?.includes('night')) return true
+      
       // Détection rapide: si pas d'horaires, pas overnight
       if (!d.heure_debut || !d.heure_fin) return false
       
@@ -1382,11 +1762,8 @@ function getDisponibilites(collaborateurId: string, date: string): Disponibilite
       const endHour = parseInt(d.heure_fin.split(':')[0])
       const isOvernight = endHour < startHour
       
-      // Si overnight ET c'est une mission ou a un lieu spécifique
-      return isOvernight && (
-        d.type === 'mission' || 
-        (d.lieu && d.lieu !== 'DISPONIBLE' && d.lieu !== 'DISPO' && d.lieu !== 'INDISPONIBLE')
-      )
+      // Si overnight, inclure toutes les disponibilités (missions ET disponibilités)
+      return isOvernight
     })
     .map(d => ({ ...d, _cont: 'end' as const }))
   
@@ -1582,10 +1959,7 @@ function sanitizeDisposition(d: Partial<Disponibilite>): Partial<Disponibilite> 
       // Si l'heure de fin est plus petite que l'heure de début, c'est une mission de nuit
       if (endTime < startTime || (endTime === startTime && d.heure_fin < d.heure_debut)) {
         timeKind = 'overnight'
-        console.log('🌙 Mission overnight auto-détectée dans sanitizeDisposition:', {
-          lieu: d.lieu,
-          horaires: `${d.heure_debut} → ${d.heure_fin}`
-        })
+
       }
     }
     
@@ -1660,40 +2034,30 @@ function getDispoBarClass(dispo: Disponibilite) {
 }
 
 function isOvernightContinuation(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, cellDate: string) {
-  const k = resolveDispoKind(dispo as Disponibilite)
-  if (!dispo.heure_debut || !dispo.heure_fin) return false
+  // Si c'est marqué comme continuation, c'est une continuation
+  if (dispo._cont === 'end') return true
   
-  // Si timeKind est 'overnight', c'est détecté automatiquement
-  if (k.timeKind === 'overnight') return true
-  
-  // Vérification manuelle pour les anciens formats
-  if (k.timeKind !== 'range') return false
-  
-  const startTime = parseInt(dispo.heure_debut.split(':')[0])
-  const endTime = parseInt(dispo.heure_fin.split(':')[0])
-  
-  // Si l'heure de fin est plus petite que l'heure de début, c'est une mission de nuit
-  const isOvernight = endTime < startTime || (endTime === startTime && dispo.heure_fin < dispo.heure_debut)
-  
-  if (isOvernight) {
-    console.log('🕐 isOvernightContinuation détecté:', {
-      collaborateur: dispo.prenom + ' ' + dispo.nom,
-      horaires: `${dispo.heure_debut} → ${dispo.heure_fin}`,
-      cellDate,
-      dispoDate: dispo.date,
-      continuation: dispo._cont
-    })
-  }
-  
-  return isOvernight
+  return false
 }
 
 function isOvernightStart(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, cellDate: string) {
+  // Si c'est une continuation, ce n'est pas un start
+  if (dispo._cont === 'end') return false
+  
+  // Vérifier les slots pour "night"
   const k = resolveDispoKind(dispo as Disponibilite)
-  if (k.timeKind !== 'range' || !dispo.heure_debut || !dispo.heure_fin) return false
-  const s = toMinutes(dispo.heure_debut)
-  const e = toMinutes(dispo.heure_fin)
-  return (cellDate === (dispo as Disponibilite).date) && !!(s != null && e != null && e < s)
+  if (k.timeKind === 'slot' && k.slots?.includes('night')) {
+    return true
+  }
+  
+  // Vérifier les horaires pour overnight
+  if (dispo.heure_debut && dispo.heure_fin) {
+    const startHour = parseInt(dispo.heure_debut.split(':')[0])
+    const endHour = parseInt(dispo.heure_fin.split(':')[0])
+    return endHour < startHour
+  }
+  
+  return false
 }
 
 function getDispoContinuationClass(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, cellDate: string) {
@@ -1729,41 +2093,28 @@ function getDispoBarStyle() {
 // Info-bulle compacte pour chaque barre (léger: utilise l'attribut title natif)
 function getDispoBarTitle(dispo: Disponibilite, _cellDate: string): string {
   const k = resolveDispoKind(dispo)
-  const parts: string[] = []
+  
   if (k.type === 'mission') {
     if (k.timeKind === 'range' && dispo.heure_debut && dispo.heure_fin) {
-      const canon = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
-      return canon ? `Mission à ${canon} ${fullTimeLabel(dispo)}` : `Mission ${fullTimeLabel(dispo)}`
+      const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
+      return lieu ? `${lieu} ${fullTimeLabel(dispo)}` : fullTimeLabel(dispo)
     }
-    parts.push('Mission')
-    if (dispo.lieu) parts.push(canonicalizeLieu(dispo.lieu))
-    if (k.timeKind === 'slot' && k.slots?.length) {
-      parts.push(k.slots.map((s: string) => slotLabel(s)).join(', '))
-    } else {
-      parts.push('Journée')
-    }
-  return parts.filter(Boolean).join(' ')
+    return dispo.lieu ? canonicalizeLieu(dispo.lieu) : 'Mission'
   }
+  
   if (k.type === 'disponible') {
-    parts.push('Disponible')
     if (k.timeKind === 'range' && dispo.heure_debut && dispo.heure_fin) {
-      parts.push(fullTimeLabel(dispo))
-    } else if (k.timeKind === 'slot' && k.slots?.length) {
-      parts.push(k.slots.map((s: string) => slotLabel(s)).join(', '))
-    } else {
-      parts.push('Journée')
+      return fullTimeLabel(dispo)
     }
-  return parts.filter(Boolean).join(' ')
+    return 'Disponible'
   }
+  
   if (k.type === 'indisponible') {
-  return 'Indisponible Journée'
+    return 'Indisponible'
   }
-  // fallback
-  if (dispo.heure_debut && dispo.heure_fin) return fullTimeLabel(dispo)
-  return 'Détail'
+  
+  return dispo.heure_debut && dispo.heure_fin ? fullTimeLabel(dispo) : ''
 }
-
-// (tooltips supprimés pour performance; ancienne fonction getDispoBarTooltip retirée)
 
 function slotLabel(s: string) {
   switch (s) {
@@ -1862,7 +2213,7 @@ function onStartTimeChange(target: any, start: string) {
 
 // Fonction pour corriger les missions overnight existantes
 async function detectAndFixExistingOvernightMissions(verbose = false) {
-  if (verbose) console.log('🔍 Détection des missions overnight existantes...')
+
   
   const allDispos = Array.from(disponibilitesCache.value.values()).flat()
   const toUpdate: Disponibilite[] = []
@@ -1896,13 +2247,13 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
   
   if (toUpdate.length === 0) {
     if (verbose) {
-      console.log('✅ Aucune mission overnight à corriger')
+
       notify({ message: 'Aucune mission overnight trouvée à corriger', color: 'info', position: 'top-right', duration: 2000 })
     }
     return
   }
   
-  if (verbose) console.log(`🔧 ${toUpdate.length} missions overnight à corriger`)
+
   
   // Sauvegarder les corrections
   const tenantId = AuthService.currentTenantId || 'keydispo'
@@ -1925,7 +2276,7 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
   try {
     await batch.commit()
     if (verbose) {
-      console.log('✅ Missions overnight corrigées avec succès')
+
       notify({ 
         message: `${toUpdate.length} missions overnight corrigées automatiquement`, 
         color: 'success', 
@@ -1951,7 +2302,7 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
 
 // Fonction pour analyser les missions overnight sans les corriger (dry-run)
 function analyzeOvernightMissions() {
-  console.log('🔍 Analyse des missions overnight existantes...')
+
   
   const allDispos = Array.from(disponibilitesCache.value.values()).flat()
   const potentialOvernight: Disponibilite[] = []
@@ -1990,17 +2341,7 @@ function analyzeOvernightMissions() {
     }
   }
   
-  console.log('📊 Résumé de l\'analyse overnight:', {
-    totalDispos: allDispos.length,
-    alreadyFixed: alreadyFixed.length,
-    needsFix: potentialOvernight.length,
-    potentialMissions: potentialOvernight.map(d => ({
-      collaborateur: d.prenom + ' ' + d.nom,
-      lieu: d.lieu,
-      date: d.date,
-      horaires: `${d.heure_debut} → ${d.heure_fin}`
-    }))
-  })
+
   
   return {
     total: allDispos.length,
@@ -2032,7 +2373,41 @@ function getDispoBarsLayoutClass(collaborateurId: string, date: string) {
 
 // Modal
 function openDispoModal(collaborateurId: string, date: string) {
-  console.log('🚀 Tentative ouverture modal:', { collaborateurId, date, isSelectionMode: isSelectionMode.value })
+
+  
+  // Vérifier si la cellule est verrouillée par un autre utilisateur
+  if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
+    const lock = collaborationService.getCellLock(collaborateurId, date)
+    if (lock) {
+      notify({
+        title: 'Cellule verrouillée',
+        message: `${lock.userName} est en train d'éditer cette cellule`,
+        color: 'warning',
+        duration: 3000
+      })
+
+      return
+    }
+  }
+  
+  // Verrouiller la cellule pour cet utilisateur
+  if (collaborationService) {
+    collaborationService.lockCellForEditing(collaborateurId, date)
+      .then(success => {
+        if (!success) {
+          notify({
+            title: 'Cellule verrouillée',
+            message: 'Un autre utilisateur a verrouillé cette cellule en même temps',
+            color: 'warning'
+          })
+          return
+        }
+
+      })
+  }
+  
+  // Notifier la présence de l'édition active
+  handleCellEdit(date, collaborateurId)
   
   selectedCell.value = { collaborateurId, date }
   // Enrichir les dispos existantes pour édition (assurer type/timeKind/slots)
@@ -2223,12 +2598,7 @@ function addNewDispo() {
     // Si l'heure de fin est plus petite que l'heure de début, c'est une mission de nuit
     if (endTime < startTime || (endTime === startTime && d.heure_fin < d.heure_debut)) {
       finalTimeKind = 'overnight'
-      console.log('🌙 Mission overnight détectée lors de la création:', {
-        collaborateur: collab.prenom + ' ' + collab.nom,
-        lieu: d.lieu,
-        horaires: `${d.heure_debut} → ${d.heure_fin}`,
-        date: selectedCell.value.date
-      })
+
     }
   }
   
@@ -2438,7 +2808,7 @@ function editDispoLine(index: number) {
 }
 
 function addNewDispoLine() {
-  console.log('🆕 Ajout nouvelle ligne de disponibilité')
+
   editingDispoIndex.value = null
   isAddingNewDispo.value = true
   editingDispo.value = {
@@ -2449,7 +2819,7 @@ function addNewDispoLine() {
     lieu: '',
     slots: []
   }
-  console.log('📝 État initial du formulaire:', editingDispo.value)
+
 }
 
 function cancelEditDispo() {
@@ -2500,50 +2870,49 @@ function toggleEditingSlot(slotValue: string) {
 
 const isEditFormValid = computed(() => {
   const dispo = editingDispo.value
-  console.log('🔍 Validation formulaire:', dispo)
+
   
   if (!dispo.type || !dispo.timeKind) {
-    console.log('❌ Type ou timeKind manquant')
+
     return false
   }
   
   if (dispo.timeKind === 'range') {
     if (!dispo.heure_debut || !dispo.heure_fin) {
-      console.log('❌ Heures manquantes pour range')
+
       return false
     }
   }
   
   if (dispo.timeKind === 'slot') {
     if (!dispo.slots || dispo.slots.length === 0) {
-      console.log('❌ Créneaux manquants pour slot')
+
       return false
     }
   }
   
   if (dispo.type === 'mission' && !dispo.lieu) {
-    console.log('❌ Lieu manquant pour mission')
+
     return false
   }
   
-  console.log('✅ Formulaire valide')
+
   return true
 })
 
 function saveEditDispo() {
-  console.log('💾 Tentative de sauvegarde:', editingDispo.value)
-  console.log('✅ Formulaire valide:', isEditFormValid.value)
+
   
   if (!isEditFormValid.value) {
-    console.log('❌ Formulaire invalide, abandon')
+
     return
   }
   
   const newDispo = sanitizeDisposition(editingDispo.value) as Disponibilite
-  console.log('🧹 Dispo assainie:', newDispo)
+
   
   if (isAddingNewDispo.value) {
-    console.log('➕ Ajout de nouvelle ligne')
+
     // Ajouter nouvelle ligne
     const temp = [...selectedCellDispos.value, newDispo]
     if (wouldConflict(temp)) {
@@ -2552,9 +2921,9 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value.push(newDispo)
-    console.log('✅ Ligne ajoutée avec succès')
+
   } else {
-    console.log('✏️ Modification ligne existante')
+
     // Modifier ligne existante
     const index = editingDispoIndex.value!
     const temp = selectedCellDispos.value.slice()
@@ -2565,7 +2934,7 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value[index] = newDispo
-    console.log('✅ Ligne modifiée avec succès')
+
   }
   
   cancelEditDispo()
@@ -2682,16 +3051,10 @@ async function saveDispos() {
     }
 
     await batch.commit()
-    console.log('✅ Batch commit réussi')
 
-    // Rafraîchir le planning pour s'assurer que toutes les données sont à jour
-    console.log('🔄 Début refresh planning...')
-    await refreshDisponibilites(true) // true = vider le cache et recharger complètement
-    console.log('✅ Refresh planning terminé')
 
-    showDispoModal.value = false
-    selectedCell.value = null
-    selectedCellDispos.value = []
+    // Notifier la fin de l'édition et fermer le modal
+    handleEditClose()
     
     // Notification de succès
     notify({ 
@@ -2708,9 +3071,8 @@ async function saveDispos() {
 }
 
 function cancelModal() {
-  showDispoModal.value = false
-  selectedCell.value = null
-  selectedCellDispos.value = []
+  // Notifier la fin de l'édition et fermer le modal
+  handleEditClose()
 }
 
 // (supprimé) Anciennes actions de formulaire séparé
@@ -2753,7 +3115,7 @@ function scrollToDate(dateStr: string, behavior: ScrollBehavior = 'auto') {
 }
 
 function goToPreviousWeek() {
-  console.log('Semaine précédente')
+
 }
 
 function goToToday() {
@@ -2767,7 +3129,7 @@ function goToToday() {
 }
 
 function goToNextWeek() {
-  console.log('Semaine suivante')
+
 }
 
 // Chargement des données
@@ -2936,6 +3298,539 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
   
   // Mettre à jour les options de lieux
   updateLieuxOptions()
+}
+
+// ==========================================
+// SYNCHRONISATION TEMPS RÉEL
+// ==========================================
+
+/**
+ * Démarrer la synchronisation temps réel pour la zone visible
+ */
+function startRealtimeSync() {
+  if (!visibleDays.value.length) {
+    return
+  }
+  
+  const firstDay = visibleDays.value[0]
+  const lastDay = visibleDays.value[visibleDays.value.length - 1]
+  if (!firstDay || !lastDay) {
+    console.warn('⚠️ Impossible de démarrer sync temps réel: jours non définis')
+    return
+  }
+  
+  const dateDebut = firstDay.date
+  const dateFin = lastDay.date
+  
+  // Vérifier si on a déjà un listener pour cette plage exacte
+  const currentListenerId = `${dateDebut}_${dateFin}`
+  if (realtimeListeners.value.includes(currentListenerId)) {
+    console.log(`📡 Listener déjà actif pour ${dateDebut} → ${dateFin}`)
+    return
+  }
+  
+  console.log(`🔄 Démarrage sync temps réel: ${dateDebut} → ${dateFin}`)
+  
+  // S'abonner aux changements
+  const unsubscribeChanges = realtimeSync.onChanges(handleRealtimeChanges)
+  
+  // Démarrer le listener pour cette plage
+  const listenerId = realtimeSync.startSyncForDateRange(dateDebut, dateFin)
+  realtimeListeners.value.push(listenerId)
+  
+  isRealtimeActive.value = true
+  
+  // Retourner une fonction de nettoyage
+  return () => {
+    unsubscribeChanges()
+    realtimeSync.stopSync(listenerId)
+    realtimeListeners.value = realtimeListeners.value.filter(id => id !== listenerId)
+    if (realtimeListeners.value.length === 0) {
+      isRealtimeActive.value = false
+    }
+  }
+}
+
+/**
+ * Arrêter toute la synchronisation temps réel
+ */
+function stopRealtimeSync() {
+  console.log(`📡 Arrêt de la synchronisation temps réel`)
+  realtimeSync.stopAllSync()
+  realtimeListeners.value = []
+  isRealtimeActive.value = false
+}
+
+/**
+ * Afficher les statistiques de synchronisation
+ */
+function showRealtimeStats() {
+  const stats = realtimeSync.getStats()
+  const collaborationStats = collaborationService.getStats()
+  console.log('📊 Statistiques de synchronisation temps réel:', stats)
+  console.log('👥 Statistiques de collaboration:', collaborationStats)
+  
+  notify({
+    message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
+    color: 'info',
+    position: 'top-right',
+    duration: 4000
+  })
+}
+
+// ==========================================
+// GESTION DE PRÉSENCE UTILISATEUR
+// ==========================================
+
+/**
+ * Obtenir le nombre d'utilisateurs uniques connectés
+ */
+function getUniqueUsersCount(): number {
+  return totalUsers.value
+}
+
+/**
+ * Obtenir le nombre total de sessions connectées
+ */
+function getTotalSessionsCount(): number {
+  return connectedUsers.value.reduce((total: number, user: DisplayUser) => total + user.sessionCount, 0)
+}
+
+/**
+ * Vérifier si un utilisateur a plusieurs sessions
+ */
+function isUserWithMultipleSessions(uid: string): boolean {
+  return connectedUsers.value.filter((u: DisplayUser) => u.uid === uid).length > 1
+}
+
+/**
+ * Obtenir le nombre de sessions pour un utilisateur
+ */
+function getUserSessionCount(uid: string): number {
+  return connectedUsers.value.filter((u: DisplayUser) => u.uid === uid).length
+}
+
+/**
+ * Obtenir le tooltip pour un utilisateur dans le système
+ */
+function getUserStatusTooltip(user: DisplayUser): string {
+  const sessionCount = getUserSessionCount(user.uid)
+  const sessionInfo = sessionCount > 1 ? ` (${sessionCount} onglets)` : ''
+  return `${user.displayName} - ${user.status}${sessionInfo}`
+}
+
+/**
+ * Nettoyer les sessions expirées
+ */
+async function cleanupSessions() {
+  try {
+    // await collaborationService.cleanupExpiredSessions() // Géré automatiquement dans le nouveau système
+    console.log('🧹 Nettoyage des sessions terminé')
+  } catch (error) {
+    console.error('❌ Erreur nettoyage sessions:', error)
+  }
+}
+
+/**
+ * Obtenir le tooltip pour un utilisateur (alias)
+ */
+function getUserTooltip(user: DisplayUser): string {
+  return getUserStatusTooltip(user)
+}
+
+/**
+ * Initialiser la présence utilisateur
+ */
+async function initializePresence() {
+  try {
+    console.log('🔍 Début initialisation collaboration...', { useNewSystem: USE_NEW_COLLABORATION })
+    
+    // Utiliser le multiUserService qui est déjà initialisé
+    const user = multiUserService.getCurrentUser()
+    
+    if (!user) {
+      console.log('❌ Aucun utilisateur connecté dans multiUserService pour la collaboration')
+      return
+    }
+    
+    console.log('👤 Utilisateur trouvé:', user.displayName)
+    
+    if (USE_NEW_COLLABORATION) {
+      // Nouveau système basé sur des données Firebase - utiliser les données du multiUserService
+      const activeSessions = multiUserService.getActiveSessions()
+      const currentUserId = multiUserService.getCurrentUserId()
+      const currentSessionId = multiUserService.getSessionId()
+      
+      // Trouver la session actuelle
+      const currentSession = activeSessions.find(session => 
+        session.userId === currentUserId && session.sessionId === currentSessionId
+      )
+      
+      if (currentSession) {
+        await collaborationService.init('keydispo', {
+          userId: currentSession.userId,
+          userEmail: currentSession.userEmail,
+          userName: currentSession.userName
+        })
+      } else {
+        console.warn('⚠️ Session actuelle non trouvée dans les sessions actives')
+        return
+      }
+      
+      console.log('🚀 Nouveau service collaboration initialisé')
+    
+    // S'abonner aux changements d'activités pour mettre à jour l'UI en temps réel
+    activityUnsubscribe.value = collaborationService.onActivityChange(() => {
+      debouncedUpdatePresenceSets()
+    })
+    
+    // S'abonner aux changements de locks
+    lockUnsubscribe.value = collaborationService.onLockChange(() => {
+      debouncedUpdatePresenceSets()  
+    })
+    }
+    
+    console.log('✅ Présence utilisateur initialisée avec le système unifié')
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'initialisation de la présence:', error)
+    notify({
+      title: 'Erreur de présence',
+      message: 'Impossible d\'initialiser la présence utilisateur',
+      color: 'danger'
+    })
+  }
+}
+
+/**
+ * Mettre à jour la vue actuelle pour la présence
+ */
+function updatePresenceView() {
+  if (visibleDays.value.length > 0) {
+    const firstDay = visibleDays.value[0]
+    const lastDay = visibleDays.value[visibleDays.value.length - 1]
+    if (!firstDay || !lastDay) {
+      console.warn('⚠️ Impossible de mettre à jour la vue de présence: jours non définis')
+      return
+    }
+    
+    const dateStart = firstDay.date
+    const dateEnd = lastDay.date
+    
+    // Simplifié dans le nouveau système - pas besoin d'updateCurrentView
+    console.log('📊 Vue mise à jour:', { dateStart, dateEnd })
+  }
+}
+
+/**
+ * Générer une couleur unique pour chaque utilisateur
+ */
+function getUserColor(uid: string): string {
+  // Protection contre les uid undefined/null
+  if (!uid || typeof uid !== 'string') {
+    console.warn('⚠️ getUserColor appelé avec uid invalide:', uid)
+    return '#6b7280' // couleur par défaut grise
+  }
+  
+  const colors = [
+    '#3b82f6', // blue
+    '#ef4444', // red
+    '#10b981', // green
+    '#f59e0b', // yellow
+    '#8b5cf6', // purple
+    '#06b6d4', // cyan
+    '#f97316', // orange
+    '#84cc16', // lime
+  ]
+  
+  // Générer un hash simple du UID pour obtenir un index de couleur consistant
+  let hash = 0
+  for (let i = 0; i < uid.length; i++) {
+    hash = ((hash << 5) - hash + uid.charCodeAt(i)) & 0xffffffff
+  }
+  
+  return colors[Math.abs(hash) % colors.length]
+}
+
+/**
+ * Vérifier si une cellule est verrouillée par un autre utilisateur
+ */
+function isCellLockedByOther(collaborateurId: string, date: string): boolean {
+  // Utiliser lockUpdateCounter pour forcer la réactivité
+  lockUpdateCounter.value // lecture de la variable réactive
+  
+  // Utiliser connectedUsers pour la réactivité
+  const users = connectedUsers.value
+  
+  if (!collaborationService) return false
+  
+  // Vérifier dans les sessions des utilisateurs connectés
+  const isLockedInUsers = users.some((user: DisplayUser) => 
+    user.sessions.some((session: any) => 
+      session.currentAction?.type === 'editing' &&
+      session.currentAction?.collaborateurId === collaborateurId &&
+      session.currentAction?.date === date &&
+      session.status === 'online'
+    )
+  )
+  
+  // Fallback sur le service
+  const isLockedInService = collaborationService.isCellLocked(collaborateurId, date)
+  
+  const isLocked = isLockedInUsers || isLockedInService
+  
+  return isLocked
+}
+
+/**
+ * Obtenir les informations de verrouillage d'une cellule
+ */
+function getCellLockInfo(collaborateurId: string, date: string) {
+  // Utiliser lockUpdateCounter pour forcer la réactivité
+  lockUpdateCounter.value // lecture de la variable réactive
+  
+  if (!collaborationService) return null
+  return collaborationService.getCellLock(collaborateurId, date)
+}
+
+/**
+ * Vérifier si un utilisateur édite une cellule spécifique
+ */
+function isUserEditingCell(user: any, collaborateurId: string, date: string): boolean {
+  if (!user.currentActivity) {
+    return false
+  }
+  
+  const activity = user.currentActivity
+  const isEditing = activity.collaborateurId === collaborateurId && 
+         activity.date === date &&
+         (activity.type === 'editing' || activity.type === 'modal')
+  
+  if (activity.collaborateurId === collaborateurId && activity.date === date) {
+    console.log(`🔒 Utilisateur ${user.displayName} editing cell [${collaborateurId}/${date}]: ${isEditing} (activityType: ${activity.type})`)
+  }
+  
+  return isEditing
+}
+
+/**
+ * Obtenir les classes CSS pour une cellule en fonction de son état de verrouillage
+ */
+function getCellLockClasses(collaborateurId: string, date: string): string[] {
+  const classes: string[] = []
+  
+  if (isCellLockedByOther(collaborateurId, date)) {
+    classes.push('cell-locked')
+    // Note: Les anciennes classes lock-type-* sont supprimées car nous utilisons maintenant l'overlay
+  }
+  
+  return classes
+}
+
+/**
+ * Obtenir les utilisateurs qui survolent une cellule spécifique
+ */
+function getHoveringUsers(collaborateurId: string, date: string): DisplayUser[] {
+  if (!USE_NEW_COLLABORATION) {
+    console.log('🚫 USE_NEW_COLLABORATION=false, pas de collaboration')
+    return []
+  }
+  
+  if (!collaborationService) {
+    console.log('🚫 collaborationService non disponible')
+    return []
+  }
+  
+  // Utiliser la propriété réactive pour forcer la mise à jour
+  // Utiliser la propriété réactive pour forcer la mise à jour
+  const currentUsers = collaborationService.users
+
+  // Utiliser le nouveau service de migration pour obtenir les utilisateurs survolant cette cellule
+  const hoveringUsers = (collaborationService.getHoveringUsers(collaborateurId, date) || [])
+
+  // Exclure uniquement la session courante (pas tout le uid) pour que les autres onglets/fenêtres
+  // du même utilisateur restent visibles (comme sur Google Docs)
+  let currentSessionId: string | null = null
+  try {
+    if (typeof (collaborationService as any)?.getSessionId === 'function') {
+      currentSessionId = (collaborationService as any).getSessionId()
+    } else {
+      currentSessionId = (collaborationService as any)?.sessionId || null
+    }
+  } catch (err) {
+    currentSessionId = (collaborationService as any)?.sessionId || null
+  }
+
+  const filteredUsers = hoveringUsers.filter(user => user.sessionId !== currentSessionId)
+  
+  // Debug rare pour éviter le spam console
+  const cellId = `${collaborateurId}_${date}`
+  if (Math.random() < 0.001) { // Log 0.1% des appels seulement
+    console.log(`🔍 Debug getHoveringUsers(${cellId}):`, {
+      serviceOk: !!collaborationService,
+      rawHovering: hoveringUsers.length,
+      filtered: filteredUsers.length,
+      currentSessionId,
+      users: filteredUsers.map(u => u.displayName)
+    })
+  }
+  
+  return filteredUsers
+}
+
+/**
+ * Gérer le survol d'une cellule (avec debounce)
+ */
+function handleCellHover(collaborateurId: string, date: string) {
+  // Annuler le timer de fin de hover si on revient rapidement
+  if (hoverEndGraceTimer) {
+    clearTimeout(hoverEndGraceTimer)
+    hoverEndGraceTimer = null
+  }
+
+  // Annuler le timer précédent de debounce s'il existe
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+  }
+
+  // Équilibre entre réactivité et performance
+  hoverDebounceTimer = setTimeout(() => {
+    if (collaborationService && typeof collaborationService.updateHoveredCell === 'function') {
+      collaborationService.updateHoveredCell(collaborateurId, date)
+    }
+  }, 10) // 10ms - bon compromis
+}
+
+/**
+ * Gérer la sortie du survol d'une cellule (immédiat)
+ */
+function handleCellHoverEnd() {
+  // Annuler le timer de debounce (on ne veut plus envoyer un nouveau hover)
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+    hoverDebounceTimer = null
+  }
+
+  // Délai de grâce réduit pour éviter les reliquats
+  if (hoverEndGraceTimer) {
+    clearTimeout(hoverEndGraceTimer)
+  }
+  hoverEndGraceTimer = setTimeout(() => {
+    hoverEndGraceTimer = null
+    if (collaborationService && typeof collaborationService.clearHoveredCell === 'function') {
+      collaborationService.clearHoveredCell()
+    }
+  }, 100) // 100ms pour éviter les nettoyages trop fréquents
+}
+
+/**
+ * Gérer l'ouverture d'une cellule pour l'édition
+ */
+function handleCellEdit(date: string, collaborateurId: string) {
+  // Notifier l'édition active (optionnel)
+}
+
+/**
+ * Gérer la fermeture de l'édition
+ */
+function handleEditClose() {
+  console.log('🔄 handleEditClose appelée', { selectedCell: selectedCell.value })
+  
+  // Libérer le verrou de la cellule si elle était verrouillée
+  if (selectedCell.value && collaborationService) {
+    const cellId = `${selectedCell.value.collaborateurId}-${selectedCell.value.date}`
+    console.log(`🔓 Tentative libération verrou pour: ${cellId}`)
+    collaborationService.unlockCell(selectedCell.value.collaborateurId, selectedCell.value.date)
+    console.log(`🔓 Verrou libéré pour ${cellId}`)
+  }
+  
+  // Fermer le modal et nettoyer l'état
+  showDispoModal.value = false
+  selectedCell.value = null
+  selectedCellDispos.value = []
+  
+  console.log('🔄 État nettoyé après fermeture du formulaire')
+}
+
+/**
+ * Gérer les changements temps réel reçus
+ */
+function handleRealtimeChanges(changes: any[]) {
+  console.log(`📡 Traitement de ${changes.length} changement(s) temps réel`)
+  
+  let hasChanges = false
+  let conflictDetected = false
+  
+  changes.forEach(change => {
+    const { type, date, disponibilite } = change
+    
+    // Détecter les conflits : si l'utilisateur a la modale ouverte pour cette dispo
+    if (selectedCell.value && 
+        selectedCell.value.date === date && 
+        selectedCell.value.collaborateurId === disponibilite.collaborateurId &&
+        showDispoModal.value) {
+      conflictDetected = true
+      console.log(`⚠️ Conflit détecté: modification simultanée pour ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+    }
+    
+    // Récupérer les dispos existantes pour cette date
+    const existingDispos = disponibilitesCache.value.get(date) || []
+    
+    switch (type) {
+      case 'added':
+        // Vérifier que la dispo n'existe pas déjà (éviter les doublons)
+        if (!existingDispos.find(d => d.id === disponibilite.id)) {
+          existingDispos.push(disponibilite)
+          hasChanges = true
+          console.log(`➕ Ajout: ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+        }
+        break
+        
+      case 'modified':
+        const index = existingDispos.findIndex(d => d.id === disponibilite.id)
+        if (index !== -1) {
+          existingDispos[index] = disponibilite
+          hasChanges = true
+          console.log(`✏️ Modification: ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+        }
+        break
+        
+      case 'removed':
+        const removeIndex = existingDispos.findIndex(d => d.id === disponibilite.id)
+        if (removeIndex !== -1) {
+          existingDispos.splice(removeIndex, 1)
+          hasChanges = true
+          console.log(`🗑️ Suppression: ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+        }
+        break
+    }
+    
+    // Mettre à jour le cache
+    if (hasChanges) {
+      disponibilitesCache.value.set(date, [...existingDispos])
+    }
+  })
+  
+  if (hasChanges) {
+    // Notification différente selon s'il y a conflit ou non
+    if (conflictDetected) {
+      notify({
+        message: `⚠️ Modifications détectées sur des données que vous éditez`,
+        color: 'warning',
+        position: 'top-right',
+        duration: 5000
+      })
+    } else {
+      notify({
+        message: `${changes.length} mise(s) à jour reçue(s) en temps réel`,
+        color: 'info',
+        position: 'top-right',
+        duration: 2000
+      })
+    }
+    
+    // Mettre à jour les options de lieux
+    updateLieuxOptions()
+  }
 }
 
 function generateInitialDays() {
@@ -3141,7 +4036,18 @@ async function ensureRangePresent(start: string, end: string) {
 }
 
 async function appendDays(count: number) {
-  const lastDateStr = loadedDays.value[loadedDays.value.length - 1].date
+  if (loadedDays.value.length === 0) {
+    console.warn('⚠️ Impossible d\'ajouter des jours: loadedDays vide')
+    return
+  }
+  
+  const lastDay = loadedDays.value[loadedDays.value.length - 1]
+  if (!lastDay) {
+    console.warn('⚠️ Impossible d\'ajouter des jours: dernier jour non défini')
+    return
+  }
+  
+  const lastDateStr = lastDay.date
   const last = new Date(lastDateStr)
   const todayStr = toDateStr(new Date())
   
@@ -3279,6 +4185,22 @@ async function setupPlanningInteractions() {
 function handleCellClickNew(collaborateurId: string, date: string, event: MouseEvent) {
   const cellId = `${collaborateurId}-${date}`
   
+  // Vérifier si la cellule est verrouillée par un autre utilisateur
+  if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
+    const lock = collaborationService.getCellLock(collaborateurId, date)
+    if (lock) {
+      notify({
+        title: 'Cellule verrouillée',
+        message: `${lock.userName} est en train d'interagir avec cette cellule`,
+        color: 'warning',
+        duration: 3000
+      })
+      
+      console.log(`🔒 Interaction bloquée: cellule ${cellId} verrouillée par ${lock.userName}`)
+      return // Empêcher toute interaction
+    }
+  }
+  
   // Si Ctrl/Cmd est maintenu (mode sélection multiple) - AUCUNE modale ne doit s'ouvrir
   if (event.ctrlKey || event.metaKey) {
     event.preventDefault()
@@ -3388,8 +4310,10 @@ function handleCellMouseDown(collaborateurId: string, date: string, event: Mouse
 }
 
 function handleCellMouseEnter(collaborateurId: string, date: string) {
+  // Gérer le survol collaboratif
+  handleCellHover(collaborateurId, date)
+  
   if (isDraggingSelection.value) {
-    console.log('🔄 MouseEnter during drag:', collaborateurId, date)
     const cellId = `${collaborateurId}-${date}`
     
     // Vérifier qu'on reste sur le même collaborateur
@@ -3429,6 +4353,11 @@ function handleGlobalMouseUp() {
     dragStartCell.value = null
     console.log('🖱️ Sélection par glisser interrompue')
   }
+}
+
+// Gestionnaire pour nettoyer le hover quand la souris sort de la fenêtre
+function handleWindowMouseLeave() {
+  collaborationService.onMouseLeaveWindow()
 }
 
 // Gestion de la création par lot
@@ -3505,8 +4434,15 @@ async function refreshDisponibilites(clearCache = true) {
     // Recharger les données pour la période visible
     console.log(`📊 visibleDays.value.length: ${visibleDays.value.length}`)
     if (visibleDays.value.length > 0) {
-      const dateDebut = visibleDays.value[0].date
-      const dateFin = visibleDays.value[visibleDays.value.length - 1].date
+      const firstDay = visibleDays.value[0]
+      const lastDay = visibleDays.value[visibleDays.value.length - 1]
+      if (!firstDay || !lastDay) {
+        console.warn('⚠️ Impossible de recharger: jours non définis')
+        return
+      }
+      
+      const dateDebut = firstDay.date
+      const dateFin = lastDay.date
       
       console.log(`📥 Rechargement des données ${dateDebut} → ${dateFin}...`)
       await generateDisponibilitesForDateRange(dateDebut, dateFin)
@@ -3517,6 +4453,13 @@ async function refreshDisponibilites(clearCache = true) {
       console.log(`✅ Cache actualisé: ${disponibilitesCache.value.size} jours en cache`)
     } else {
       console.log('⚠️ Aucun jour visible, impossible de recharger')
+    }
+    
+    // Démarrer la synchronisation temps réel après le chargement initial
+    if (clearCache && visibleDays.value.length > 0) {
+      console.log('📡 Démarrage de la synchronisation temps réel...')
+      stopRealtimeSync() // Arrêter les anciens listeners
+      startRealtimeSync() // Démarrer un nouveau listener pour la zone visible
     }
     
     console.log('✅ Planning actualisé avec succès')
@@ -3530,22 +4473,6 @@ async function refreshDisponibilites(clearCache = true) {
 function getCollaborateurColor(collaborateurId: string): string {
   const collaborateur = collaborateurs.value.find(c => c.id === collaborateurId)
   return collaborateur?.color || '#666'
-}
-
-// Vérifier si une cellule est verrouillée
-function isCellLocked(collaborateurId: string, date: string): boolean {
-  const cellId = `${collaborateurId}-${date}`
-  const lock = cellLocks.value.get(cellId)
-  if (!lock) return false
-  
-  // Vérifier si le verrou n'a pas expiré
-  return Date.now() < lock.expiresAt
-}
-
-// Obtenir les informations de verrou d'une cellule
-function getCellLockInfo(collaborateurId: string, date: string) {
-  const cellId = `${collaborateurId}-${date}`
-  return cellLocks.value.get(cellId)
 }
 
 // Extraction des données des cellules sélectionnées pour le modal par lot
@@ -3644,6 +4571,128 @@ onMounted(async () => {
   await setupInfiniteScroll()
   await setupPlanningInteractions()
   
+  // Initialiser la présence utilisateur
+  await initializePresence()
+  
+  // Démarrer le système réactif de présence
+  startPresenceUpdates()
+  
+  // S'abonner aux changements de locks pour la réactivité
+  if (collaborationService && typeof collaborationService.onLockChange === 'function') {
+    collaborationService.onLockChange(() => {
+      // Incrémenter le compteur pour forcer la réactivité des locks
+      lockUpdateCounter.value++
+      console.log('🔄 Mise à jour locks détectée, compteur:', lockUpdateCounter.value)
+    })
+  }
+  
+  // Exposer globalement pour le debug
+  if (typeof window !== 'undefined') {
+    ;(window as any).collaborationService = collaborationService
+    ;(window as any).realtimeSync = realtimeSync
+    
+    // Exposer les fonctions de présence pour debug
+    ;(window as any).updatePresenceSets = updatePresenceSets
+    ;(window as any).hoveredCells = hoveredCells
+    ;(window as any).lockedCells = lockedCells
+    
+    // Fonction de test pour le verrouillage
+    ;(window as any).testLock = function(collaborateurId: string, date: string) {
+      console.log('🧪 Test lock pour:', collaborateurId, date)
+      if (collaborationService) {
+        console.log('📊 État avant lock:')
+        console.log('- SessionId:', (collaborationService as any).sessionId?.slice(-6))
+        console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
+        console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
+        
+        collaborationService.lockCellForEditing(collaborateurId, date).then(() => {
+          console.log('📊 État après lock:')
+          console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
+          console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
+        })
+      }
+    }
+    
+    ;(window as any).testUnlock = function(collaborateurId: string, date: string) {
+      console.log('🧪 Test unlock pour:', collaborateurId, date)
+      if (collaborationService) {
+        collaborationService.unlockCell(collaborateurId, date)
+        console.log('📊 État après unlock:')
+        console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
+        console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
+      }
+    }
+    
+    // Fonction de test pour le hover
+    ;(window as any).testHover = function(collaborateurId: string, date: string) {
+      console.log('🧪 Test hover pour:', collaborateurId, date)
+      if (collaborationService) {
+        console.log('📊 État avant hover:')
+        console.log('- getHoveringUsers:', collaborationService.getHoveringUsers(collaborateurId, date))
+        
+        collaborationService.updateHoveredCell(collaborateurId, date)
+        
+        setTimeout(() => {
+          console.log('📊 État après hover (500ms):')
+          console.log('- getHoveringUsers:', collaborationService.getHoveringUsers(collaborateurId, date))
+        }, 500)
+      }
+    }
+    
+    // Test diagnostique des classes CSS
+    ;(window as any).testCellClasses = function(collaborateurId: string, date: string) {
+      const cellSelector = `[data-day-date="${date}"]`
+      const cells = document.querySelectorAll(cellSelector)
+      const cell = Array.from(cells).find(el => {
+        const row = el.closest('.excel-row')
+        return row?.getAttribute('data-collaborateur-id') === collaborateurId
+      })
+      
+      if (cell) {
+        console.log('🎨 Classes CSS pour', collaborateurId, date, ':', cell.className)
+        console.log('🎨 Computed styles background:', window.getComputedStyle(cell).backgroundColor)
+        return {
+          element: cell,
+          classes: cell.className,
+          hasIndicator: cell.classList.contains('has-indicator'),
+          hasPresence: cell.classList.contains('has-presence'),
+          locked: cell.classList.contains('locked')
+        }
+      } else {
+        console.log('❌ Cellule non trouvée pour', collaborateurId, date)
+        return null
+      }
+    }
+    
+    // Test de force pour ajouter les classes CSS à une cellule
+    ;(window as any).forceTestClasses = function(collaborateurId?: string, date?: string) {
+      const targetCollab = collaborateurId || paginatedCollaborateurs.value[0]?.id
+      const targetDate = date || visibleDays.value[0]?.date
+      
+      if (!targetCollab || !targetDate) {
+        console.log('❌ Pas de collaborateur ou date disponible')
+        return
+      }
+      
+      const cellSelector = `[data-day-date="${targetDate}"]`
+      const cells = document.querySelectorAll(cellSelector)
+      const cell = Array.from(cells).find(el => {
+        const row = el.closest('.excel-row')
+        return row?.getAttribute('data-collaborateur-id') === targetCollab
+      }) as HTMLElement
+      
+      if (cell) {
+        cell.classList.add('has-indicator', 'has-presence')
+        console.log('✅ Classes forcées sur', targetCollab, targetDate)
+        console.log('🎨 Classes actuelles:', cell.className)
+        return cell
+      } else {
+        console.log('❌ Cellule non trouvée pour', targetCollab, targetDate)
+        return null
+      }
+    }
+  }
+  
   // Gestionnaires d'événements clavier pour la sélection par lot
   document.addEventListener('keydown', handleKeyDown)
   document.addEventListener('keyup', handleKeyUp)
@@ -3652,6 +4701,11 @@ onMounted(async () => {
   // Gestionnaire global pour le clic-glisser
   document.addEventListener('mouseup', handleGlobalMouseUp)
   
+  // Gestionnaire pour nettoyer le hover quand la souris sort de la fenêtre
+  document.addEventListener('mouseleave', handleWindowMouseLeave)
+  
+  // Gestionnaire pour les mouvements de souris (désactivé - on utilise le survol de cellules)
+  
   measureAndSetHeaderHeight()
   recomputeWindow(planningScroll.value || null)
   measureGridOrigins()
@@ -3659,9 +4713,13 @@ onMounted(async () => {
   // today overlay piloté par CSS vars
   // Charger immédiatement les dispos pour la fenêtre initiale complète
   if (loadedDays.value.length > 0) {
-    const start = loadedDays.value[0].date
-    const end = loadedDays.value[loadedDays.value.length - 1].date
-    await generateDisponibilitesForDateRange(start, end)
+    console.log('🚀 Chargement initial avec sync temps réel...')
+    // Utiliser refreshDisponibilites au lieu de generateDisponibilitesForDateRange
+    // pour déclencher la synchronisation temps réel
+    await refreshDisponibilites(true)
+    
+    // Mettre à jour la vue de présence
+    updatePresenceView()
     
     // Détecter et corriger automatiquement les missions overnight existantes (silencieux)
     // Seulement si des données sont chargées et qu'il y a potentiellement des missions à corriger
@@ -3694,6 +4752,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  
+  // Nettoyer l'intervalle de présence
+  if (presenceUpdateInterval) {
+    clearInterval(presenceUpdateInterval)
+    presenceUpdateInterval = null
+  }
 })
 
 // Réagir à toute mutation des jours chargés (append/prepend)
@@ -3702,6 +4766,30 @@ watch(loadedDays, () => {
   // après ajout/suppression de jours, re-mesurer l’origine des colonnes
   requestAnimationFrame(() => { recomputeWindow(planningScroll.value || null); measureGridOrigins(); measureRowPitch(); })
 })
+
+// Watchers pour mettre à jour les Sets réactifs
+watch([visibleDays, paginatedCollaborateurs], () => {
+  updatePresenceSets()
+}, { immediate: true })
+
+// Update cyclique pour synchroniser avec RTDB
+let presenceUpdateInterval: number | null = null
+let forceUpdateCounter = 0
+
+function startPresenceUpdates() {
+  if (presenceUpdateInterval) clearInterval(presenceUpdateInterval)
+  
+  presenceUpdateInterval = setInterval(() => {
+    forceUpdateCounter++
+    // Force une mise à jour complète toutes les 10 itérations (2 secondes)
+    if (forceUpdateCounter >= 10) {
+      forceUpdateCounter = 0
+      hoveredCells.value = new Set() // Force le changement
+      lockedCells.value = new Set()
+    }
+    updatePresenceSets()
+  }, 200) // Équilibre optimal : pas trop rapide pour l'envoi, assez rapide pour la réception
+}
 
 // Panning (drag pour scroll diagonal)
 const isPanning = ref(false)
@@ -3764,7 +4852,23 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('keyup', handleKeyUp)
   document.removeEventListener('mouseup', handleGlobalMouseUp)
+  document.removeEventListener('mouseleave', handleWindowMouseLeave)
   document.body.classList.remove('selection-mode')
+  
+  // Nettoyer les gestionnaires de curseur collaboratif
+  // Nettoyage des gestionnaires d'événements
+  
+  // Nettoyer la synchronisation temps réel
+  stopRealtimeSync()
+  
+  // Nettoyer le timer de debounce
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+    hoverDebounceTimer = null
+  }
+  
+  // Nettoyer la présence utilisateur
+  collaborationService.cleanup()
 })
 
 // Pan mobile à deux doigts (n'altère pas le scroll à un doigt)
@@ -3804,9 +4908,128 @@ function onTouchStart(e: TouchEvent) {
   window.addEventListener('touchend', onEnd)
   window.addEventListener('touchcancel', onEnd)
 }
+
+// Cleanup des listeners de collaboration lors du démontage du composant
+onUnmounted(() => {
+  if (activityUnsubscribe.value) {
+    activityUnsubscribe.value()
+  }
+  if (lockUnsubscribe.value) {
+    lockUnsubscribe.value()
+  }
+})
 </script>
 
 <style scoped>
+/* ========================================
+   PLACEHOLDER DE CHARGEMENT INITIAL
+   ======================================== */
+.initial-loading-placeholder {
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 600px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.placeholder-header {
+  margin-bottom: 24px;
+}
+
+.placeholder-title {
+  height: 28px;
+  width: 300px;
+  background: #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.placeholder-subtitle {
+  height: 18px;
+  width: 200px;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.placeholder-content {
+  display: flex;
+  gap: 20px;
+}
+
+.placeholder-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.placeholder-collaborateur {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.placeholder-avatar {
+  width: 40px;
+  height: 40px;
+  background: #e2e8f0;
+  border-radius: 50%;
+}
+
+.placeholder-name {
+  height: 16px;
+  width: 120px;
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.placeholder-grid {
+  flex: 1;
+  overflow: hidden;
+}
+
+.placeholder-days-header {
+  display: flex;
+  gap: 1px;
+  margin-bottom: 8px;
+}
+
+.placeholder-day {
+  width: 100px;
+  height: 60px;
+  background: #e2e8f0;
+  border-radius: 6px;
+}
+
+.placeholder-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.placeholder-row {
+  display: flex;
+  gap: 1px;
+}
+
+.placeholder-cell {
+  width: 100px;
+  height: 50px;
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ========================================
+   STYLES EXISTANTS
+   ======================================== */
 /* Modal design mobile-first (style unifié) */
 .dispo-modal-mobile {
   padding: 12px;
@@ -4388,6 +5611,296 @@ function onTouchStart(e: TouchEvent) {
   border: 1px solid #10b981;
 }
 
+.realtime-badge {
+  position: fixed;
+  top: 20px;
+  left: 200px;
+  z-index: 1000;
+  background: #1e40af;
+  color: #dbeafe;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.realtime-badge:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.listeners-count {
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* Badge présence utilisateurs */
+.users-presence-badge {
+  position: fixed;
+  top: 20px;
+  left: 380px;
+  z-index: 1000;
+  background: #059669;
+  color: #d1fae5;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid #10b981;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.users-avatars {
+  display: flex;
+  gap: 4px;
+}
+
+.user-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #10b981;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid #065f46;
+  position: relative;
+}
+
+.user-avatar.multi-session {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 0 1px #fbbf24;
+}
+
+.multi-tab-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #f59e0b;
+  color: white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  border: 1px solid #d97706;
+}
+
+.sessions-count {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+.user-avatar.more-users {
+  background: #047857;
+  font-size: 8px;
+}
+
+/* Indicateurs de survol collaboratifs dans les cellules */
+.cell-hover-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  z-index: 4000; /* Au-dessus de la grille et overlays potentiels */
+  transition: all 0.3s ease;
+  opacity: 0.9;
+}
+
+/* Mode édition : plus grand et plus visible */
+.cell-hover-indicator.editing-mode {
+  width: 40px;
+  height: 40px;
+  z-index: 4005; /* légèrement au-dessus */
+  opacity: 1;
+}
+
+.cell-hover-indicator.editing-mode .hover-pulse {
+  border-width: 4px;
+  animation: pulseEditing 1.5s infinite ease-in-out;
+}
+
+.cell-hover-indicator.editing-mode .hover-user-name {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  border-width: 3px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.hover-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--user-color, #3b82f6);
+  border-radius: 50%;
+  background: var(--user-color, #3b82f6);
+  opacity: 0.3;
+  animation: pulseHover 2s infinite ease-in-out;
+  transition: all 0.3s ease;
+}
+
+.hover-user-name {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--user-color, #3b82f6);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  z-index: 11;
+  animation: hoverPersist 3s infinite ease-in-out;
+  pointer-events: none;
+  /* Forcer priorité sur styles globaux */
+  background: var(--user-color, #3b82f6) !important;
+}
+
+/* Animation de persistance pour les indicateurs de survol */
+@keyframes hoverPersist {
+  0%, 90% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  95% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.editing-lock-icon {
+  font-size: 12px !important;
+  color: white;
+  animation: lockBounce 0.5s ease-out;
+}
+
+/* Animation d'apparition du cadenas */
+@keyframes lockBounce {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Animation du pulse améliorée */
+@keyframes pulseHover {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.2; 
+  }
+  50% { 
+    transform: scale(1.4);
+    opacity: 0.05; 
+  }
+}
+
+/* Animation spéciale pour le mode édition */
+@keyframes pulseEditing {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.3;
+    border-color: var(--user-color, #ef4444);
+  }
+  50% { 
+    transform: scale(1.3);
+    opacity: 0.1;
+    border-color: #ef4444;
+  }
+}
+
+.cursor-label::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 4px;
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 3px solid var(--user-color, #3b82f6);
+}
+
+/* Indicateurs d'édition active */
+.active-editing-indicators {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editing-indicator {
+  background: var(--user-color, #3b82f6);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: pulse-edit 2s infinite;
+}
+
+@keyframes pulse-edit {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.editing-user {
+  font-weight: 500;
+}
+
 /* Barre de statut de sélection moderne */
 .selection-status-bar {
   position: fixed;
@@ -4915,7 +6428,7 @@ function onTouchStart(e: TouchEvent) {
 .collaborateur-name {
   font-weight: 700;
   font-size: 12px;
-  color: #333;
+  color: #1f2937;
   margin-bottom: 1px;
   line-height: 1.2;
 }
@@ -4962,7 +6475,7 @@ function onTouchStart(e: TouchEvent) {
 
 .location {
   font-size: 11px;
-  color: #666;
+  color: #4b5563;
 }
 
 /* Badge métier à droite de la cellule collaborateur */
@@ -4971,7 +6484,7 @@ function onTouchStart(e: TouchEvent) {
   right: 10px;
   top: 8px;
   background: #e1f5fe;
-  color: #0277bd;
+  color: #01579b;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 10px;
@@ -4990,7 +6503,7 @@ function onTouchStart(e: TouchEvent) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #4b5563;
+  color: #374151;
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
@@ -5048,6 +6561,287 @@ function onTouchStart(e: TouchEvent) {
   cursor: pointer;
   /* Pas de transforms ici pour fiabiliser sticky */
   transition: none !important;
+}
+
+/* ==========================================
+   DESIGN ÉLÉGANT - COULEURS VUESTIC + ICÔNES MATERIAL
+   ========================================== */
+
+/* Cellules verrouillées - Style warning (ambre/orange) */
+.excel-cell.locked {
+  position: relative;
+  background: color-mix(in srgb, var(--va-warning) 15%, var(--va-background-element)) !important;
+  border: 2px solid var(--va-warning) !important;
+  box-shadow: 
+    0 2px 8px color-mix(in srgb, var(--va-warning) 25%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.2s ease;
+}
+
+.excel-cell.locked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 9;
+}
+
+.excel-cell.locked::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ed6c02'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 1;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Cellules avec présence (hover) - Style primary (bleu) */
+.excel-cell.has-presence {
+  position: relative;
+  background: color-mix(in srgb, var(--va-primary) 20%, var(--va-background-element)) !important;
+  border: 2px solid var(--va-primary) !important;
+  box-shadow: 
+    0 0 20px color-mix(in srgb, var(--va-primary) 30%, transparent),
+    0 2px 8px color-mix(in srgb, var(--va-primary) 25%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  animation: presencePulse 2s infinite ease-in-out;
+  transition: all 0.3s ease;
+}
+
+.excel-cell.has-presence::after {
+  /* Afficher les initiales via l'attribut data-initials */
+  content: attr(data-initials);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--va-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: initialsAppear 0.3s ease-out;
+}
+
+/* Transition vers lock pour les cellules avec initiales */
+.excel-cell.has-presence.has-initials-locked::after {
+  background: var(--va-warning);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
+  animation: lockTransition 0.5s ease-out;
+}
+
+/* Style pour les initiales injectées dynamiquement */
+.presence-initials {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--va-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: initialsAppear 0.3s ease-out;
+}
+
+/* Animation d'apparition des initiales */
+@keyframes initialsAppear {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Style pour les initiales quand la cellule passe en mode lock */
+.presence-initials.locked-transition {
+  background: var(--va-warning);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
+  animation: lockTransition 0.5s ease-out;
+}
+
+/* Animation de transition vers le lock */
+@keyframes lockTransition {
+  0% {
+    background: var(--va-primary);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  60% {
+    background: var(--va-warning);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    background: var(--va-warning);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Style pour l'overlay du cadenas (pour cohérence avec les initiales) */
+.cell-lock-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  background: var(--va-warning);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  z-index: 15;
+  animation: lockAppear 0.4s ease-out;
+}
+
+.cell-lock-overlay .lock-icon {
+  font-size: 12px !important;
+  color: white;
+  animation: lockBounce 0.5s ease-out;
+}
+
+/* Animation d'apparition du cadenas */
+@keyframes lockAppear {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Animation subtile pour la présence */
+@keyframes presencePulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 15px color-mix(in srgb, var(--va-primary) 25%, transparent),
+      0 2px 8px color-mix(in srgb, var(--va-primary) 20%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 0 25px color-mix(in srgb, var(--va-primary) 40%, transparent),
+      0 4px 12px color-mix(in srgb, var(--va-primary) 30%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+/* Indicateur générique moins visible pour ne pas interferer */
+.excel-cell.has-indicator:not(.locked):not(.has-presence) {
+  outline: 1px solid color-mix(in srgb, var(--va-primary) 30%, transparent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--va-primary) 5%, var(--va-background-element)) !important;
+}
+
+/* Interactions avec la souris pour les cellules normales */
+.excel-cell:not(.locked):not(.has-presence):hover {
+  background: color-mix(in srgb, var(--va-primary) 8%, var(--va-background-element)) !important;
+  transform: scale(1.02);
+  transition: all 0.15s ease;
+}
+
+/* Effet de survol sur cellules avec présence */
+.excel-cell.has-presence:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 30px color-mix(in srgb, var(--va-primary) 45%, transparent),
+    0 4px 16px color-mix(in srgb, var(--va-primary) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Effet de survol sur cellules verrouillées */
+.excel-cell.locked:hover {
+  transform: scale(1.03);
+  box-shadow: 
+    0 4px 12px color-mix(in srgb, var(--va-warning) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Animation d'apparition pour nouvelles présences */
+@keyframes presenceAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.excel-cell.has-presence {
+  animation: presenceAppear 0.3s ease-out, presencePulse 2s infinite ease-in-out 0.3s;
+}
+
+/* Mode sombre - les couleurs CSS Vuestic s'adaptent automatiquement */
+@media (prefers-color-scheme: dark) {
+  .excel-cell.locked::after,
+  .excel-cell.has-presence::after {
+    filter: brightness(1.2) contrast(1.1);
+  }
 }
 
 /* Cellule sélectionnée pour la sélection par lot */
@@ -5686,30 +7480,6 @@ body.dragging-selection .excel-cell {
   }
 }
 
-/* Bouton flottant pour corriger les missions overnight */
-.overnight-fix-fab {
-  position: fixed;
-  top: 80px;
-  right: 20px;
-  z-index: 1000;
-  background: white;
-  border-radius: 25px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.overnight-fix-fab:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 768px) {
-  .overnight-fix-fab {
-    top: 60px;
-    right: 10px;
-  }
-}
-
 /* === POPUP CONTEXTUEL === */
 
 /* Container principal du popup d'ajout rapide */
@@ -6141,4 +7911,83 @@ body.dragging-selection .excel-cell {
 .quick-add-footer .action-btn {
   min-width: 80px;
 }
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Système de statut centralisé */
+.system-status-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--va-background-secondary);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--va-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-indicator.synced {
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.users {
+  background: #3b82f6;
+}
+
+.status-indicator.emulator {
+  background: #f59e0b;
+}
+
+.mini-avatars {
+  display: flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.mini-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--va-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mini-avatar.more {
+  background: #6b7280;
+  font-size: 8px;
+}
+
+/* Fin des styles */
 </style>
