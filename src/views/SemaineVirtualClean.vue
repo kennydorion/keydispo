@@ -21,6 +21,97 @@
   <!-- Contenu principal -->
   <div class="main-content">
 
+  <!-- Modale de chargement plein écran - Design moderne -->
+  <va-modal
+    v-model="showLoadingModal"
+    :hide-default-actions="true"
+    :closeable="false"
+    :no-outside-dismiss="true"
+    :no-padding="true"
+    size="large"
+    fullscreen
+    blur
+    overlay-opacity="0.9"
+  >
+    <div class="modern-loading-container">
+      <div class="loading-card">
+        <div class="loading-header">
+          <va-icon name="dashboard" size="56px" color="primary" class="mb-4" />
+          <h1 class="loading-title">KeyDispo</h1>
+          <p class="loading-subtitle">Préparation de votre planning</p>
+        </div>
+        
+        <div class="loading-content">
+          <div class="loading-spinner-container">
+            <va-icon name="refresh" size="48px" spin color="primary" />
+          </div>
+          
+          <div class="loading-status">
+            <h3 v-if="loadingCollaborateurs" class="status-text">
+              <va-icon name="people" size="20px" class="mr-2" />
+              Chargement des collaborateurs
+            </h3>
+            <h3 v-else-if="loadingDisponibilites || fetchingRanges" class="status-text">
+              <va-icon name="calendar_today" size="20px" class="mr-2" />
+              Récupération des disponibilités
+            </h3>
+            <h3 v-else-if="allCollaborateurs.length === 0" class="status-text">
+              <va-icon name="settings" size="20px" class="mr-2" />
+              Initialisation des données
+            </h3>
+            <h3 v-else-if="visibleDays.length === 0" class="status-text">
+              <va-icon name="view_module" size="20px" class="mr-2" />
+              Préparation de l'interface
+            </h3>
+            <h3 v-else class="status-text">
+              <va-icon name="check_circle" size="20px" class="mr-2" />
+              Finalisation de l'affichage
+            </h3>
+          </div>
+          
+          <div class="progress-container">
+            <va-progress-bar 
+              :model-value="loadingCollaborateurs ? 25 : 
+                           (loadingDisponibilites || fetchingRanges) ? 50 : 
+                           allCollaborateurs.length === 0 ? 70 :
+                           visibleDays.length === 0 ? 85 : 95"
+              color="primary"
+              size="large"
+              rounded
+            />
+            <p class="progress-text">
+              {{ loadingCollaborateurs ? '25' : 
+                 (loadingDisponibilites || fetchingRanges) ? '50' : 
+                 allCollaborateurs.length === 0 ? '70' :
+                 visibleDays.length === 0 ? '85' : '95' }}% terminé
+            </p>
+          </div>
+        </div>
+        
+        <div class="loading-footer">
+          <p class="loading-tip">
+            <va-icon name="lightbulb" size="16px" class="mr-1" />
+            Optimisation de l'affichage pour une meilleure performance
+          </p>
+        </div>
+      </div>
+    </div>
+  </va-modal>
+
+  <!-- Notification toast de chargement aussi -->
+  <va-toast
+    v-if="showLoadingModal"
+    :model-value="true"
+    position="top-center"
+    color="primary"
+    message="🔄 Chargement du planning en cours..."
+    duration="0"
+  />
+
+  <div class="planning-manager">
+    </div>
+  </div>
+
   <!-- Indicateur de chargement (désactivé: UX non-bloquante, on utilise des placeholders gris) -->
 
     <!-- Suggestions contextuelles -->
@@ -30,9 +121,11 @@
     </div>
 
     <!-- Indicateur de chargement extension (non bloquant) -->
-    <div v-if="extending" class="extending-indicator">
+    <div v-if="extending || (isBusy && !isInitialLoad)" class="extending-indicator">
       <va-icon name="refresh" spin size="1rem" />
-      <span>Chargement...</span>
+      <span v-if="extending">Extension en cours...</span>
+      <span v-else-if="fetchingRanges">Chargement des données...</span>
+      <span v-else>Synchronisation...</span>
     </div>
 
     <!-- Badge d’environnement: émulateur local -->
@@ -48,6 +141,28 @@
         <va-icon name="sync" spin size="14px" />
         <span>Temps réel</span>
         <span class="count">{{ realtimeListeners.length }}</span>
+      </div>
+
+      <!-- Utilisateurs actifs sur le planning -->
+      <div v-if="getActiveUsers().length > 0" class="status-item active-users">
+        <va-icon name="visibility" size="14px" />
+        <span>{{ getActiveUsers().length }} actif{{ getActiveUsers().length > 1 ? 's' : '' }}</span>
+        
+        <!-- Initiales des utilisateurs actifs -->
+        <div class="active-user-avatars">
+          <div 
+            v-for="user in getActiveUsers().slice(0, 5)" 
+            :key="user.userId"
+            class="active-user-avatar"
+            :style="{ backgroundColor: getUserColor(user.userId) }"
+            :title="`${user.userName} - ${user.status}`"
+          >
+            {{ getUserInitials({ userEmail: user.userName }) }}
+          </div>
+          <div v-if="getActiveUsers().length > 5" class="active-user-avatar more">
+            +{{ getActiveUsers().length - 5 }}
+          </div>
+        </div>
       </div>
 
       <!-- Utilisateurs connectés -->
@@ -211,7 +326,7 @@
         </div>
 
         <!-- Lignes + overlays (placés DANS le même contexte de stacking que les cellules) -->
-  <div class="excel-rows" :style="{ '--row-height': rowHeight + 'px', '--row-pitch': (rowHeight + 1) + 'px' }" ref="rowsRef">
+  <div class="excel-rows" :style="{ '--row-height': rowHeight + 'px', '--row-pitch': (rowHeight + 1) + 'px', height: gridTotalHeight }" ref="rowsRef">
           <!-- Overlay de survol horizontal (ligne) -->
           <div class="row-hover-overlay" aria-hidden="true" ref="rowHoverEl"></div>
           <!-- Overlays verticaux (clipés sur la grille) et bande sticky du jour -->
@@ -220,13 +335,16 @@
             <div class="today-overlay"></div>
           </div>
           <div class="today-overlay-left" aria-hidden="true"></div>
-          <div
-            v-for="collaborateur in paginatedCollaborateurs"
-            :key="collaborateur.id"
-            class="excel-row"
-            :data-collaborateur-id="collaborateur.id"
-            :style="{ height: rowHeight + 'px' }"
-          >
+          
+          <!-- Conteneur virtualisé des collaborateurs -->
+          <div class="rows-window" :style="{ transform: `translateY(${rowWindowOffsetPx}px)` }">
+            <div
+              v-for="collaborateur in paginatedCollaborateurs"
+              :key="collaborateur.id"
+              class="excel-row"
+              :data-collaborateur-id="collaborateur.id"
+              :style="{ height: rowHeight + 'px' }"
+            >
             <!-- Colonne gauche sticky -->
             <div class="collab-sticky" :style="{ '--collaborateur-color': getCollaborateurColor(collaborateur.id) }">
               <div class="collaborateur-color-bar"></div>
@@ -276,8 +394,8 @@
                         const isLocked = isLockedByOthers(collaborateur.id, day.date)
                         const hasHover = isHoveredByOthers(collaborateur.id, day.date)
                         // TEST protection: if first visible cell, keep test marker
-                        const firstCollab = paginatedCollaborateurs.value?.[0]
-                        const firstDay = visibleDays.value?.[0]
+                        const firstCollab = paginatedCollaborateurs[0]
+                        const firstDay = visibleDays[0]
                         const isTestCell = firstCollab && firstDay && collaborateur.id === firstCollab.id && day.date === firstDay.date
                         const result = isLocked || hasHover || isTestCell
                         return result
@@ -290,7 +408,10 @@
                     getCellKindClass(collaborateur.id, day.date),
                     getCellLockClasses(collaborateur.id, day.date)
                   ]"
-                  :style="{ width: dayWidth + 'px' }"
+                  :style="{ 
+                    width: dayWidth + 'px',
+                    '--hovering-user-color': getHoveringUserColor(collaborateur.id, day.date)
+                  }"
                   @click.stop="handleCellClickNew(collaborateur.id, day.date, $event)"
                   @mousedown.stop="handleCellMouseDown(collaborateur.id, day.date, $event)"
                   @mouseenter="handleCellMouseEnter(collaborateur.id, day.date)"
@@ -359,12 +480,12 @@
               </div>
             </div>
           </div>
+          <!-- Fin du conteneur virtualisé des collaborateurs -->
         </div>
       </div>
     </div>
 
-    <!-- Modal d'édition (téléportée dans <body> pour éviter les contextes de stacking locaux) -->
-    <teleport to="body">
+          <!-- Fin du conteneur virtualisé des collaborateurs -->
     <va-modal 
       v-model="showDispoModal" 
       :hide-default-actions="true"
@@ -385,8 +506,6 @@
               <p class="collaborateur-meta-large">{{ formatModalDate(selectedCell.date) }}</p>
             </div>
           </div>
-          
-          <!-- Section principale du formulaire -->
         </div>
 
         <!-- Section 1: Lignes existantes -->
@@ -482,7 +601,7 @@
                   <va-button
                     v-for="typeOpt in typeOptions"
                     :key="typeOpt.value"
-                    :color="editingDispo.type === typeOpt.value ? getTypeColor(typeOpt.value) : 'light'"
+                    :color="editingDispo.type === typeOpt.value ? getTypeColor(typeOpt.value) : 'secondary'"
                     :icon="getTypeIcon(typeOpt.value)"
                     class="type-btn-full"
                     @click="setEditingType(typeOpt.value)"
@@ -499,7 +618,7 @@
                   <va-button
                     v-for="formatOpt in timeKindOptionsFor(editingDispo.type)"
                     :key="formatOpt.value"
-                    :color="editingDispo.timeKind === formatOpt.value ? 'success' : 'light'"
+                    :color="editingDispo.timeKind === formatOpt.value ? 'success' : 'secondary'"
                     :icon="getTimeKindIcon(formatOpt.value)"
                     class="type-btn-full"
                     @click="setEditingTimeKind(formatOpt.value)"
@@ -527,25 +646,35 @@
               <div v-if="editingDispo.timeKind === 'range'" class="form-subsection">
                 <h4 class="subsection-title">Horaires personnalisées</h4>
                 <div class="time-fields-mobile">
-                  <va-input
-                    v-model="editingDispo.heure_debut"
-                    type="time"
-                    step="300"
-                    label="Début"
-                    placeholder="HH:MM"
-                    size="small"
-                    class="time-field-mobile"
-                  />
-                  <va-input
-                    v-model="editingDispo.heure_fin"
-                    type="time"
-                    step="300"
-                    label="Fin"
-                    placeholder="HH:MM"
-                    size="small"
-                    class="time-field-mobile"
-                    :disabled="!editingDispo.heure_debut"
-                  />
+                  <!-- Horaires personnalisées avec selects quarts d'heure -->
+                  <div class="time-fields-mobile">
+                    <!-- Heure de début -->
+                    <div class="custom-time-input">
+                      <label class="time-label">Début</label>
+                      <va-input
+                        v-model="editingDispo.heure_debut"
+                        type="time"
+                        step="900"
+                        size="small"
+                        class="time-input"
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                    
+                    <!-- Heure de fin -->
+                    <div class="custom-time-input">
+                      <label class="time-label">Fin</label>
+                      <va-input
+                        v-model="editingDispo.heure_fin"
+                        type="time"
+                        step="900"
+                        size="small"
+                        class="time-input"
+                        placeholder="HH:MM"
+                        :disabled="!editingDispo.heure_debut"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -618,8 +747,10 @@
           </va-button>
         </div>
       </div>
-  </va-modal>
-  </teleport>
+    </va-modal>
+
+  </div> <!-- Fin excel-planning-container -->
+  </div> <!-- Fin planning-app -->
 
   <!-- Modal de sélection par lot -->
   <BatchDisponibiliteModal
@@ -654,9 +785,6 @@
       <span class="editing-user">{{ user.displayName }} édite</span>
     </div>
   </div>
-  
-  </div> <!-- Fin main-content -->
-</div> <!-- Fin planning-app -->
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
@@ -667,8 +795,9 @@ import BatchDisponibiliteModal from '../components/BatchDisponibiliteModal.vue'
 import CollaborateurInfoModal from '../components/CollaborateurInfoModal.vue'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
+import { useUserPreferences } from '../services/userPreferences'
 import { db, auth } from '../services/firebase'
-import { collection, query, where, orderBy, getDocs, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, getDocs, doc, writeBatch, serverTimestamp, onSnapshot } from 'firebase/firestore'
 import { realtimeSync } from '../services/realtimeSync'
 
 // Service de collaboration - nouveau système unifié multi-utilisateur (Phase 2)
@@ -692,6 +821,12 @@ const activityUnsubscribe = ref<(() => void) | null>(null)
 const lockUnsubscribe = ref<(() => void) | null>(null)
 const selectionUnsubscribe = ref<(() => void) | null>(null)
 const { users: realConnectedUsers, stats: sessionStats } = useSessionDisplay()
+
+// User preferences pour la couleur de présence
+const { preferences, loadPreferences } = useUserPreferences()
+
+// Listener pour synchronisation temps réel des préférences
+let preferencesUnsubscribe: (() => void) | null = null
 
 // Ouvre le sélecteur d'heure natif en cliquant sur l'icône append
 function openTimePickerFromIcon(e: MouseEvent) {
@@ -922,6 +1057,30 @@ const allCollaborateurs = ref<Collaborateur[]>([])
 const loadingCollaborateurs = ref(true)
 const disponibilitesCache = ref<Map<string, Disponibilite[]>>(new Map())
 
+// État de chargement initial
+const isInitialLoad = ref(true)
+const planningReady = ref(false)
+
+// Modale de chargement Vuestic - FORCÉE COMME FERMÉE
+const showLoadingModal = computed(() => false) // TEMPORAIREMENT FORCÉ À FALSE
+
+// État combiné : planning vraiment prêt - FORCÉ POUR DEBUG
+const isPlanningFullyReady = computed(() => {
+  // TEMPORAIREMENT FORCÉ À TRUE POUR RESTAURER LES CELLULES
+  return true
+  
+  /*
+  const ready = planningReady.value && 
+         !loadingCollaborateurs.value && 
+         !loadingDisponibilites.value &&
+         allCollaborateurs.value.length > 0 &&
+         visibleDays.value.length > 0
+  
+  
+  return ready
+  */
+})
+
 // Synchronisation temps réel
 const realtimeListeners = ref<string[]>([])
 const isRealtimeActive = ref(false)
@@ -958,6 +1117,32 @@ function debouncedUpdatePresenceSets() {
 function isHoveredByOthers(collaborateurId: string, date: string): boolean {
   const cellId = `${collaborateurId}_${date}`
   return hoveredCells.value.has(cellId)
+}
+
+/**
+ * Obtenir l'utilisateur qui survole une cellule spécifique
+ */
+function getHoveringUser(collaborateurId: string, date: string): any | null {
+  const cellId = `${collaborateurId}_${date}`
+  if (!hoveredCells.value.has(cellId)) return null
+  
+  // Pour l'instant, on simule en retournant l'utilisateur actuel
+  // Dans un vrai système multi-utilisateur, on rechercherait dans les données de collaboration
+  return {
+    uid: auth.currentUser?.uid || 'unknown',
+    displayName: auth.currentUser?.displayName || 'Utilisateur',
+    email: auth.currentUser?.email || ''
+  }
+}
+
+/**
+ * Obtenir la couleur de l'utilisateur qui survole une cellule
+ */
+function getHoveringUserColor(collaborateurId: string, date: string): string {
+  const hoveringUser = getHoveringUser(collaborateurId, date)
+  if (!hoveringUser) return 'var(--va-primary)' // Couleur par défaut
+  
+  return getUserColor(hoveringUser.uid)
 }
 
 function isLockedByOthers(collaborateurId: string, date: string): boolean {
@@ -1178,7 +1363,7 @@ function updatePresenceSets() {
     hoveredCells.value = newHoveredCells
     // Debug conditionnel seulement si présence active
     if (debugInfo.hoveredCount > 0) {
-      console.log('🔄 Hover update:', [...newHoveredCells])
+      // Hover update
     }
   }
   if (lockedChanged) {
@@ -1236,7 +1421,7 @@ const editingDispoIndex = ref<number | null>(null)
 const isAddingNewDispo = ref(false)
 const editingDispo = ref<Partial<Disponibilite>>({
   type: 'disponible',
-  timeKind: 'full-day',
+  timeKind: 'full-day', // Valeur par défaut normale
   heure_debut: '09:00',
   heure_fin: '17:00',
   lieu: '',
@@ -1309,8 +1494,35 @@ const newDispo = ref<Disponibilite>({
 function openModalForCollaborateur(collaborateurId: string, date: string) {
   // Ne pas ouvrir si on est en mode multiselect
   if (isSelectionMode.value) {
-
     return
+  }
+  
+  // Vérifier si la cellule est verrouillée par un autre utilisateur
+  if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
+    const lock = collaborationService.getCellLock(collaborateurId, date)
+    if (lock) {
+      notify({
+        title: 'Cellule verrouillée',
+        message: `${lock.userName} est en train d'interagir avec cette cellule`,
+        color: 'warning',
+        duration: 3000
+      })
+      return // Empêcher l'ouverture de la modale
+    }
+  }
+  
+  // Vérifier si la cellule est sélectionnée par un autre utilisateur
+  if (collaborationService && collaborationService.isCellSelectedByOthers(collaborateurId, date)) {
+    const selection = collaborationService.getCellSelection(collaborateurId, date)
+    if (selection) {
+      notify({
+        title: 'Cellule en cours de sélection',
+        message: `${selection.userName} a sélectionné cette cellule`,
+        color: 'warning',
+        duration: 3000
+      })
+      return // Empêcher l'ouverture de la modale
+    }
   }
   
   // Ouvrir directement la modale existante
@@ -1374,6 +1586,9 @@ const visibleDays = computed(() => {
 })
 const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth.value) + 'px')
 
+// Hauteur totale de la grille des collaborateurs pour le scroll virtuel
+const gridTotalHeight = computed(() => (filteredCollaborateurs.value.length * rowHeight.value) + 'px')
+
 // Virtualisation horizontale des jours
 const windowStartIndex = ref(0)
 const windowEndIndex = ref(0)
@@ -1384,18 +1599,49 @@ const windowedDays = computed(() => visibleDays.value.slice(windowStartIndex.val
 function recomputeWindow(scroller?: HTMLElement | null) {
   const el = scroller || planningScroll.value
   if (!el) return
+  
+  // Recalcul de la fenêtre horizontale (dates)
   const { scrollLeft, clientWidth } = el
   const dw = dayWidth.value
   const firstIdx = Math.max(0, Math.floor(scrollLeft / dw) - windowPaddingCols)
   const lastIdx = Math.min(visibleDays.value.length - 1, Math.ceil((scrollLeft + clientWidth) / dw) + windowPaddingCols)
   windowStartIndex.value = firstIdx
   windowEndIndex.value = lastIdx
+  
+  // Recalcul de la fenêtre verticale (collaborateurs)
+  recomputeRowWindow(el)
 }
 
-// Optimisation : Limiter le nombre de collaborateurs affichés en une fois
+// === SCROLL VIRTUEL VERTICAL (Collaborateurs) ===
+const rowWindowStartIndex = ref(0)
+const rowWindowEndIndex = ref(0)
+const windowPaddingRows = 8 // lignes tampon de chaque côté
+const rowWindowOffsetPx = computed(() => rowWindowStartIndex.value * rowHeight.value)
+
+// Scroll virtuel pour les collaborateurs (vertical)
+const windowedCollaborateurs = computed(() => {
+  const start = rowWindowStartIndex.value
+  const end = Math.min(rowWindowEndIndex.value + 1, filteredCollaborateurs.value.length)
+  return filteredCollaborateurs.value.slice(start, end)
+})
+
+// Fonction pour recalculer la fenêtre de scroll vertical
+function recomputeRowWindow(scroller?: HTMLElement | null) {
+  const el = scroller || planningScroll.value
+  if (!el) return
+  const { scrollTop, clientHeight } = el
+  const rh = rowHeight.value
+  const firstRowIdx = Math.max(0, Math.floor(scrollTop / rh) - windowPaddingRows)
+  const lastRowIdx = Math.min(filteredCollaborateurs.value.length - 1, Math.ceil((scrollTop + clientHeight) / rh) + windowPaddingRows)
+  rowWindowStartIndex.value = firstRowIdx
+  rowWindowEndIndex.value = lastRowIdx
+}
+
+// Optimisation : Limiter le nombre de collaborateurs affichés en une fois (DEPRECATED - remplacé par scroll virtuel)
 const maxVisibleCollaborateurs = 100
 const paginatedCollaborateurs = computed(() => {
-  return filteredCollaborateurs.value.slice(0, maxVisibleCollaborateurs)
+  // Pour la compatibilité avec le code existant, utiliser windowedCollaborateurs
+  return windowedCollaborateurs.value
 })
 
 // Ref unique pour le conteneur scroll
@@ -2794,7 +3040,7 @@ function getTypeColor(type: string): string {
     case 'mission': return 'primary'
     case 'disponible': return 'success'
     case 'indisponible': return 'danger'
-    default: return 'light'
+    default: return 'secondary'
   }
 }
 
@@ -3187,7 +3433,7 @@ function goToNextWeek() {
 // Chargement des données
 async function loadCollaborateursFromFirebase() {
   try {
-    console.log('📥 Chargement des collaborateurs...')
+    // Chargement des collaborateurs
     loadingCollaborateurs.value = true
     
     const tenantId = AuthService.currentTenantId || 'keydispo'
@@ -3209,11 +3455,17 @@ async function loadCollaborateursFromFirebase() {
     
     collaborateurs.value = allCollaborateurs.value
     loadingCollaborateurs.value = false
-    console.log(`✅ ${collaborateursData.length} collaborateurs chargés`)
+    // Collaborateurs chargés
+    
+    // Vérifier si le planning est prêt
+    checkPlanningReadiness()
 
   } catch (error) {
     console.error('❌ Erreur chargement collaborateurs:', error)
     loadingCollaborateurs.value = false
+    
+    // Ne pas masquer l'overlay en cas d'erreur, laisser checkPlanningReadiness() gérer
+    console.log('⚠️ Erreur de chargement collaborateurs, l\'overlay reste affiché')
   }
 }
 
@@ -3261,7 +3513,7 @@ async function loadDisponibilitesFromFirebase(dateDebut: string, dateFin: string
       })
     })
     
-    console.log(`✅ ${disponibilites.length} disponibilités chargées`)
+    // Disponibilités chargées
     return disponibilites
     
   } catch (error) {
@@ -3269,6 +3521,9 @@ async function loadDisponibilitesFromFirebase(dateDebut: string, dateFin: string
     return []
   } finally {
     loadingDisponibilites.value = false
+    
+    // Vérifier si le planning est prêt
+    checkPlanningReadiness()
   }
 }
 
@@ -3345,6 +3600,9 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
       }
     } finally {
       fetchingRanges.value = false
+      
+      // Vérifier si le planning est prêt
+      checkPlanningReadiness()
     }
   }
   
@@ -3381,7 +3639,7 @@ function startRealtimeSync() {
     return
   }
   
-  console.log(`🔄 Démarrage sync temps réel: ${dateDebut} → ${dateFin}`)
+  // Démarrage sync temps réel
   
   // S'abonner aux changements
   const unsubscribeChanges = realtimeSync.onChanges(handleRealtimeChanges)
@@ -3449,10 +3707,154 @@ function getTotalSessionsCount(): number {
 }
 
 /**
+ * Obtenir les utilisateurs actifs sur le planning (présence, locks, sélections)
+ */
+function getActiveUsers() {
+  if (!collaborationService) return []
+  
+  const activeUsers = new Map()
+  
+  // Ajouter les utilisateurs avec présence active
+  collaborationService.presence.forEach(user => {
+    if (user.status === 'online') {
+      activeUsers.set(user.userId, {
+        userId: user.userId,
+        userName: user.userName,
+        status: 'présent'
+      })
+    }
+  })
+  
+  // Ajouter les utilisateurs avec locks actifs
+  collaborationService.locks.forEach(lock => {
+    activeUsers.set(lock.userId, {
+      userId: lock.userId,
+      userName: lock.userName,
+      status: 'modification'
+    })
+  })
+  
+  // Ajouter les utilisateurs avec sélections actives
+  collaborationService.remoteSelections.forEach(selection => {
+    activeUsers.set(selection.userId, {
+      userId: selection.userId,
+      userName: selection.userName,
+      status: 'sélection'
+    })
+  })
+  
+  return Array.from(activeUsers.values())
+}
+
+/**
  * Vérifier si un utilisateur a plusieurs sessions
  */
 function isUserWithMultipleSessions(uid: string): boolean {
   return connectedUsers.value.filter((u: DisplayUser) => u.uid === uid).length > 1
+}
+
+/**
+ * Gestionnaire pour les mises à jour de préférences depuis d'autres composants
+ */
+function handleUserPreferencesUpdate(event: Event) {
+  const customEvent = event as CustomEvent
+  console.log('📢 Réception d\'un événement de changement de préférences:', customEvent.detail)
+  
+  if (customEvent.detail.colorChanged) {
+    // Mise à jour forcée des couleurs dans le planning
+    
+    // Forcer la mise à jour des variables CSS
+    updateUserColorVariables()
+    
+    // Déclencher un re-render des composants visuels qui affichent les couleurs
+    nextTick(() => {
+      // Forcer la mise à jour des éléments ayant des couleurs utilisateur
+      const avatarElements = document.querySelectorAll('[data-user-avatar]')
+      avatarElements.forEach(el => {
+        const element = el as HTMLElement
+        if (element.style.backgroundColor) {
+          // Forcer une re-application de la couleur
+          const customEvent = event as CustomEvent
+          element.style.backgroundColor = getUserColor(customEvent.detail.userId)
+        }
+      })
+    })
+  }
+}
+
+/**
+ * Configurer la synchronisation temps réel des préférences utilisateur
+ */
+function setupRealtimePreferences() {
+  if (!auth.currentUser || !AuthService.currentTenantId) return
+  
+  const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${auth.currentUser.uid}`)
+  
+  // Nettoyer l'ancien listener s'il existe
+  if (preferencesUnsubscribe) {
+    preferencesUnsubscribe()
+  }
+  
+  // Créer un nouveau listener temps réel
+  preferencesUnsubscribe = onSnapshot(userRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const userData = snapshot.data()
+      const newPreferences = userData.preferences || {}
+      
+      // Préférences mises à jour en temps réel
+      
+      // Vérifier si la couleur a changé
+      const oldColor = preferences.value.presenceColor
+      const newColor = newPreferences.presenceColor
+      
+      if (oldColor !== newColor && newColor) {
+        // Couleur de présence mise à jour en temps réel
+        
+        // Recharger les préférences via le service pour mettre à jour l'état réactif
+        if (loadPreferences && auth.currentUser) {
+          loadPreferences(auth.currentUser.uid).then(() => {
+            // Mettre à jour les variables CSS après rechargement
+            updateUserColorVariables()
+            
+            // Forcer la mise à jour des composants qui utilisent getUserColor
+            nextTick(() => {
+              // Déclencher un re-render des éléments qui utilisent la couleur utilisateur
+              const event = new CustomEvent('userPreferencesUpdated', { 
+                detail: { 
+                  userId: auth.currentUser!.uid, 
+                  preferences: newPreferences,
+                  colorChanged: true,
+                  oldColor: oldColor,
+                  newColor: newColor
+                } 
+              })
+              document.dispatchEvent(event)
+            })
+          })
+        }
+      }
+    }
+  }, (error) => {
+    console.error('❌ Erreur dans le listener préférences temps réel:', error)
+  })
+}
+
+/**
+ * Mettre à jour les variables CSS pour la couleur de l'utilisateur actuel
+ */
+function updateUserColorVariables() {
+  if (!auth.currentUser) return
+  
+  const userColor = getUserColor(auth.currentUser.uid)
+  const root = document.documentElement
+  
+  // Mettre à jour la variable CSS pour la couleur de l'utilisateur actuel
+  root.style.setProperty('--current-user-color', userColor)
+  
+  // Mettre à jour également la variable pour les indicateurs
+  root.style.setProperty('--user-indicator-color', userColor)
+  
+  // Variables CSS mises à jour avec la couleur
 }
 
 /**
@@ -3495,7 +3897,7 @@ function getUserTooltip(user: DisplayUser): string {
  */
 async function initializePresence() {
   try {
-    console.log('🔍 Début initialisation collaboration...', { useNewSystem: USE_NEW_COLLABORATION })
+    // Début initialisation collaboration
     
     // Utiliser le multiUserService qui est déjà initialisé
     const user = multiUserService.getCurrentUser()
@@ -3549,7 +3951,7 @@ async function initializePresence() {
     })
     }
     
-    console.log('✅ Présence utilisateur initialisée avec le système unifié')
+    // Présence utilisateur initialisée
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation de la présence:', error)
     notify({
@@ -3588,6 +3990,14 @@ function getUserColor(uid: string): string {
   if (!uid || typeof uid !== 'string') {
     console.warn('⚠️ getUserColor appelé avec uid invalide:', uid)
     return '#6b7280' // couleur par défaut grise
+  }
+  
+  // Si c'est l'utilisateur actuel, vérifier les préférences personnalisées
+  if (auth.currentUser && uid === auth.currentUser.uid) {
+    const customColor = preferences.value.presenceColor
+    if (customColor) {
+      return customColor
+    }
   }
   
   const colors = [
@@ -3727,13 +4137,7 @@ function getHoveringUsers(collaborateurId: string, date: string): DisplayUser[] 
   // Debug rare pour éviter le spam console
   const cellId = `${collaborateurId}_${date}`
   if (Math.random() < 0.001) { // Log 0.1% des appels seulement
-    console.log(`🔍 Debug getHoveringUsers(${cellId}):`, {
-      serviceOk: !!collaborationService,
-      rawHovering: hoveringUsers.length,
-      filtered: filteredUsers.length,
-      currentSessionId,
-      users: filteredUsers.map(u => u.displayName)
-    })
+    // Debug getHoveringUsers pour cette cellule
   }
   
   return filteredUsers
@@ -3795,7 +4199,7 @@ function handleCellEdit(date: string, collaborateurId: string) {
  * Gérer la fermeture de l'édition
  */
 function handleEditClose() {
-  console.log('🔄 handleEditClose appelée', { selectedCell: selectedCell.value })
+  // handleEditClose appelée
   
   // Libérer le verrou de la cellule si elle était verrouillée
   if (selectedCell.value && collaborationService) {
@@ -3810,7 +4214,7 @@ function handleEditClose() {
   selectedCell.value = null
   selectedCellDispos.value = []
   
-  console.log('🔄 État nettoyé après fermeture du formulaire')
+  // État nettoyé après fermeture du formulaire
 }
 
 /**
@@ -3839,11 +4243,45 @@ function handleRealtimeChanges(changes: any[]) {
     
     switch (type) {
       case 'added':
-        // Vérifier que la dispo n'existe pas déjà (éviter les doublons)
-        if (!existingDispos.find(d => d.id === disponibilite.id)) {
+        // Vérification intelligente des doublons :
+        // 1. Par ID exact (cas normal)
+        // 2. Par collaborateur + date + heures (pour détecter les doublons temporaires)
+        const isDuplicate = existingDispos.find(d => {
+          // Vérification par ID exact
+          if (d.id === disponibilite.id) return true
+          
+          // Vérification par données métier (pour éliminer les temporaires)
+          return d.collaborateurId === disponibilite.collaborateurId &&
+                 d.date === disponibilite.date &&
+                 d.heure_debut === disponibilite.heure_debut &&
+                 d.heure_fin === disponibilite.heure_fin &&
+                 d.lieu === disponibilite.lieu &&
+                 d.type === disponibilite.type
+        })
+        
+        if (!isDuplicate) {
           existingDispos.push(disponibilite)
           hasChanges = true
           console.log(`➕ Ajout: ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+        } else {
+          // Si c'est un doublon avec un ID temporaire, remplacer par la vraie donnée
+          const duplicateIndex = existingDispos.findIndex(d => 
+            d.collaborateurId === disponibilite.collaborateurId &&
+            d.date === disponibilite.date &&
+            d.heure_debut === disponibilite.heure_debut &&
+            d.heure_fin === disponibilite.heure_fin &&
+            d.lieu === disponibilite.lieu &&
+            d.type === disponibilite.type &&
+            d.id?.startsWith('temp-') // ID temporaire
+          )
+          
+          if (duplicateIndex !== -1) {
+            // Remplacement données temporaires par Firestore
+            existingDispos[duplicateIndex] = disponibilite
+            hasChanges = true
+          } else {
+            console.log(`⚠️ Doublon ignoré: ${disponibilite.prenom} ${disponibilite.nom} le ${date}`)
+          }
         }
         break
         
@@ -4227,7 +4665,7 @@ function updateTodayOverlayX() {
 async function setupInfiniteScroll() {
   try {
     // Pour l'instant, on utilise le système existant
-    console.log('✅ Infinite scroll configuré (utilise le système existant)')
+    // Infinite scroll configuré
   } catch (error) {
     console.error('❌ Erreur configuration infinite scroll:', error)
   }
@@ -4237,7 +4675,7 @@ async function setupInfiniteScroll() {
 async function setupPlanningInteractions() {
   try {
     // Pour l'instant, on gère localement
-    console.log('✅ Interactions planning configurées (gestion locale)')
+    // Interactions planning configurées
   } catch (error) {
     console.error('❌ Erreur configuration interactions:', error)
   }
@@ -4259,6 +4697,22 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
       })
       
       console.log(`🔒 Interaction bloquée: cellule ${cellId} verrouillée par ${lock.userName}`)
+      return // Empêcher toute interaction
+    }
+  }
+  
+  // Vérifier si la cellule est sélectionnée par un autre utilisateur (multiselect)
+  if (collaborationService && collaborationService.isCellSelectedByOthers(collaborateurId, date)) {
+    const selection = collaborationService.getCellSelection(collaborateurId, date)
+    if (selection) {
+      notify({
+        title: 'Cellule en cours de sélection',
+        message: `${selection.userName} a sélectionné cette cellule`,
+        color: 'warning',
+        duration: 3000
+      })
+      
+      console.log(`📋 Interaction bloquée: cellule ${cellId} sélectionnée par ${selection.userName}`)
       return // Empêcher toute interaction
     }
   }
@@ -4351,13 +4805,13 @@ function handleCellMouseDown(collaborateurId: string, date: string, event: Mouse
     
     // Vérifier si on change de collaborateur
     const currentSelectedCollaborateur = getCurrentSelectedCollaborateur()
-    console.log('🔍 getCurrentSelectedCollaborateur:', currentSelectedCollaborateur)
+    // getCurrentSelectedCollaborateur
     console.log('📋 Comparaison:', {current: currentSelectedCollaborateur, nouveau: collaborateurId})
     
     if (currentSelectedCollaborateur && currentSelectedCollaborateur !== collaborateurId) {
       // Changer de collaborateur : vider la sélection actuelle
       selectedCells.value.clear()
-      console.log('🔄 Drag - Changement de collaborateur - sélection vidée')
+      // Drag - Changement de collaborateur - sélection vidée
     }
     
     isDraggingSelection.value = true
@@ -4386,7 +4840,7 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
     
     // Vérifier qu'on reste sur le même collaborateur
     const currentSelectedCollaborateur = getCurrentSelectedCollaborateur()
-    console.log('🔍 getCurrentSelectedCollaborateur:', dragStartCell.value, '=>', currentSelectedCollaborateur)
+    // getCurrentSelectedCollaborateur drag
     console.log('📋 Comparaison:', {current: currentSelectedCollaborateur, nouveau: collaborateurId})
     
     if (currentSelectedCollaborateur && currentSelectedCollaborateur !== collaborateurId) {
@@ -4430,7 +4884,7 @@ function handleWindowMouseLeave() {
 
 // Gestion de la création par lot
 async function handleBatchCreate(data: any) {
-  console.log('✅ Lot créé', data)
+  // Lot créé
   
   // Ajouter immédiatement les nouvelles disponibilités au cache local
   for (const date of data.dates) {
@@ -4479,13 +4933,86 @@ async function handleBatchCreate(data: any) {
   
   // Effectuer un refresh en arrière-plan pour synchroniser avec les vrais IDs Firestore
   setTimeout(async () => {
-    console.log('🔄 Refresh automatique après batch (sans vider le cache)...')
+    // Refresh automatique après batch (sans vider le cache)
     await refreshDisponibilites(false) // false = ne pas vider le cache
+    
+    // Nettoyer les données temporaires après que les vraies soient arrivées
+    setTimeout(() => {
+      console.log('🧹 Nettoyage des données temporaires...')
+      cleanupTemporaryData(data.dates)
+    }, 1000)
   }, 500)
 }
 
+// Nettoyer les données temporaires (IDs commençant par "temp-")
+function cleanupTemporaryData(dates: string[]) {
+  let cleanedCount = 0
+  
+  dates.forEach(date => {
+    const existingDispos = disponibilitesCache.value.get(date) || []
+    const cleanedDispos = existingDispos.filter(d => {
+      const isTemp = d.id?.startsWith('temp-')
+      if (isTemp) {
+        cleanedCount++
+        console.log(`🧹 Suppression donnée temporaire: ${d.prenom} ${d.nom} le ${date} (ID: ${d.id})`)
+      }
+      return !isTemp
+    })
+    
+    if (cleanedDispos.length !== existingDispos.length) {
+      disponibilitesCache.value.set(date, cleanedDispos)
+    }
+  })
+  
+  if (cleanedCount > 0) {
+    // Données temporaires nettoyées
+  }
+}
+
+// Vérifier que le planning est vraiment prêt visuellement
+async function checkPlanningReadiness() {
+  // Attendre que Vue ait fini de rendre
+  await nextTick()
+  
+  // Conditions pour que le planning soit prêt
+  const hasCollaborateurs = allCollaborateurs.value.length > 0
+  const hasVisibleDays = visibleDays.value.length > 0
+  const dataLoaded = !loadingCollaborateurs.value && !loadingDisponibilites.value && !fetchingRanges.value
+  
+  // Si les données de base sont prêtes, considérer le planning comme prêt
+  // Les éléments DOM se créeront après la fermeture de la modale
+  if (hasCollaborateurs && hasVisibleDays && dataLoaded) {
+    setTimeout(() => {
+      planningReady.value = true
+      
+      // Masquer l'overlay après une petite transition
+      setTimeout(() => {
+        isInitialLoad.value = false
+      }, 300)
+    }, 100)
+  } else {
+    // Réessayer dans un moment, mais avec un timeout de sécurité court
+    const now = Date.now()
+    const maxWaitTime = 5000 // 5 secondes max au lieu de 15
+    
+    if (!(window as any).planningReadinessStartTime) {
+      (window as any).planningReadinessStartTime = now
+    }
+    
+    if (now - (window as any).planningReadinessStartTime > maxWaitTime) {
+      // Forcer le planning comme prêt après 5s
+      planningReady.value = true
+      setTimeout(() => {
+        isInitialLoad.value = false
+      }, 300)
+    } else {
+      // Réessayer normalement
+      setTimeout(checkPlanningReadiness, 150)
+    }
+  }
+}
+
 async function refreshDisponibilites(clearCache = true) {
-  console.log(`🔄 Actualisation du planning... (clearCache: ${clearCache})`)
   try {
     if (clearCache) {
       // Vider le cache pour forcer le rechargement
@@ -4493,7 +5020,7 @@ async function refreshDisponibilites(clearCache = true) {
       disponibilitesCache.value.clear()
       
       // Reset de l'état de chargement des ranges
-      console.log('🔄 Reset des ranges chargées...')
+      // Reset des ranges chargées
       loadedDateRanges.value = []
     } else {
       console.log('💾 Conservation du cache existant pour sync en arrière-plan...')
@@ -4505,32 +5032,26 @@ async function refreshDisponibilites(clearCache = true) {
       const firstDay = visibleDays.value[0]
       const lastDay = visibleDays.value[visibleDays.value.length - 1]
       if (!firstDay || !lastDay) {
-        console.warn('⚠️ Impossible de recharger: jours non définis')
         return
       }
       
       const dateDebut = firstDay.date
       const dateFin = lastDay.date
       
-      console.log(`📥 Rechargement des données ${dateDebut} → ${dateFin}...`)
       await generateDisponibilitesForDateRange(dateDebut, dateFin)
       
-      console.log('🏷️ Mise à jour des lieux...')
       updateLieuxOptions() // Fonction synchrone, pas besoin d'await
       
-      console.log(`✅ Cache actualisé: ${disponibilitesCache.value.size} jours en cache`)
     } else {
-      console.log('⚠️ Aucun jour visible, impossible de recharger')
+      // Aucun jour visible, impossible de recharger
     }
     
     // Démarrer la synchronisation temps réel après le chargement initial
     if (clearCache && visibleDays.value.length > 0) {
-      console.log('📡 Démarrage de la synchronisation temps réel...')
       stopRealtimeSync() // Arrêter les anciens listeners
       startRealtimeSync() // Démarrer un nouveau listener pour la zone visible
     }
     
-    console.log('✅ Planning actualisé avec succès')
   } catch (error) {
     console.error('❌ Erreur actualisation:', error)
   }
@@ -4635,6 +5156,34 @@ onMounted(async () => {
   generateInitialDays()
   await loadCollaborateursFromFirebase()
   
+  // Charger les disponibilités initiales
+  if (visibleDays.value.length > 0) {
+    const firstDay = visibleDays.value[0]
+    const lastDay = visibleDays.value[visibleDays.value.length - 1]
+    if (firstDay && lastDay) {
+      await generateDisponibilitesForDateRange(firstDay.date, lastDay.date)
+    }
+  }
+  
+  // Charger les préférences utilisateur
+  if (auth.currentUser && loadPreferences) {
+    try {
+      await loadPreferences(auth.currentUser.uid)
+      // Préférences utilisateur chargées
+    } catch (error) {
+      console.warn('⚠️ Erreur lors du chargement des préférences:', error)
+    }
+  }
+  
+  // Initialiser les couleurs CSS de l'utilisateur
+  updateUserColorVariables()
+  
+  // Configurer la synchronisation temps réel des préférences
+  setupRealtimePreferences()
+  
+  // Ajouter un listener pour les changements de préférences depuis d'autres composants
+  document.addEventListener('userPreferencesUpdated', handleUserPreferencesUpdate)
+  
   // Initialiser les nouveaux services
   await setupInfiniteScroll()
   await setupPlanningInteractions()
@@ -4650,7 +5199,7 @@ onMounted(async () => {
     collaborationService.onLockChange(() => {
       // Incrémenter le compteur pour forcer la réactivité des locks
       lockUpdateCounter.value++
-      console.log('🔄 Mise à jour locks détectée, compteur:', lockUpdateCounter.value)
+      // Mise à jour locks détectée
     })
   }
   
@@ -4751,7 +5300,7 @@ onMounted(async () => {
       
       if (cell) {
         cell.classList.add('has-indicator', 'has-presence')
-        console.log('✅ Classes forcées sur', targetCollab, targetDate)
+        // Classes forcées
         console.log('🎨 Classes actuelles:', cell.className)
         return cell
       } else {
@@ -4829,15 +5378,74 @@ onUnmounted(() => {
 })
 
 // Réagir à toute mutation des jours chargés (append/prepend)
-watch(loadedDays, () => {
-  updateTodayOverlayX()
-  // après ajout/suppression de jours, re-mesurer l’origine des colonnes
-  requestAnimationFrame(() => { recomputeWindow(planningScroll.value || null); measureGridOrigins(); measureRowPitch(); })
-})
+// Debounced watcher pour optimiser les performances
+const loadedDaysDebounced = (() => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return () => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => {
+      updateTodayOverlayX()
+      requestAnimationFrame(() => { 
+        recomputeWindow(planningScroll.value || null)
+        measureGridOrigins()
+        measureRowPitch()
+      })
+    }, 100)
+  }
+})()
+
+watch(loadedDays, loadedDaysDebounced)
 
 // Watchers pour mettre à jour les Sets réactifs
-watch([visibleDays, paginatedCollaborateurs], () => {
-  updatePresenceSets()
+// Watcher optimisé avec debounce
+const updateSetsDebounced = (() => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return () => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => {
+      updatePresenceSets()
+      nextTick(() => {
+        recomputeRowWindow()
+      })
+    }, 50)
+  }
+})()
+
+watch([visibleDays, paginatedCollaborateurs], updateSetsDebounced, { immediate: true })
+
+// Watcher pour les préférences utilisateur - mettre à jour les couleurs automatiquement
+watch(() => preferences.value.presenceColor, (newColor) => {
+  if (newColor && auth.currentUser) {
+    console.log('🎨 Couleur de préférence changée:', newColor)
+    updateUserColorVariables()
+    
+    // Forcer la mise à jour des avatars dans la barre d'utilisateurs actifs
+    // en déclenchant une nouvelle évaluation de getUserColor
+    nextTick(() => {
+      const event = new CustomEvent('userColorChanged', { detail: { userId: auth.currentUser!.uid, color: newColor } })
+      document.dispatchEvent(event)
+    })
+  }
+}, { immediate: true })
+
+// Watcher pour l'authentification - charger les préférences quand l'utilisateur change
+watch(() => auth.currentUser?.uid, (newUid, oldUid) => {
+  if (newUid && newUid !== oldUid && loadPreferences) {
+    console.log('👤 Utilisateur changé, chargement des préférences...')
+    loadPreferences(newUid)
+      .then(() => {
+        // Préférences chargées
+        updateUserColorVariables()
+        
+        // Configurer la synchronisation temps réel pour le nouvel utilisateur
+        setupRealtimePreferences()
+      })
+      .catch(error => console.warn('⚠️ Erreur chargement préférences:', error))
+  } else if (!newUid && preferencesUnsubscribe) {
+    // Utilisateur déconnecté, nettoyer le listener
+    preferencesUnsubscribe()
+    preferencesUnsubscribe = null
+  }
 }, { immediate: true })
 
 // Update cyclique pour synchroniser avec RTDB
@@ -4988,10 +5596,189 @@ onUnmounted(() => {
   if (selectionUnsubscribe.value) {
     selectionUnsubscribe.value()
   }
+  
+  // Nettoyer le listener préférences temps réel
+  if (preferencesUnsubscribe) {
+    preferencesUnsubscribe()
+    preferencesUnsubscribe = null
+  }
+  
+  // Nettoyer l'event listener pour les changements de préférences
+  document.removeEventListener('userPreferencesUpdated', handleUserPreferencesUpdate)
 })
 </script>
 
 <style scoped>
+/* ========================================
+   MODALE DE CHARGEMENT MODERNE - PLEIN ÉCRAN
+   ======================================== */
+
+/* Modale de chargement moderne */
+.modern-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, rgba(23, 37, 84, 0.95), rgba(90, 103, 216, 0.95));
+  padding: 20px;
+}
+
+.loading-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 60px 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: slideIn 0.6s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.loading-header {
+  margin-bottom: 40px;
+}
+
+.loading-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1a237e, #5a67d8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 16px 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.loading-subtitle {
+  font-size: 1.1rem;
+  color: #64748b;
+  font-weight: 500;
+  margin: 0;
+}
+
+.loading-content {
+  margin-bottom: 40px;
+}
+
+.loading-spinner-container {
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.loading-spinner-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e3f2fd, #f8f9ff);
+  z-index: -1;
+}
+
+.loading-status {
+  margin-bottom: 32px;
+}
+
+.status-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.progress-container {
+  position: relative;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+.loading-footer {
+  padding-top: 24px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.loading-tip {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .loading-card {
+    padding: 40px 24px;
+    margin: 20px;
+  }
+  
+  .loading-title {
+    font-size: 2rem;
+  }
+  
+  .loading-subtitle {
+    font-size: 1rem;
+  }
+}
+
+.loading-progress {
+  margin-top: 24px;
+}
+
+.progress-text {
+  display: block;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ========================================
    PLACEHOLDER DE CHARGEMENT INITIAL
    ======================================== */
@@ -5421,7 +6208,38 @@ onUnmounted(() => {
 
 .time-fields-mobile {
   display: flex;
+  gap: 12px;
+}
+
+.custom-time-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.time-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--va-dark);
+}
+
+.time-input {
+  width: 100%;
+  min-width: 120px;
+}
+
+.custom-time-input {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.time-separator {
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--va-dark);
+  margin: 0 2px;
 }
 
 .time-field-mobile {
@@ -6151,6 +6969,11 @@ onUnmounted(() => {
   will-change: transform;
 }
 
+.rows-window {
+  display: block;
+  will-change: transform;
+}
+
 .excel-scroll.panning {
   cursor: grabbing;
   user-select: none;
@@ -6647,6 +7470,8 @@ onUnmounted(() => {
     0 2px 8px color-mix(in srgb, var(--va-warning) 25%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
   transition: all 0.2s ease;
+  cursor: not-allowed !important;
+  pointer-events: none !important; /* ESSENTIEL: empêcher les clics */
 }
 
 .excel-cell.locked::after {
@@ -6680,14 +7505,14 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* Cellules avec présence (hover) - Style primary (bleu) */
+/* Cellules avec présence (hover) - Couleur dynamique de l'utilisateur */
 .excel-cell.has-presence {
   position: relative;
-  background: color-mix(in srgb, var(--va-primary) 20%, var(--va-background-element)) !important;
-  border: 2px solid var(--va-primary) !important;
+  background: color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 20%, var(--va-background-element)) !important;
+  border: 2px solid var(--hovering-user-color, var(--va-primary)) !important;
   box-shadow: 
-    0 0 20px color-mix(in srgb, var(--va-primary) 30%, transparent),
-    0 2px 8px color-mix(in srgb, var(--va-primary) 25%, transparent),
+    0 0 20px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 30%, transparent),
+    0 2px 8px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 25%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   animation: presencePulse 2s infinite ease-in-out;
   transition: all 0.3s ease;
@@ -6702,7 +7527,7 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   width: 24px;
   height: 24px;
-  background: var(--va-primary);
+  background: var(--hovering-user-color, var(--va-primary));
   color: white;
   border-radius: 50%;
   display: flex;
@@ -6737,7 +7562,7 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   width: 24px;
   height: 24px;
-  background: var(--va-primary);
+  background: var(--hovering-user-color, var(--va-primary));
   color: white;
   border-radius: 50%;
   display: flex;
@@ -6782,7 +7607,7 @@ onUnmounted(() => {
 /* Animation de transition vers le lock */
 @keyframes lockTransition {
   0% {
-    background: var(--va-primary);
+    background: var(--hovering-user-color, var(--va-primary));
     transform: translate(-50%, -50%) scale(1);
   }
   30% {
@@ -6840,32 +7665,32 @@ onUnmounted(() => {
   }
 }
 
-/* Animation subtile pour la présence */
+/* Animation subtile pour la présence - Couleur dynamique de l'utilisateur */
 @keyframes presencePulse {
   0%, 100% {
     box-shadow: 
-      0 0 15px color-mix(in srgb, var(--va-primary) 25%, transparent),
-      0 2px 8px color-mix(in srgb, var(--va-primary) 20%, transparent),
+      0 0 15px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 25%, transparent),
+      0 2px 8px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 20%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
   50% {
     box-shadow: 
-      0 0 25px color-mix(in srgb, var(--va-primary) 40%, transparent),
-      0 4px 12px color-mix(in srgb, var(--va-primary) 30%, transparent),
+      0 0 25px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 40%, transparent),
+      0 4px 12px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 30%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 }
 
 /* Indicateur générique moins visible pour ne pas interferer */
 .excel-cell.has-indicator:not(.locked):not(.has-presence) {
-  outline: 1px solid color-mix(in srgb, var(--va-primary) 30%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 30%, transparent);
   outline-offset: -1px;
-  background: color-mix(in srgb, var(--va-primary) 5%, var(--va-background-element)) !important;
+  background: color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 5%, var(--va-background-element)) !important;
 }
 
 /* Interactions avec la souris pour les cellules normales */
 .excel-cell:not(.locked):not(.has-presence):hover {
-  background: color-mix(in srgb, var(--va-primary) 8%, var(--va-background-element)) !important;
+  background: color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 8%, var(--va-background-element)) !important;
   transform: scale(1.02);
   transition: all 0.15s ease;
 }
@@ -6874,8 +7699,8 @@ onUnmounted(() => {
 .excel-cell.has-presence:hover {
   transform: scale(1.05);
   box-shadow: 
-    0 0 30px color-mix(in srgb, var(--va-primary) 45%, transparent),
-    0 4px 16px color-mix(in srgb, var(--va-primary) 35%, transparent),
+    0 0 30px color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 45%, transparent),
+    0 4px 16px color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 35%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
@@ -6940,7 +7765,7 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   width: 24px;
   height: 24px;
-  background: var(--va-primary);
+  background: var(--hovering-user-color, var(--va-primary));
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -8078,6 +8903,54 @@ body.dragging-selection .excel-cell {
 .mini-avatar.more {
   background: #6b7280;
   font-size: 8px;
+}
+
+/* Avatars utilisateurs actifs sur le planning */
+.active-user-avatars {
+  display: flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.active-user-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--va-primary);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.active-user-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 2px var(--va-primary);
+}
+
+.active-user-avatar.more {
+  background: #6b7280;
+  font-size: 8px;
+}
+
+/* Styles pour distinguer les différents status */
+.status-item.active-users .active-user-avatar {
+  animation: subtlePulse 2s infinite ease-in-out;
+}
+
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
 /* Fin des styles */
