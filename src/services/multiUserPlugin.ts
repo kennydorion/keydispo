@@ -6,6 +6,7 @@
 import type { App } from 'vue'
 import { multiUserService } from './multiUserService'
 import { auth } from './firebase'
+import { AuthService } from './auth'
 import { onAuthStateChanged } from 'firebase/auth'
 
 export function installMultiUserSystem(app: App) {
@@ -16,8 +17,8 @@ export function installMultiUserSystem(app: App) {
     if (user) {
       console.log('👤 Utilisateur connecté, démarrage du système multi-utilisateur')
       
-      // Obtenir le tenantId (vous devrez l'adapter selon votre logique)
-      const tenantId = 'keydispo' // À remplacer par la vraie logique
+      // Obtenir le tenantId depuis la configuration
+      const tenantId = AuthService.currentTenantId || 'keydispo'
       
       // Démarrer le service
       multiUserService.init(tenantId, {

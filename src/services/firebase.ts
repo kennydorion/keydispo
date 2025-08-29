@@ -5,23 +5,36 @@ import { getDatabase, connectDatabaseEmulator } from 'firebase/database'
 
 // Activer l'émulateur uniquement en local ET si VITE_USE_EMULATOR=1
 const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
-let useEmulator = (import.meta.env.VITE_USE_EMULATOR === '1') && isLocalhost
+const isFirebaseHosting = typeof window !== 'undefined' && window.location.hostname.includes('.web.app')
+let useEmulator = (import.meta.env.VITE_USE_EMULATOR === '1') && isLocalhost && !isFirebaseHosting
 
-// Sécurité: si on détecte un projectId prod forcé dans variables, on désactive l'émulateur
+// Sécurité: désactiver l'émulateur en production
 if (import.meta.env.VITE_FB_PROJECT_ID && String(import.meta.env.VITE_FB_PROJECT_ID).includes('-ec1ba')) {
+  useEmulator = false
+}
+
+// Sécurité supplémentaire: jamais d'émulateur sur Firebase Hosting
+if (isFirebaseHosting) {
   useEmulator = false
 }
 
 // Configuration Firebase
 const firebaseConfig = {
-  // Préfère VITE_FB_PROJECT_ID (ou ancien nom), fallback dev UNIQUEMENT si émulateur
-  projectId: (import.meta.env.VITE_FB_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID) || (useEmulator ? 'keydispo-dev' : ''),
-  apiKey: useEmulator ? 'fake-api-key' : import.meta.env.VITE_FB_API_KEY,
-  authDomain: useEmulator ? 'localhost' : import.meta.env.VITE_FB_AUTH_DOMAIN,
-  databaseURL: useEmulator ? 'http://127.0.0.1:9000?ns=keydispo-dev-default-rtdb' : import.meta.env.VITE_FB_DATABASE_URL,
-  storageBucket: useEmulator ? '' : import.meta.env.VITE_FB_STORAGE_BUCKET,
-  messagingSenderId: useEmulator ? '0' : import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
-  appId: useEmulator ? 'app-fake' : import.meta.env.VITE_FB_APP_ID,
+  // En production (pas localhost), utiliser les valeurs hardcodées si les variables d'env ne marchent pas
+  projectId: (import.meta.env.VITE_FB_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID) || 
+            (useEmulator ? 'keydispo-dev' : 'keydispo-ec1ba'),
+  apiKey: useEmulator ? 'fake-api-key-for-emulator' : 
+          (import.meta.env.VITE_FB_API_KEY || 'AIzaSyBwlkEH5oFG67KIXEjos79q3mMuXYb7YVs'),
+  authDomain: useEmulator ? 'localhost' : 
+              (import.meta.env.VITE_FB_AUTH_DOMAIN || 'keydispo-ec1ba.firebaseapp.com'),
+  databaseURL: useEmulator ? 'http://127.0.0.1:9000?ns=keydispo-dev-default-rtdb' : 
+               (import.meta.env.VITE_FB_DATABASE_URL || undefined),
+  storageBucket: useEmulator ? '' : 
+                 (import.meta.env.VITE_FB_STORAGE_BUCKET || 'keydispo-ec1ba.firebasestorage.app'),
+  messagingSenderId: useEmulator ? '0' : 
+                     (import.meta.env.VITE_FB_MESSAGING_SENDER_ID || '88160757893'),
+  appId: useEmulator ? 'app-fake' : 
+         (import.meta.env.VITE_FB_APP_ID || '1:88160757893:web:6032157699b59c187721ec'),
 } as const
 
 // Log compact sans exposer les secrets, pour diagnostiquer les manques en prod
@@ -34,8 +47,9 @@ console.log('🔧 Configuration Firebase:', {
 })
 
 // Détection d'une apiKey factice en prod
-if (!useEmulator && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('fake')) {
+if (!useEmulator && firebaseConfig.apiKey && (firebaseConfig.apiKey.startsWith('fake') || firebaseConfig.apiKey.includes('fake'))) {
   console.error('❌ apiKey Firebase invalide (valeur factice). Vérifiez vos variables VITE_FB_API_KEY.*')
+  console.error('❌ Config actuelle:', { useEmulator, apiKey: firebaseConfig.apiKey })
 }
 
 // Calcul statut de configuration (utile au front pour désactiver inscription)

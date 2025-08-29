@@ -1,7 +1,9 @@
 /**
  * Service d'affichage des sessions utilisateur
  * 
- * Ce service se charge de l'affichage optimisé des sessions utilisateur et de leurs activités :
+ * Ce service se charge de l'affichage optimisé des sessions uti  }
+  
+  private readonly userColorMap = new Map<string, string>()t de leurs activités :
  * - Affichage en temps réel des utilisateurs connectés
  * - Visualisation des multi-onglets/sessions
  * - Indicateurs d'ac    // Grouper les activités par cellule
@@ -24,6 +26,7 @@
 
 import { ref, computed } from 'vue'
 import type { UserSession, CellActivity, MultiUserState } from './multiUserService'
+import { getUserInitials, getUserColor } from './avatarUtils'
 
 // ==========================================
 // TYPES ET INTERFACES
@@ -119,13 +122,6 @@ class SessionDisplayService {
     activities: { total: 0, hover: 0, editing: 0, locked: 0 }
   })
   
-  // Configuration couleurs
-  private readonly USER_COLORS = [
-    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
-    '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6',
-    '#f43f5e', '#8b5cf6', '#6366f1', '#06b6d4', '#84cc16'
-  ]
-  
   private readonly userColorMap = new Map<string, string>()
   private currentUserId: string | null = null
 
@@ -167,26 +163,13 @@ class SessionDisplayService {
   // ==========================================
 
   private getUserColor(uid: string): string {
-    if (!this.userColorMap.has(uid)) {
-      // Générer une couleur basée sur un hash du UID
-      let hash = 0
-      for (let i = 0; i < uid.length; i++) {
-        hash = ((hash << 5) - hash + uid.charCodeAt(i)) & 0xffffffff
-      }
-      
-      const colorIndex = Math.abs(hash) % this.USER_COLORS.length
-      this.userColorMap.set(uid, this.USER_COLORS[colorIndex])
-    }
-    
-    return this.userColorMap.get(uid)!
+    // Utiliser la fonction centralisée depuis avatarUtils
+    return getUserColor(uid)
   }
 
   private getUserInitials(displayName: string): string {
-    const names = displayName.trim().split(' ')
-    if (names.length >= 2) {
-      return (names[0][0] + names[names.length - 1][0]).toUpperCase()
-    }
-    return displayName.substring(0, 2).toUpperCase()
+    // Utiliser la fonction centralisée d'avatarUtils
+    return getUserInitials({ displayName })
   }
 
   // ==========================================

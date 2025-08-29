@@ -11,8 +11,8 @@
       <!-- En-tête compact -->
       <div class="collaborateur-header-compact">
         <div class="collaborateur-main-info">
-          <div class="collaborateur-avatar">
-            {{ collaborateur.prenom?.charAt(0) || '' }}{{ collaborateur.nom?.charAt(0) || '' }}
+          <div class="collaborateur-avatar" :style="{ backgroundColor: avatarColor }">
+            {{ avatarInitials }}
           </div>
           <div class="collaborateur-details">
             <h3 class="collaborateur-name">{{ collaborateur.prenom }} {{ collaborateur.nom }}</h3>
@@ -213,6 +213,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Collaborateur, DisponibiliteExtended } from '@/types/planning'
+import { getUserInitials, getUserColor } from '../services/avatarUtils'
 
 // Props
 interface Props {
@@ -283,6 +284,22 @@ const collaborateurStats = computed(() => {
 const hasNotesChanges = computed(() => {
   const originalNotes = props.collaborateur?.notes || ''
   return localNotes.value !== originalNotes
+})
+
+// Avatar computed pour utiliser les fonctions centralisées
+const avatarInitials = computed(() => {
+  if (!props.collaborateur) return ''
+  return getUserInitials({
+    nom: props.collaborateur.nom,
+    prenom: props.collaborateur.prenom
+  })
+})
+
+const avatarColor = computed(() => {
+  if (!props.collaborateur) return props.collaborateurColor
+  // Créer un identifiant unique basé sur nom+prenom pour une couleur cohérente
+  const uid = `${props.collaborateur.nom}-${props.collaborateur.prenom}`.toLowerCase()
+  return getUserColor(uid, props.collaborateurColor)
 })
 
 // Watchers
@@ -383,7 +400,6 @@ const cancelNotesEdit = () => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--va-primary);
   color: white;
   display: flex;
   align-items: center;

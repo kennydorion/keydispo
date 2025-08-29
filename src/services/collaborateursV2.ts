@@ -14,7 +14,8 @@ import {
   serverTimestamp,
   type Unsubscribe
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { ref as rtdbRef, get as rtdbGet } from 'firebase/database'
+import { db, rtdb } from './firebase'
 import type { 
   CollaborateurV2, 
   DisponibiliteV2, 
@@ -34,11 +35,68 @@ import type {
 export class CollaborateursServiceV2 {
   
   /**
+   * Charger tous les collaborateurs d'un tenant depuis RTDB (après import)
+   */
+  static async loadCollaborateursFromRTDB(tenantId: string): Promise<CollaborateurV2[]> {
+    try {
+      console.log('🔄 Chargement des collaborateurs RTDB pour tenant:', tenantId)
+      
+      const collaborateursRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs`)
+      const snapshot = await rtdbGet(collaborateursRef)
+      
+      if (!snapshot.exists()) {
+        console.log('📭 Aucun collaborateur trouvé dans RTDB')
+        return []
+      }
+      
+      const data = snapshot.val()
+      const collaborateurs: CollaborateurV2[] = []
+      
+      Object.entries(data).forEach(([id, collabData]: [string, any]) => {
+        collaborateurs.push({
+          id,
+          nom: collabData.nom,
+          prenom: collabData.prenom,
+          metier: collabData.metier,
+          ville: collabData.ville || '',
+          email: collabData.email || '',
+          phone: collabData.phone || '',
+          tenantId: collabData.tenantId,
+          actif: collabData.actif !== false,
+          createdAt: new Date(collabData.createdAt || Date.now()),
+          updatedAt: new Date(collabData.updatedAt || Date.now())
+        } as CollaborateurV2)
+      })
+      
+      // Trier par nom puis prénom
+      collaborateurs.sort((a, b) => {
+        if (a.nom !== b.nom) return a.nom.localeCompare(b.nom)
+        return a.prenom.localeCompare(b.prenom)
+      })
+      
+      console.log(`✅ ${collaborateurs.length} collaborateurs RTDB chargés`)
+      return collaborateurs
+      
+    } catch (error) {
+      console.error('❌ Erreur chargement collaborateurs RTDB:', error)
+      return []
+    }
+  }
+  
+  /**
    * Charger tous les collaborateurs d'un tenant (nouvelle structure import)
    */
   static async loadCollaborateursFromImport(tenantId: string): Promise<CollaborateurV2[]> {
     try {
-      console.log('🔄 Chargement des collaborateurs importés pour tenant:', tenantId)
+      // Essayer RTDB d'abord
+      const rtdbCollaborateurs = await this.loadCollaborateursFromRTDB(tenantId)
+      if (rtdbCollaborateurs.length > 0) {
+        console.log(`✅ ${rtdbCollaborateurs.length} collaborateurs RTDB chargés`)
+        return rtdbCollaborateurs
+      }
+      
+      // Fallback vers Firestore si RTDB vide
+      console.log('🔄 Fallback: Chargement des collaborateurs Firestore pour tenant:', tenantId)
       
       const collaborateursRef = collection(db, `tenants/${tenantId}/collaborateurs`)
       const q = query(collaborateursRef, orderBy('nom'), orderBy('prenom'))

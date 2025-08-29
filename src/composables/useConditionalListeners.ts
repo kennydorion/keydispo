@@ -103,7 +103,7 @@ export class ConditionalListenerManager {
         where('date', '<=', endDate),
         orderBy('date'),
         orderBy('nom'),
-        limit(200) // Limiter agressivement
+        limit(100) // URGENCE: Réduction drastique
       )
       
       return firestoreListenerManager.subscribe(

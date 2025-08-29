@@ -45,10 +45,10 @@ fi
 
 echo ""
 echo "🔥 Démarrage de l'émulateur Firebase..."
-echo "   - Authentication (port 9099)"
-echo "   - Firestore (port 8080)"
-echo "   - Realtime Database (port 9000)"
-echo "   - UI Interface (port 4001)"
+echo "   - Authentication (port 9199)"
+echo "   - Firestore (port 8180)"
+echo "   - Realtime Database (port 9200)"
+echo "   - UI Interface (port 4101)"
 
 # Démarrer Firebase en arrière-plan
 firebase emulators:start $IMPORT_FLAG --export-on-exit=./emulator-data &
@@ -63,7 +63,7 @@ max_attempts=30
 attempt=1
 
 while [ $attempt -le $max_attempts ]; do
-    if curl -s http://localhost:4001 > /dev/null 2>&1; then
+    if curl -s http://localhost:4101 > /dev/null 2>&1; then
         echo "✅ Firebase émulateur prêt !"
         break
     fi
@@ -105,11 +105,11 @@ fi
 echo ""
 echo "🎉 Environnement de développement prêt !"
 echo "========================================"
-echo "📱 Application Web    : http://localhost:5173"
-echo "🔧 Interface Firebase : http://localhost:4001"
-echo "🔑 Auth Emulator      : http://localhost:9099"
-echo "📄 Firestore Emulator : http://localhost:8080"
-echo "🗃️  Database Emulator  : http://localhost:9000"
+echo "📱 Application Web    : http://localhost:3000"
+echo "🔧 Interface Firebase : http://localhost:4101"
+echo "🔑 Auth Emulator      : http://localhost:9199"
+echo "📄 Firestore Emulator : http://localhost:8180"
+echo "🗃️  Database Emulator  : http://localhost:9200"
 echo ""
 echo "💾 Persistance activée : vos données seront sauvegardées automatiquement"
 echo ""

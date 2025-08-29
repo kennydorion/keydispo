@@ -4,6 +4,7 @@ import {
   where, 
   orderBy, 
   onSnapshot, 
+  limit,
   type Unsubscribe,
   type QuerySnapshot,
   type DocumentChange
@@ -46,7 +47,8 @@ class RealtimeSyncService {
       where('date', '>=', dateDebut),
       where('date', '<=', dateFin),
       orderBy('date'),
-      orderBy('collaborateurId')
+      orderBy('collaborateurId'),
+      limit(150) // LIMITATION D'URGENCE: max 150 docs par listener
     )
     
     const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {

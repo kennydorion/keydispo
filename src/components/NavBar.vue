@@ -123,7 +123,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { getUserInitials, getUserColor } from '../services/avatarUtils'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/services/firebase'
 import { signOut as firebaseSignOut, onAuthStateChanged, type User } from 'firebase/auth'
@@ -154,38 +155,21 @@ const userName = computed(() => {
 })
 
 const avatarInitials = computed(() => {
-  const name = userName.value
-  return name.slice(0, 2).toUpperCase()
+  // Utiliser getUserInitials pour une logique cohérente
+  return getUserInitials({
+    email: userEmail.value
+  })
 })
 
 const avatarColor = computed(() => {
   if (!userUid.value) return '#6b7280'
   
   // Si couleur personnalisée définie, l'utiliser
-  if (preferences.value?.presenceColor) {
-    return preferences.value.presenceColor
-  }
-  
-  // Sinon, calculer couleur par défaut basée sur l'UID
-  return getDefaultUserColor(userUid.value)
+  const customColor = preferences.value?.presenceColor
+  return getUserColor(userUid.value, customColor)
 })
 
-/**
- * Calculer la couleur par défaut basée sur l'UID (même logique que les autres composants)
- */
-function getDefaultUserColor(uid: string): string {
-  const colors = [
-    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
-    '#06b6d4', '#f97316', '#84cc16'
-  ]
-  
-  let hash = 0
-  for (let i = 0; i < uid.length; i++) {
-    hash = ((hash << 5) - hash + uid.charCodeAt(i)) & 0xffffffff
-  }
-  
-  return colors[Math.abs(hash) % colors.length]
-}
+// La fonction getDefaultUserColor est maintenant remplacée par getUserColor depuis avatarUtils
 
 // Methods
 const isActiveRoute = (path: string) => {

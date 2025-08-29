@@ -3,6 +3,7 @@ export type { CollaborateurV2, DisponibiliteV2, PlanningDataV2, BatchUpdateV2, I
 // Types existants
 export interface Disponibilite {
   id?: string;
+  collaborateurId: string; // AJOUTÉ: requis pour le filtrage et l'affichage
   tenantId: string;
   nom: string;
   prenom: string;
@@ -14,6 +15,12 @@ export interface Disponibilite {
   lieu: string;
   heure_debut: string; // HH:MM
   heure_fin: string; // HH:MM
+  // Nouveaux champs pour compatibilité avec RTDB et nouvelles fonctionnalités
+  type?: 'mission' | 'disponible' | 'indisponible' | 'standard' | 'formation' | 'urgence' | 'maintenance';
+  timeKind?: 'range' | 'slot' | 'full-day' | 'overnight' | 'fixed' | 'flexible' | 'oncall';
+  slots?: string[];
+  isFullDay?: boolean;
+  // Métadonnées
   version: number;
   updatedAt: Date;
   updatedBy: string;

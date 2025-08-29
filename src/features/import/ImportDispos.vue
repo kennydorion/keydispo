@@ -18,9 +18,13 @@
           <div class="step-number">2</div>
           <span>Analyse et validation</span>
         </div>
-        <div class="step" :class="{ active: step === 'importing' || step === 'completed' }">
+        <div class="step" :class="{ active: step === 'importing' }">
           <div class="step-number">3</div>
           <span>Import des données</span>
+        </div>
+        <div class="step" :class="{ active: step === 'verifying' || step === 'completed' }">
+          <div class="step-number">4</div>
+          <span>Vérification</span>
         </div>
       </div>
 
@@ -149,26 +153,60 @@
         </div>
 
         <!-- Étape 3: Import -->
-        <div v-if="step === 'importing' || step === 'completed'" class="step-content">
+        <div v-if="step === 'importing'" class="step-content">
           <va-card>
             <va-card-content>
-              <div v-if="importing" class="importing-section">
+              <div class="importing-section">
                 <va-progress-bar :model-value="progressPercent" />
                 <p class="progress-message">{{ currentProgress.message }}</p>
               </div>
+            </va-card-content>
+          </va-card>
+        </div>
 
-              <div v-if="step === 'completed'" class="import-result">
+        <!-- Étape 4: Vérification -->
+        <div v-if="step === 'verifying'" class="step-content">
+          <va-card>
+            <va-card-content>
+              <div class="verifying-section">
+                <div class="verify-header">
+                  <i class="material-icons-outlined spin">search</i>
+                  <h3>Vérification des données dans le planning...</h3>
+                </div>
+                <p>Nous vérifions que les données importées sont bien visibles dans le planning.</p>
+                <va-progress-bar indeterminate />
+              </div>
+            </va-card-content>
+          </va-card>
+        </div>
+
+        <!-- Étape finale: Résultats -->
+        <div v-if="step === 'completed'" class="step-content">
+          <va-card>
+            <va-card-content>
+              <div class="import-result">
                 <div class="result-header">
-                  <i class="material-icons-outlined" :class="(importStats.disposCreated + importStats.disposMerged) > 0 ? 'success-icon' : 'error-icon'">
-                    {{ (importStats.disposCreated + importStats.disposMerged) > 0 ? 'check_circle' : 'error' }}
+                  <i class="material-icons-outlined" :class="verificationResult.success ? 'success-icon' : 'error-icon'">
+                    {{ verificationResult.success ? 'check_circle' : 'error' }}
                   </i>
-                  <h3>{{ (importStats.disposCreated + importStats.disposMerged) > 0 ? 'Import réussi !' : 'Erreur lors de l\'import' }}</h3>
+                  <h3>{{ verificationResult.success ? 'Import et vérification réussis !' : 'Problème détecté' }}</h3>
                 </div>
                 
                 <div class="result-stats">
-                  <p>{{ importStats.disposCreated + importStats.disposMerged }} disponibilités importées</p>
-                  <p>{{ importStats.collaborateursCreated + importStats.collaborateursMerged }} collaborateurs traités</p>
-                  <p v-if="importStats.errors.length > 0">{{ importStats.errors.length }} erreurs rencontrées</p>
+                  <p><strong>Import :</strong> {{ importStats.disposCreated + importStats.disposMerged }} disponibilités, {{ importStats.collaborateursCreated + importStats.collaborateursMerged }} collaborateurs</p>
+                  <p><strong>Vérification :</strong> {{ verificationResult.details.verifiedCount }}/{{ verificationResult.details.importedCount }} données trouvées dans le planning</p>
+                  <p v-if="verificationResult.details.missingCount > 0" class="warning">
+                    ⚠️ {{ verificationResult.details.missingCount }} données non trouvées dans le planning
+                  </p>
+                </div>
+
+                <div v-if="verificationResult.details.sampleData.length > 0" class="sample-data">
+                  <h4>Exemples de données vérifiées :</h4>
+                  <div class="sample-list">
+                    <div v-for="(sample, index) in verificationResult.details.sampleData.slice(0, 3)" :key="index" class="sample-item">
+                      {{ sample.nom }} {{ sample.prenom }} - {{ sample.date }} ({{ sample.lieu }})
+                    </div>
+                  </div>
                 </div>
 
                 <div class="actions">
@@ -191,17 +229,19 @@
 import { ref, computed } from 'vue'
 // PlanningLayout retiré : TopNav globale dans App.vue
 import { parseWorkbook } from './parseWorkbook'
-import { importToFirestore, validateImportData } from './importToFirestore'
+import { importToRTDB, validateImportData } from './importToRTDB'
+import { disponibilitesRTDBService } from '../../services/disponibilitesRTDBService'
 import type { ParseResult, ImportStats, ImportProgress } from './types'
 
 // Refs
 const fileInput = ref<HTMLInputElement>()
 
 // État du composant
-const step = ref<'select' | 'preview' | 'importing' | 'completed'>('select')
+const step = ref<'select' | 'preview' | 'importing' | 'completed' | 'verifying'>('select')
 const selectedFile = ref<File[]>([])
 const parsing = ref(false)
 const importing = ref(false)
+const verifying = ref(false)
 
 // Données de parsing
 const parseResult = ref<ParseResult>({
@@ -231,6 +271,80 @@ const importStats = ref<ImportStats>({
   errors: [],
   duration: 0
 })
+
+// Variables de vérification
+const verificationResult = ref<{
+  success: boolean
+  message: string
+  details: {
+    importedCount: number
+    verifiedCount: number
+    missingCount: number
+    sampleData: any[]
+  }
+}>({
+  success: false,
+  message: '',
+  details: {
+    importedCount: 0,
+    verifiedCount: 0,
+    missingCount: 0,
+    sampleData: []
+  }
+})
+
+// Fonction de vérification des données importées
+const verifyImportedData = async () => {
+  try {
+    verifying.value = true
+    step.value = 'verifying'
+
+    // Récupérer les données importées depuis RTDB
+    const importedDispos = await disponibilitesRTDBService.getAllDisponibilites()
+    
+    // Filtrer les données récemment importées (dernière heure)
+    const recentImports = importedDispos.filter(dispo => {
+      const importTime = new Date(dispo.updatedAt)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      return importTime > oneHourAgo
+    })
+
+    const importedCount = importStats.value.disposCreated + importStats.value.disposMerged
+    const verifiedCount = recentImports.length
+    const missingCount = Math.max(0, importedCount - verifiedCount)
+
+    verificationResult.value = {
+      success: missingCount === 0 && verifiedCount > 0,
+      message: verifiedCount > 0 ? 'Données vérifiées avec succès' : 'Aucune donnée trouvée dans le planning',
+      details: {
+        importedCount,
+        verifiedCount,
+        missingCount,
+        sampleData: recentImports.slice(0, 5)
+      }
+    }
+
+    // Attendre un peu pour montrer la vérification
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    step.value = 'completed'
+  } catch (error) {
+    console.error('Erreur lors de la vérification:', error)
+    verificationResult.value = {
+      success: false,
+      message: 'Erreur lors de la vérification',
+      details: {
+        importedCount: importStats.value.disposCreated + importStats.value.disposMerged,
+        verifiedCount: 0,
+        missingCount: importStats.value.disposCreated + importStats.value.disposMerged,
+        sampleData: []
+      }
+    }
+    step.value = 'completed'
+  } finally {
+    verifying.value = false
+  }
+}
 
 // Computed
 // (variables isEmulatorMode / hasFile retirées car non utilisées après refactor)
@@ -328,7 +442,7 @@ async function startImport() {
     const tenantId = (import.meta as any).env?.VITE_TENANT_ID || 'keydispo'
     console.log('🏢 Tenant ID:', tenantId)
     
-    const stats = await importToFirestore(
+    const stats = await importToRTDB(
       parseResult.value.data,
       tenantId,
       (progress) => {
@@ -337,13 +451,16 @@ async function startImport() {
     )
     
     importStats.value = stats
-    step.value = 'completed'
     
     console.log('✅ Import terminé:', stats)
+    
+    // Lancer la vérification des données
+    await verifyImportedData()
     
   } catch (error) {
     console.error('❌ Erreur import:', error)
     // TODO: Afficher l'erreur à l'utilisateur
+    step.value = 'completed'
   } finally {
     importing.value = false
   }
@@ -846,6 +963,65 @@ function resetImport() {
     width: 100% !important;
     max-width: 300px !important;
   }
+}
+
+/* Styles pour la vérification */
+.verifying-section {
+  text-align: center;
+  padding: 20px;
+}
+
+.verify-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.verify-header i.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.result-stats {
+  margin: 15px 0;
+}
+
+.result-stats p {
+  margin: 5px 0;
+}
+
+.result-stats .warning {
+  color: var(--warning-500);
+  font-weight: 500;
+}
+
+.sample-data {
+  margin: 20px 0;
+  text-align: left;
+  background: var(--background-secondary);
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.sample-list {
+  margin-top: 10px;
+}
+
+.sample-item {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--divider);
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.sample-item:last-child {
+  border-bottom: none;
 }
 
 /* Focus states pour l'accessibilité */

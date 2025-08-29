@@ -1,5 +1,23 @@
 {
   "rules": {
+    "tenants": {
+      "$tenantId": {
+        "collaborateurs": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["nom", "prenom", "email"]
+        },
+        "disponibilites": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["date", "collaborateurId"]
+        },
+        "users": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
     ".read": true,
     ".write": true
   }

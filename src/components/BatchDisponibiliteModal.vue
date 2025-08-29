@@ -10,8 +10,8 @@
     <!-- En-tête détaillé -->
     <div class="batch-header-detailed">
       <div class="collaborateur-section">
-        <div class="collaborateur-avatar-large">
-          {{ props.selectedCollaborateur?.prenom?.charAt(0) || '' }}{{ props.selectedCollaborateur?.nom?.charAt(0) || '' }}
+        <div class="collaborateur-avatar-large" :style="{ backgroundColor: avatarColor }">
+          {{ avatarInitials }}
         </div>
         <div class="collaborateur-info-detailed">
           <h3 class="collaborateur-name-large">{{ collaborateurName }}</h3>
@@ -273,6 +273,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/services/firebase'
 import { AuthService } from '@/services/auth'
 import { useToast } from 'vuestic-ui'
+import { getUserInitials, getUserColor } from '../services/avatarUtils'
 
 // Interface plus permissive pour le collaborateur
 interface CollaborateurBatch {
@@ -423,6 +424,22 @@ const collaborateurName = computed(() => {
   const collab = props.selectedCollaborateur
   if (!collab) return 'Collaborateur'
   return `${collab.prenom} ${collab.nom}`
+})
+
+// Avatar computed pour utiliser les fonctions centralisées
+const avatarInitials = computed(() => {
+  if (!props.selectedCollaborateur) return ''
+  return getUserInitials({
+    nom: props.selectedCollaborateur.nom,
+    prenom: props.selectedCollaborateur.prenom
+  })
+})
+
+const avatarColor = computed(() => {
+  if (!props.selectedCollaborateur) return '#3b82f6'
+  // Créer un identifiant unique basé sur nom+prenom pour une couleur cohérente
+  const uid = `${props.selectedCollaborateur.nom}-${props.selectedCollaborateur.prenom}`.toLowerCase()
+  return getUserColor(uid)
 })
 
 // Normalisation simple pour recherche insensible aux accents / casse
@@ -804,7 +821,6 @@ watch(() => props.selectedCollaborateur, (newCollab) => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--va-primary);
   color: white;
   display: flex;
   align-items: center;

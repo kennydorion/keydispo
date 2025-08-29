@@ -220,6 +220,7 @@ import { PlanningInteractionService } from '../services/planningInteraction'
 import BatchDisponibiliteModal from '../components/BatchDisponibiliteModal.vue'
 import type { Collaborateur, DisponibiliteExtended } from '../types/planning'
 import { COULEURS_COLLABORATEUR, CRENEAUX_QUART_HEURE } from '../types/planning'
+import { getUserInitials } from '../services/avatarUtils'
 
 // Services
 const infiniteScroll = InfiniteScrollService.getInstance()
@@ -304,7 +305,7 @@ const isWeekend = (date: Date): boolean => {
 }
 
 const getInitials = (prenom: string, nom: string): string => {
-  return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase()
+  return getUserInitials({ nom, prenom })
 }
 
 const getCouleurLigne = (color: string): string => {
