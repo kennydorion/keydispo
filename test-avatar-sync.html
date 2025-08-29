@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Synchronisation Couleurs Avatar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        .color-demo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 5px;
+            border: 2px solid #ccc;
+            vertical-align: middle;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status-indicator {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎨 Test Synchronisation Couleurs Avatar</h1>
+        
+        <div class="step info">
+            <h3>📋 Procédure de Test</h3>
+            <p>Ce test valide que les changements de couleur d'avatar se propagent automatiquement dans le planning sans rafraîchissement.</p>
+        </div>
+
+        <div class="step">
+            <h3><span class="status-indicator">1️⃣</span>Préparation</h3>
+            <ul>
+                <li>✅ Ouvrir l'application dans un onglet</li>
+                <li>✅ Se connecter avec votre compte</li>
+                <li>✅ Aller dans la vue Planning (SemaineVirtualClean)</li>
+                <li>✅ Noter la couleur actuelle de votre avatar</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3><span class="status-indicator">2️⃣</span>Test de Changement</h3>
+            <ul>
+                <li>📱 Ouvrir un nouvel onglet avec l'application</li>
+                <li>⚙️ Aller dans Paramètres > Couleur de présence</li>
+                <li>🎨 Changer la couleur pour une couleur différente</li>
+                <li>💾 Sauvegarder le changement</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3><span class="status-indicator">3️⃣</span>Validation</h3>
+            <p>Retourner sur l'onglet du planning et vérifier :</p>
+            <ul>
+                <li id="check-avatar">⏳ L'avatar dans la barre d'utilisateurs change automatiquement</li>
+                <li id="check-css">⏳ Les variables CSS sont mises à jour</li>
+                <li id="check-refresh">⏳ Aucun rafraîchissement nécessaire</li>
+                <li id="check-realtime">⏳ Le changement est instantané (< 2 secondes)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3><span class="status-indicator">4️⃣</span>Test Console</h3>
+            <p>Dans la console développeur, vous devriez voir :</p>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0;">
+🔄 Préférences mises à jour en temps réel: {presenceColor: "#FF5733"}<br>
+🎨 Couleur de présence mise à jour en temps réel: #3b82f6 → #FF5733<br>
+✅ Préférences utilisateur chargées<br>
+🎨 Variables CSS mises à jour avec la couleur: #FF5733<br>
+📢 Réception d'un événement de changement de préférences: {userId: "...", colorChanged: true}
+            </div>
+        </div>
+
+        <div class="step">
+            <h3><span class="status-indicator">🧪</span>Tests Automatiques</h3>
+            <button onclick="simulateColorChange()">Simuler Changement de Couleur</button>
+            <button onclick="checkCurrentColor()">Vérifier Couleur Actuelle</button>
+            <button onclick="testEventPropagation()">Tester Propagation d'Événement</button>
+            
+            <div id="test-output" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-family: monospace; min-height: 100px;">
+                <em>Résultats des tests apparaîtront ici...</em>
+            </div>
+        </div>
+
+        <div class="test-results" id="results">
+            <h3>📊 Résultats du Test</h3>
+            <p>Complétez la procédure pour voir les résultats.</p>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            avatarUpdated: false,
+            cssUpdated: false,
+            noRefreshNeeded: false,
+            realtimeUpdate: false
+        };
+
+        // Simuler un changement de couleur
+        function simulateColorChange() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = '';
+            
+            output.innerHTML += '🚀 Simulation d\'un changement de couleur...\n';
+            
+            // Vérifier si les variables CSS existent
+            const root = document.documentElement;
+            const currentColor = getComputedStyle(root).getPropertyValue('--current-user-color');
+            
+            output.innerHTML += `📊 Couleur CSS actuelle: ${currentColor || 'Non définie'}\n`;
+            
+            // Simuler un événement de changement
+            const testColors = ['#FF5733', '#33FF57', '#3357FF', '#FF33F5'];
+            const randomColor = testColors[Math.floor(Math.random() * testColors.length)];
+            
+            output.innerHTML += `🎨 Couleur de test: ${randomColor}\n`;
+            
+            // Déclencher l'événement
+            const event = new CustomEvent('userPreferencesUpdated', {
+                detail: {
+                    userId: 'test-user',
+                    colorChanged: true,
+                    oldColor: currentColor,
+                    newColor: randomColor
+                }
+            });
+            
+            document.dispatchEvent(event);
+            
+            output.innerHTML += '✅ Événement dispatché\n';
+            output.innerHTML += '⏳ Vérifiez si les couleurs ont changé dans l\'interface...\n';
+        }
+
+        // Vérifier la couleur actuelle
+        function checkCurrentColor() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = '';
+            
+            output.innerHTML += '🔍 Vérification de la couleur actuelle...\n';
+            
+            const root = document.documentElement;
+            const currentColor = getComputedStyle(root).getPropertyValue('--current-user-color');
+            const indicatorColor = getComputedStyle(root).getPropertyValue('--user-indicator-color');
+            
+            output.innerHTML += `🎨 --current-user-color: ${currentColor || 'Non définie'}\n`;
+            output.innerHTML += `🎯 --user-indicator-color: ${indicatorColor || 'Non définie'}\n`;
+            
+            // Vérifier les éléments avec des couleurs utilisateur
+            const avatarElements = document.querySelectorAll('[data-user-avatar]');
+            output.innerHTML += `👤 Nombre d'avatars trouvés: ${avatarElements.length}\n`;
+            
+            if (avatarElements.length > 0) {
+                avatarElements.forEach((el, index) => {
+                    const bgColor = (el as HTMLElement).style.backgroundColor;
+                    output.innerHTML += `   Avatar ${index + 1}: ${bgColor || 'Couleur par défaut'}\n`;
+                });
+            }
+        }
+
+        // Tester la propagation d'événement
+        function testEventPropagation() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = '';
+            
+            output.innerHTML += '📡 Test de propagation d\'événement...\n';
+            
+            let eventReceived = false;
+            
+            // Ajouter un listener temporaire
+            const testListener = (event) => {
+                eventReceived = true;
+                output.innerHTML += `✅ Événement reçu: ${event.type}\n`;
+                output.innerHTML += `📋 Détails: ${JSON.stringify(event.detail, null, 2)}\n`;
+            };
+            
+            document.addEventListener('userPreferencesUpdated', testListener);
+            document.addEventListener('globalPreferencesChanged', testListener);
+            
+            // Déclencher un événement de test
+            setTimeout(() => {
+                const testEvent = new CustomEvent('userPreferencesUpdated', {
+                    detail: {
+                        userId: 'test-user',
+                        colorChanged: true,
+                        testEvent: true
+                    }
+                });
+                
+                document.dispatchEvent(testEvent);
+                
+                setTimeout(() => {
+                    if (!eventReceived) {
+                        output.innerHTML += '❌ Aucun événement reçu - Vérifiez les listeners\n';
+                    }
+                    
+                    // Nettoyer
+                    document.removeEventListener('userPreferencesUpdated', testListener);
+                    document.removeEventListener('globalPreferencesChanged', testListener);
+                }, 100);
+            }, 100);
+        }
+
+        // Marquer les étapes comme complétées
+        function markStepComplete(stepId, success = true) {
+            const element = document.getElementById(stepId);
+            if (element) {
+                element.innerHTML = element.innerHTML.replace('⏳', success ? '✅' : '❌');
+                testResults[stepId.replace('check-', '')] = success;
+                updateResults();
+            }
+        }
+
+        // Mettre à jour les résultats
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            const completed = Object.values(testResults).filter(Boolean).length;
+            const total = Object.keys(testResults).length;
+            const percentage = Math.round((completed / total) * 100);
+            
+            let resultClass = 'info';
+            if (percentage === 100) resultClass = 'success';
+            else if (percentage > 50) resultClass = 'warning';
+            
+            resultsDiv.className = `test-results ${resultClass}`;
+            resultsDiv.innerHTML = `
+                <h3>📊 Résultats du Test</h3>
+                <p><strong>Progression:</strong> ${completed}/${total} (${percentage}%)</p>
+                <p><strong>Statut:</strong> ${percentage === 100 ? '🎉 Tous les tests passés!' : '⏳ Tests en cours...'}</p>
+            `;
+        }
+
+        // Listeners pour détecter les changements automatiquement
+        document.addEventListener('userPreferencesUpdated', (event) => {
+            console.log('🎯 Test: Événement de changement de préférences détecté', event.detail);
+            markStepComplete('check-realtime', true);
+        });
+
+        // Surveiller les changements de variables CSS
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    console.log('🎯 Test: Changement de style détecté');
+                    markStepComplete('check-css', true);
+                }
+            });
+        });
+
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+
+        // Instructions pour l'utilisateur
+        console.log('🧪 Test de synchronisation des couleurs avatar');
+        console.log('📋 Suivez les étapes dans l\'interface pour valider la synchronisation temps réel');
+    </script>
+</body>
+</html>

@@ -104,12 +104,14 @@
               v-model="formData.heureDebut"
               label="Début"
               type="time"
+              step="900"
               class="hour-input"
             />
             <va-input
               v-model="formData.heureFin"
               label="Fin"
               type="time"
+              step="900"
               class="hour-input"
             />
           </div>

@@ -11,6 +11,15 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
     }
 
+    function isTenantMemberSafe(tenantId, userId) {
+      // Version sécurisée qui évite les références circulaires
+      // Si l'utilisateur lit son propre document, on fait confiance à l'auth
+      return isSignedIn() && (
+        request.auth.uid == userId || 
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid))
+      );
+    }
+
     function userRole(tenantId) {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.role;
     }
@@ -31,13 +40,13 @@ service cloud.firestore {
 
     // Gestion des utilisateurs du tenant
     match /tenants/{tenantId}/users/{userId} {
-      // Lecture: membre du tenant ou l'utilisateur lui-même
-      allow read: if isTenantMember(tenantId) || (isSignedIn() && request.auth.uid == userId);
+      // Lecture: l'utilisateur peut toujours lire son propre document
+      allow read: if isTenantMemberSafe(tenantId, userId);
 
       // Création: l'utilisateur peut créer son propre doc au premier login
       allow create: if isSignedIn() && request.auth.uid == userId;
 
-      // Mise à jour: soi-même (ex: lastAccess) ou admin du tenant
+      // Mise à jour: soi-même (ex: lastAccess, preferences) ou admin du tenant
       allow update: if (isSignedIn() && request.auth.uid == userId) || hasRole(tenantId, ['admin']);
 
       // Suppression: admin uniquement

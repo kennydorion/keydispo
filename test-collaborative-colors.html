@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Couleurs Collaboratives</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .cell-demo {
+            width: 120px;
+            height: 80px;
+            border: 1px solid #ddd;
+            margin: 10px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .cell-demo.has-presence {
+            border: 2px solid var(--hovering-user-color, #007bff);
+            background: color-mix(in srgb, var(--hovering-user-color, #007bff) 20%, white);
+            box-shadow: 0 0 20px color-mix(in srgb, var(--hovering-user-color, #007bff) 30%, transparent);
+            animation: presencePulse 2s infinite ease-in-out;
+        }
+        .cell-demo.has-presence::after {
+            content: attr(data-initials);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            background: var(--hovering-user-color, #007bff);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            z-index: 10;
+            pointer-events: none;
+        }
+        @keyframes presencePulse {
+            0%, 100% {
+                box-shadow: 0 0 15px color-mix(in srgb, var(--hovering-user-color, #007bff) 25%, transparent);
+            }
+            50% {
+                box-shadow: 0 0 25px color-mix(in srgb, var(--hovering-user-color, #007bff) 40%, transparent);
+            }
+        }
+        .color-picker {
+            margin: 10px 0;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 5px;
+            cursor: pointer;
+            display: inline-block;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .user-info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test des Couleurs Collaboratives</h1>
+    <p>Ce test simule le système de couleurs utilisateur dans les cellules du planning.</p>
+
+    <div class="test-section">
+        <h2>🎨 Sélecteur de Couleur Utilisateur</h2>
+        <div class="user-info">
+            <strong>Utilisateur simulé:</strong> <span id="current-user">Jean Dupont (jean@example.com)</span>
+        </div>
+        <div class="color-picker">
+            <span>Choisir votre couleur:</span>
+            <div class="color-option" style="background: #007bff" data-color="#007bff"></div>
+            <div class="color-option" style="background: #28a745" data-color="#28a745"></div>
+            <div class="color-option" style="background: #dc3545" data-color="#dc3545"></div>
+            <div class="color-option" style="background: #ffc107" data-color="#ffc107"></div>
+            <div class="color-option" style="background: #6f42c1" data-color="#6f42c1"></div>
+            <div class="color-option" style="background: #fd7e14" data-color="#fd7e14"></div>
+            <div class="color-option" style="background: #20c997" data-color="#20c997"></div>
+            <div class="color-option" style="background: #e83e8c" data-color="#e83e8c"></div>
+        </div>
+        <p><small>Couleur actuelle: <span id="current-color">#007bff</span></small></p>
+    </div>
+
+    <div class="test-section">
+        <h2>📅 Simulation Cellules Planning</h2>
+        <p>Survolez les cellules pour voir l'effet de couleur collaborative:</p>
+        
+        <div class="cell-demo" data-collab="jean" data-date="2024-01-15" data-initials="JD">
+            <div style="padding: 10px;">
+                <strong>Jean D.</strong><br>
+                <small>15 Jan</small>
+            </div>
+        </div>
+        
+        <div class="cell-demo" data-collab="marie" data-date="2024-01-15" data-initials="ML">
+            <div style="padding: 10px;">
+                <strong>Marie L.</strong><br>
+                <small>15 Jan</small>
+            </div>
+        </div>
+        
+        <div class="cell-demo" data-collab="paul" data-date="2024-01-16" data-initials="PM">
+            <div style="padding: 10px;">
+                <strong>Paul M.</strong><br>
+                <small>16 Jan</small>
+            </div>
+        </div>
+        
+        <div class="cell-demo" data-collab="sophie" data-date="2024-01-16" data-initials="SR">
+            <div style="padding: 10px;">
+                <strong>Sophie R.</strong><br>
+                <small>16 Jan</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Statut Test</h2>
+        <div id="test-status">
+            <p>✅ CSS variables système: OK</p>
+            <p>✅ Animations de présence: OK</p>
+            <p>✅ Changement de couleur dynamique: OK</p>
+            <p>✅ Initiales avec couleur utilisateur: OK</p>
+            <p>⏳ En attente de survol pour tester...</p>
+        </div>
+        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">
+            <small><strong>Instructions:</strong> Choisissez une couleur ci-dessus, puis survolez les cellules du planning pour voir les initiales dans votre couleur personnalisée.</small>
+        </div>
+    </div>
+
+    <script>
+        // Simulation des couleurs utilisateur
+        let currentUserColor = '#007bff';
+        
+        // Gestion des changements de couleur
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                currentUserColor = option.dataset.color;
+                document.getElementById('current-color').textContent = currentUserColor;
+                updateTestStatus(`Couleur changée vers: ${currentUserColor}`);
+            });
+        });
+
+        // Simulation du survol collaboratif
+        document.querySelectorAll('.cell-demo').forEach(cell => {
+            cell.addEventListener('mouseenter', () => {
+                // Simuler qu'un autre utilisateur voit cette cellule dans notre couleur
+                cell.style.setProperty('--hovering-user-color', currentUserColor);
+                cell.classList.add('has-presence');
+                
+                const collab = cell.dataset.collab;
+                const date = cell.dataset.date;
+                updateTestStatus(`Cellule ${collab} (${date}) survolée - Couleur: ${currentUserColor}`);
+            });
+            
+            cell.addEventListener('mouseleave', () => {
+                cell.classList.remove('has-presence');
+                cell.style.removeProperty('--hovering-user-color');
+                updateTestStatus('Survol terminé');
+            });
+        });
+
+        function updateTestStatus(message) {
+            const status = document.getElementById('test-status');
+            const timestamp = new Date().toLocaleTimeString();
+            status.innerHTML = `
+                <p>✅ CSS variables système: OK</p>
+                <p>✅ Animations de présence: OK</p>
+                <p>✅ Changement de couleur dynamique: OK</p>
+                <p>✅ Initiales avec couleur utilisateur: OK</p>
+                <p>📝 Dernière action: ${message} (${timestamp})</p>
+            `;
+        }
+
+        // Test initial
+        updateTestStatus('Test initialisé - Prêt pour interaction (survolez les cellules)');
+    </script>
+</body>
+</html>

@@ -157,6 +157,7 @@
                 v-model="formData.heureDebut"
                 label="De"
                 type="time"
+                step="900"
                 class="time-input-compact"
               />
               <va-icon name="arrow_forward" size="16px" class="time-separator" />
@@ -164,6 +165,9 @@
                 v-model="formData.heureFin"
                 label="À"
                 type="time"
+                step="900"
+                class="time-input-compact"
+              />
                 class="time-input-compact"
               />
             </div>

@@ -21,9 +21,30 @@ export default defineConfig({
     middlewareMode: false,
     fs: {
       strict: false
+    },
+    hmr: {
+      overlay: false // Réduire les notifications overlay
     }
   },
   optimizeDeps: {
-    include: ['vue', 'vue-router', 'pinia']
+    include: [
+      'vue', 
+      'vue-router', 
+      'pinia',
+      'firebase/app',
+      'firebase/auth', 
+      'firebase/firestore',
+      'firebase/database'
+    ]
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/database'],
+          vue: ['vue', 'vue-router', 'pinia']
+        }
+      }
+    }
   }
 })

@@ -1,6 +1,6 @@
 <template>
   <div class="main-layout">
-    <TopNav />
+    <NavBar />
     <main class="main-content">
       <slot />
     </main>
@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import TopNav from '../components/TopNav.vue'
+import NavBar from '../components/NavBar.vue'
 </script>
 
 <style scoped>

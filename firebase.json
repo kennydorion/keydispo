@@ -45,12 +45,9 @@
       "enabled": true,
       "port": 4001
     },
-    "singleProjectMode": false,
-    "import": {
-      "path": "./emulator-data"
-    },
-    "export": {
-      "path": "./emulator-data"
+    "singleProjectMode": true,
+    "logging": {
+      "quiet": true
     }
   },
   "database": {

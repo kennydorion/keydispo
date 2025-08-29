@@ -113,21 +113,55 @@
             <!-- Heures personnalisées -->
             <div v-if="formData.timeKind === 'custom'" class="custom-hours-full">
               <div class="hours-inputs-full">
-                <va-input
-                  v-model="formData.heureDebut"
-                  type="time"
-                  label="Heure de début"
-                  class="hour-input-full"
-                  required
-                />
+                <!-- Heure de début -->
+                <div class="custom-time-input-batch">
+                  <label class="time-label-batch">Heure de début</label>
+                  <div class="time-selects-batch">
+                    <va-select
+                      v-model="heureDebutHour"
+                      :options="hourOptions"
+                      placeholder="HH"
+                      size="small"
+                      class="hour-select-batch"
+                      @update:model-value="updateHeureDebut"
+                    />
+                    <span class="time-separator-batch">:</span>
+                    <va-select
+                      v-model="heureDebutMinute"
+                      :options="quarterOptions"
+                      placeholder="MM"
+                      size="small"
+                      class="minute-select-batch"
+                      @update:model-value="updateHeureDebut"
+                    />
+                  </div>
+                </div>
                 
-                <va-input
-                  v-model="formData.heureFin"
-                  type="time"
-                  label="Heure de fin"
-                  class="hour-input-full"
-                  required
-                />
+                <!-- Heure de fin -->
+                <div class="custom-time-input-batch">
+                  <label class="time-label-batch">Heure de fin</label>
+                  <div class="time-selects-batch">
+                    <va-select
+                      v-model="heureFinHour"
+                      :options="hourOptions"
+                      placeholder="HH"
+                      size="small"
+                      class="hour-select-batch"
+                      :disabled="!formData.heureDebut"
+                      @update:model-value="updateHeureFin"
+                    />
+                    <span class="time-separator-batch">:</span>
+                    <va-select
+                      v-model="heureFinMinute"
+                      :options="quarterOptions"
+                      placeholder="MM"
+                      size="small"
+                      class="minute-select-batch"
+                      :disabled="!formData.heureDebut"
+                      @update:model-value="updateHeureFin"
+                    />
+                  </div>
+                </div>
               </div>
               
               <!-- Alerte débordement overnight -->
@@ -334,6 +368,56 @@ const quickTimeSlots = [
   { value: 'night', label: 'Nuit', debut: '02:00', fin: '08:00' }
 ]
 
+// Variables pour les selects d'heures/minutes
+const heureDebutHour = ref('09')
+const heureDebutMinute = ref('00')
+const heureFinHour = ref('17')
+const heureFinMinute = ref('00')
+
+// Options pour les selects
+const hourOptions = computed(() => {
+  const options = []
+  for (let i = 0; i < 24; i++) {
+    const hour = i.toString().padStart(2, '0')
+    options.push({ text: hour, value: hour })
+  }
+  return options
+})
+
+const quarterOptions = [
+  { text: '00', value: '00' },
+  { text: '15', value: '15' },
+  { text: '30', value: '30' },
+  { text: '45', value: '45' }
+]
+
+// Méthodes pour synchroniser les selects avec formData
+function updateHeureDebut() {
+  if (heureDebutHour.value && heureDebutMinute.value) {
+    formData.value.heureDebut = `${heureDebutHour.value}:${heureDebutMinute.value}`
+  }
+}
+
+function updateHeureFin() {
+  if (heureFinHour.value && heureFinMinute.value) {
+    formData.value.heureFin = `${heureFinHour.value}:${heureFinMinute.value}`
+  }
+}
+
+// Méthode pour initialiser les selects depuis formData
+function initTimeSelects() {
+  if (formData.value.heureDebut) {
+    const [hour, minute] = formData.value.heureDebut.split(':')
+    heureDebutHour.value = hour
+    heureDebutMinute.value = minute
+  }
+  if (formData.value.heureFin) {
+    const [hour, minute] = formData.value.heureFin.split(':')
+    heureFinHour.value = hour
+    heureFinMinute.value = minute
+  }
+}
+
 // Computed
 const collaborateurName = computed(() => {
   const collab = props.selectedCollaborateur
@@ -503,6 +587,7 @@ const setTimeKind = (kind: 'predefined' | 'custom' | 'full_day') => {
   } else if (kind === 'custom') {
     formData.value.heureDebut = '09:00'
     formData.value.heureFin = '17:00'
+    initTimeSelects()
   }
 }
 
@@ -939,6 +1024,47 @@ watch(() => props.selectedCollaborateur, (newCollab) => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.custom-time-input-batch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-label-batch {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--va-dark);
+}
+
+.time-selects-batch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hour-select-batch,
+.minute-select-batch {
+  flex: 1;
+}
+
+/* Fix z-index pour les dropdowns des selects d'heures dans la modale */
+.hour-select-batch :deep(.va-select__dropdown),
+.minute-select-batch :deep(.va-select__dropdown) {
+  z-index: 9999 !important;
+}
+
+/* Fix global pour tous les selects dans cette modale */
+.batch-form-mobile :deep(.va-select__dropdown) {
+  z-index: 9999 !important;
+}
+
+.time-separator-batch {
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--va-dark);
+  margin: 0 2px;
 }
 
 .hour-input-full {

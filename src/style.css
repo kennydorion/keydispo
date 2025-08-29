@@ -225,6 +225,128 @@ input[type="time"]::-webkit-clear-button {
   transform: none !important;
 }
 
+/* Correction de la taille et overflow des toasts */
+.va-toast__content,
+.va-toast__group {
+  max-width: 500px !important;
+  min-width: 300px !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 60px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+.va-toast__content {
+  padding: 16px 20px !important;
+  line-height: 1.5 !important;
+  font-size: 14px !important;
+  display: block !important;
+}
+
+/* Container principal des toasts */
+.va-toasts-container {
+  max-width: none !important;
+  width: auto !important;
+}
+
+/* Toast individuel */
+.va-toast {
+  max-width: 500px !important;
+  min-width: 300px !important;
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+/* Forcer TOUT le contenu des toasts à être visible */
+.va-toast *,
+.va-toast__content *,
+.va-toast__group *,
+.va-toasts-container * {
+  text-overflow: clip !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  text-wrap: wrap !important;
+}
+
+/* Sélecteurs ultra-spécifiques pour Vuestic */
+div.va-toast div.va-toast__content,
+div.va-toast div.va-toast__group,
+.va-toasts-container .va-toast .va-toast__content,
+body > .va-toasts-container .va-toast .va-toast__content {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 60px !important;
+  max-height: none !important;
+  display: block !important;
+  flex-wrap: wrap !important;
+}
+
+/* Styles spécifiques pour le texte des messages */
+.va-toast .va-toast__message,
+.va-toast__content .va-toast__message,
+.va-toast .va-notification__message,
+.va-toast__content span,
+.va-toast__content p,
+.va-toast__content div:not(.va-toast__actions) {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  max-width: none !important;
+  width: 100% !important;
+  display: block !important;
+  line-height: 1.5 !important;
+}
+
+/* Forcer les actions de toast à ne pas déborder */
+.va-toast__actions {
+  flex-shrink: 0 !important;
+  margin-top: 8px !important;
+}
+
+/* Gérer les layouts flex de Vuestic */
+.va-toast,
+.va-toast__content,
+.va-toast__group {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+/* Règles de sécurité absolue pour empêcher toute troncature */
+[class*="va-toast"] {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+[class*="va-toast"] * {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
 /* Pour les toasts téléportés */
 [data-va-toast] {
   z-index: 2147483648 !important;

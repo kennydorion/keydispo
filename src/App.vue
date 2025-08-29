@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <TopNav v-if="showTopNav" />
-    <div class="app-main" :class="{ 'no-nav': !showTopNav }">
+    <NavBar v-if="showNavBar" />
+    <div class="app-main" :class="{ 'no-nav': !showNavBar }">
       <router-view />
     </div>
   </div>
@@ -11,13 +11,13 @@
 import { onMounted, computed } from 'vue'
 import { AuthService } from './services/auth'
 import { useRouter, useRoute } from 'vue-router'
-import TopNav from './components/TopNav.vue'
+import NavBar from './components/NavBar.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-// Afficher la TopNav sauf sur les routes publiques (login)
-const showTopNav = computed(() => !route.meta.public && route.path !== '/login')
+// Afficher la NavBar sauf sur les routes publiques (login)
+const showNavBar = computed(() => !route.meta.public && route.path !== '/login')
 
 onMounted(() => {
   console.log('🚀 KeyDispo Application démarrée')
@@ -47,7 +47,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .app-main { min-height: calc(100vh - 50px); padding: 12px 10px; }
+  .app-main { min-height: calc(100vh - 56px); padding: 12px 10px; }
   .app-main.no-nav { min-height: 100vh; }
 }
 

@@ -7,6 +7,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Firebase specific logs (peuvent être volumineux)
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+emulator.log
+.emulators.log
+.emulators.local.log
+
 node_modules
 dist
 dist-ssr
@@ -25,3 +33,5 @@ dist-ssr
 
 # Firebase local artifacts
 .firebase/
+emulator-data/
+!emulator-data/.gitkeep

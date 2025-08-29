@@ -20,16 +20,15 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  onSnapshot, 
   query, 
   where, 
   serverTimestamp, 
   writeBatch,
   getDocs,
   orderBy,
-  limit,
-  updateDoc
+  limit
 } from 'firebase/firestore'
+import { firestoreListenerManager } from './firestoreListenerManager'
 import { db } from '../firebase'
 import type { Timestamp } from 'firebase/firestore'
 
@@ -130,14 +129,14 @@ class MultiUserService {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
   private activityTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
   
-  // Configuration
+  // Configuration optimisée pour les performances
   private readonly CONFIG = {
-    HEARTBEAT_INTERVAL: 10000,      // 10s entre chaque heartbeat
-    SESSION_TIMEOUT: 45000,         // 45s timeout pour session
-    HOVER_TIMEOUT: 15000,           // 15s timeout pour hover
-    EDITING_TIMEOUT: 120000,        // 2min timeout pour édition
-    CLEANUP_INTERVAL: 30000,        // 30s entre les nettoyages
-    MAX_SESSIONS_PER_USER: 10       // Limite sessions par utilisateur
+    HEARTBEAT_INTERVAL: 60000,       // 1min entre chaque heartbeat (était 10s)
+    SESSION_TIMEOUT: 300000,         // 5min timeout pour session (était 45s)
+    HOVER_TIMEOUT: 30000,            // 30s timeout pour hover (était 15s)
+    EDITING_TIMEOUT: 120000,         // 2min timeout pour édition (inchangé)
+    CLEANUP_INTERVAL: 120000,        // 2min entre les nettoyages (était 30s)
+    MAX_SESSIONS_PER_USER: 3         // Limite sessions par utilisateur (était 10)
   }
 
   // ==========================================
@@ -211,35 +210,41 @@ class MultiUserService {
       collection(db, `tenants/${this.tenantId}/sessions`),
       where('status', 'in', ['online', 'idle', 'background']),
       orderBy('lastActivity', 'desc'),
-      limit(100) // Limiter pour les performances
+      limit(20) // Limiter pour les performances (était 100)
     )
 
-    this.sessionsListener = onSnapshot(sessionsQuery, (snapshot) => {
-      // Sessions mises à jour
-      
-      this.sessionsCache.clear()
-      this.userSessionsMap.clear()
-      
-      const now = Date.now()
-      
-      snapshot.forEach((doc) => {
-        const session = doc.data() as UserSession
+    const sessionsListenerId = firestoreListenerManager.subscribe(
+      sessionsQuery, 
+      (snapshot: any) => {
+        // Sessions mises à jour
         
-        // Vérifier si pas expirée
-        const expiresAt = session.expiresAt?.toDate?.()?.getTime() || 0
-        if (now < expiresAt) {
-          this.sessionsCache.set(session.sessionId, session)
+        this.sessionsCache.clear()
+        this.userSessionsMap.clear()
+        
+        const now = Date.now()
+        
+        snapshot.forEach((doc: any) => {
+          const session = doc.data() as UserSession
           
-          // Indexer par utilisateur
-          if (!this.userSessionsMap.has(session.userId)) {
-            this.userSessionsMap.set(session.userId, [])
+          // Vérifier si pas expirée
+          const expiresAt = session.expiresAt?.toDate?.()?.getTime() || 0
+          if (now < expiresAt) {
+            this.sessionsCache.set(session.sessionId, session)
+            
+            // Indexer par utilisateur
+            if (!this.userSessionsMap.has(session.userId)) {
+              this.userSessionsMap.set(session.userId, [])
+            }
+            this.userSessionsMap.get(session.userId)!.push(session)
           }
-          this.userSessionsMap.get(session.userId)!.push(session)
-        }
-      })
-      
-      this.notifySessionChange()
-    })
+        })
+        
+        this.notifySessionChange()
+      },
+      'multiuser_sessions'
+    )
+    
+    this.sessionsListener = () => firestoreListenerManager.unsubscribe(sessionsListenerId)
   }
 
   private async updateSessionHeartbeat() {
@@ -249,11 +254,13 @@ class MultiUserService {
       const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
       const expiresAt = new Date(Date.now() + this.CONFIG.SESSION_TIMEOUT)
       
-      await updateDoc(sessionRef, {
+      // Utiliser setDoc avec merge pour créer le document si il n'existe pas
+      await setDoc(sessionRef, {
         lastActivity: serverTimestamp(),
         expiresAt: expiresAt,
-        currentPath: window.location.pathname
-      })
+        currentPath: window.location.pathname,
+        status: this.currentSession.status
+      }, { merge: true })
       
       // Mettre à jour le cache local
       if (this.currentSession) {
@@ -262,8 +269,25 @@ class MultiUserService {
         this.currentSession.currentPath = window.location.pathname
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur heartbeat session:', error)
+      // En cas d'erreur, essayer de recréer la session
+      if (error?.message?.includes('NOT_FOUND') || error?.code === 'not-found') {
+        console.log('🔄 Recréation de la session...')
+        await this.recreateCurrentSession()
+      }
+    }
+  }
+
+  private async recreateCurrentSession() {
+    if (!this.currentSession) return
+    
+    try {
+      const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
+      await setDoc(sessionRef, this.currentSession)
+      console.log(`🔄 Session recréée: ${this.currentSessionId}`)
+    } catch (error) {
+      console.error('❌ Erreur recréation session:', error)
     }
   }
 
@@ -283,30 +307,34 @@ class MultiUserService {
     const activitiesQuery = query(
       collection(db, `tenants/${this.tenantId}/cellActivities`),
       orderBy('lastUpdate', 'desc'),
-      limit(200) // Limiter pour les performances
+      limit(50) // Limiter pour les performances (était 200)
     )
 
-    this.activitiesListener = onSnapshot(activitiesQuery, (snapshot) => {
-      // Activités cellules mises à jour
-      
-      this.activitiesCache.clear()
-      const now = Date.now()
-      
-      snapshot.forEach((doc) => {
-        const activity = doc.data() as CellActivity
+    const activitiesListenerId = firestoreListenerManager.subscribe(
+      activitiesQuery,
+      (snapshot: any) => {
+        // Activités cellules mises à jour
         
-        // Vérifier si pas expirée
-        const expiresAt = activity.expiresAt?.toDate?.()?.getTime() || 0
-        if (now < expiresAt) {
-          this.activitiesCache.set(activity.cellId, activity)
+        this.activitiesCache.clear()
+        const now = Date.now()
+        
+        snapshot.forEach((doc: any) => {
+          const activity = doc.data() as CellActivity
           
-          // Notifier les callbacks spécifiques à cette cellule
-          this.notifyCellActivity(activity.cellId, activity)
-        }
-      })
-      
-      this.notifySessionChange()
-    })
+          // Vérifier si pas expirée
+          const expiresAt = activity.expiresAt?.toDate?.()?.getTime() || 0
+          if (now < expiresAt) {
+            this.activitiesCache.set(activity.cellId, activity)
+            
+            // Notifier les callbacks spécifiques à cette cellule
+            this.notifyCellActivity(activity.cellId, activity)
+          }
+        })
+      },
+      'multiuser_activities'
+    )
+    
+    this.activitiesListener = () => firestoreListenerManager.unsubscribe(activitiesListenerId)
   }
 
   /**
@@ -386,10 +414,10 @@ class MultiUserService {
         }
         
         const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
-        await updateDoc(sessionRef, {
+        await setDoc(sessionRef, {
           currentAction: this.currentSession.currentAction,
           lastActivity: serverTimestamp()
-        })
+        }, { merge: true })
       }
       
       console.log(`✅ Activité ${activityType} démarrée sur ${cellId}`)
@@ -428,10 +456,10 @@ class MultiUserService {
         this.currentSession.currentAction = undefined
         
         const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
-        await updateDoc(sessionRef, {
+        await setDoc(sessionRef, {
           currentAction: null,
           lastActivity: serverTimestamp()
-        })
+        }, { merge: true })
       }
       
       console.log(`🛑 Activité arrêtée sur ${cellId}`)
@@ -473,10 +501,10 @@ class MultiUserService {
       const expiresAt = new Date(Date.now() + timeout)
       
       const activityRef = doc(db, `tenants/${this.tenantId}/cellActivities/${cellId}`)
-      await updateDoc(activityRef, {
+      await setDoc(activityRef, {
         lastUpdate: serverTimestamp(),
         expiresAt: expiresAt
-      })
+      }, { merge: true })
       
       // Reprogrammer le timeout local
       this.scheduleActivityCleanup(cellId, timeout)
@@ -839,17 +867,38 @@ class MultiUserService {
 
     try {
       const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
-      await updateDoc(sessionRef, {
+      
+      // Utiliser setDoc avec merge pour créer le document si il n'existe pas
+      await setDoc(sessionRef, {
         status,
         lastActivity: serverTimestamp()
-      })
+      }, { merge: true })
       
       if (this.currentSession) {
         this.currentSession.status = status
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur update status:', error)
+      // En cas d'erreur, essayer de recréer la session
+      if (error?.message?.includes('NOT_FOUND') || error?.code === 'not-found') {
+        console.log('🔄 Recréation de la session pour update status...')
+        await this.recreateCurrentSession()
+        // Réessayer le changement de statut
+        try {
+          const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
+          await setDoc(sessionRef, {
+            status,
+            lastActivity: serverTimestamp()
+          }, { merge: true })
+          
+          if (this.currentSession) {
+            this.currentSession.status = status
+          }
+        } catch (retryError) {
+          console.error('❌ Erreur retry update status:', retryError)
+        }
+      }
     }
   }
 

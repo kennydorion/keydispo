@@ -1,6 +1,6 @@
 <template>
   <div class="planning-layout">
-    <TopNav />
+    <NavBar />
     <main class="planning-content">
       <slot />
     </main>
@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import TopNav from '../components/TopNav.vue'
+import NavBar from '../components/NavBar.vue'
 </script>
 
 <style scoped>
@@ -30,8 +30,8 @@ import TopNav from '../components/TopNav.vue'
 
 @media (max-width: 768px) {
   .planning-content {
-    /* Ajuster pour la nouvelle hauteur mobile du TopNav (48px au lieu de 64px) */
-    min-height: calc(100vh - 48px);
+    /* Ajuster pour la nouvelle hauteur mobile de la NavBar (56px au lieu de 64px) */
+    min-height: calc(100vh - 56px);
   }
 }
 </style>

@@ -71,29 +71,42 @@ export class AuthService {
     defaultRole: 'admin' | 'editor' | 'viewer' = 'viewer',
     displayName?: string
   ) {
-    const userRef = doc(db, `tenants/${this.currentTenantId}/users/${user.uid}`)
-    const userDoc = await getDoc(userRef)
-
-    if (!userDoc.exists()) {
-      // Construire les données utilisateur sans displayName si undefined
+    try {
+      const userRef = doc(db, `tenants/${this.currentTenantId}/users/${user.uid}`)
+      
+      // Construire les données utilisateur
       const email = (user.email || '').toLowerCase()
       const elevatedRole = this.adminEmails.includes(email) ? 'admin' : defaultRole
       const tenantData: any = {
         uid: user.uid,
         role: elevatedRole,
         email: user.email!,
-        createdAt: new Date(),
         lastAccess: new Date()
       }
+      
       // Ajouter displayName uniquement si défini
       const name = displayName || user.displayName
       if (name) {
         tenantData.displayName = name
       }
-      await setDoc(userRef, tenantData)
-    } else {
-      // Update last access
-      await setDoc(userRef, { lastAccess: new Date() }, { merge: true })
+      
+      // Utiliser setDoc avec merge pour créer ou mettre à jour
+      await setDoc(userRef, tenantData, { merge: true })
+      
+      // Si c'est une création (pas de createdAt existant), l'ajouter
+      try {
+        const checkDoc = await getDoc(userRef)
+        if (checkDoc.exists() && !checkDoc.data().createdAt) {
+          await setDoc(userRef, { createdAt: new Date() }, { merge: true })
+        }
+      } catch (error) {
+        // Si getDoc échoue, on ajoute createdAt en espérant que c'est une création
+        await setDoc(userRef, { createdAt: new Date() }, { merge: true })
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la création/mise à jour de l\'utilisateur:', error)
+      throw error
     }
   }
 
