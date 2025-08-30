@@ -4705,28 +4705,87 @@ function startRealtimeSync() {
   // Vérifier si on a déjà un listener pour cette plage exacte
   const currentListenerId = `${dateDebut}_${dateFin}`
   if (realtimeListeners.value.includes(currentListenerId)) {
-    // console.log(`📡 Listener déjà actif pour ${dateDebut} → ${dateFin}`)
+    console.log(`📡 Listener RTDB déjà actif pour ${dateDebut} → ${dateFin}`)
     return
   }
   
-  // Démarrage sync temps réel
+  console.log(`📡 Démarrage listener RTDB pour ${dateDebut} → ${dateFin}`)
   
-  // S'abonner aux changements
-  const unsubscribeChanges = realtimeSync.onChanges(handleRealtimeChanges)
+  // Démarrer le listener RTDB pour cette plage
+  const listenerId = disponibilitesRTDBService.listenToDisponibilitesByDateRange(
+    dateDebut, 
+    dateFin,
+    (disponibilites) => {
+      console.log(`🔄 Mise à jour RTDB temps réel: ${disponibilites.length} disponibilités`)
+      
+      // Convertir les données RTDB en format du cache
+      const newCache = new Map<string, any[]>()
+      
+      disponibilites.forEach(dispo => {
+        const collaborateurId = dispo.collaborateurId
+        if (!collaborateurId) return
+        
+        const cacheKey = `${collaborateurId}_${dispo.date}`
+        if (!newCache.has(cacheKey)) {
+          newCache.set(cacheKey, [])
+        }
+        
+        newCache.get(cacheKey)!.push({
+          id: dispo.id,
+          collaborateurId: dispo.collaborateurId,
+          nom: dispo.nom,
+          prenom: dispo.prenom,
+          metier: dispo.metier,
+          phone: dispo.phone,
+          email: dispo.email,
+          ville: dispo.ville,
+          date: dispo.date,
+          lieu: dispo.lieu,
+          heure_debut: dispo.heure_debut,
+          heure_fin: dispo.heure_fin,
+          type: dispo.type || 'disponible',
+          tenantId: dispo.tenantId,
+          version: dispo.version || 1,
+          updatedAt: dispo.updatedAt,
+          updatedBy: dispo.updatedBy
+        })
+      })
+      
+      // Mettre à jour le cache global avec les nouvelles données
+      // Vider d'abord les cellules de la plage de dates
+      for (const [cacheKey] of disponibilitesCache.value.entries()) {
+        const [, date] = cacheKey.split('_')
+        if (date >= dateDebut && date <= dateFin) {
+          disponibilitesCache.value.delete(cacheKey)
+        }
+      }
+      
+      // Ajouter les nouvelles données
+      newCache.forEach((dispos, cacheKey) => {
+        disponibilitesCache.value.set(cacheKey, dispos)
+      })
+      
+      console.log(`✅ Cache mis à jour avec ${newCache.size} cellules`)
+    }
+  )
   
-  // Démarrer le listener pour cette plage
-  const listenerId = realtimeSync.startSyncForDateRange(dateDebut, dateFin)
-  realtimeListeners.value.push(listenerId)
-  
-  isRealtimeActive.value = true
+  if (listenerId) {
+    realtimeListeners.value.push(listenerId)
+    isRealtimeActive.value = true
+    console.log(`✅ Listener RTDB activé: ${listenerId}`)
+  } else {
+    console.error('❌ Échec création listener RTDB')
+  }
   
   // Retourner une fonction de nettoyage
   return () => {
-    unsubscribeChanges()
-    realtimeSync.stopSync(listenerId)
-    realtimeListeners.value = realtimeListeners.value.filter(id => id !== listenerId)
-    if (realtimeListeners.value.length === 0) {
-      isRealtimeActive.value = false
+    if (listenerId) {
+      disponibilitesRTDBService.stopListener(listenerId)
+      realtimeListeners.value = realtimeListeners.value.filter(id => id !== listenerId)
+      if (realtimeListeners.value.length === 0) {
+        isRealtimeActive.value = false
+      }
+      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
     }
   }
 }
@@ -4735,8 +4794,13 @@ function startRealtimeSync() {
  * Arrêter toute la synchronisation temps réel
  */
 function stopRealtimeSync() {
-  // console.log(`📡 Arrêt de la synchronisation temps réel`)
-  realtimeSync.stopAllSync()
+  console.log('📡 Arrêt de la synchronisation temps réel RTDB')
+  
+  // Arrêter tous les listeners RTDB
+  realtimeListeners.value.forEach(listenerId => {
+    disponibilitesRTDBService.stopListener(listenerId)
+  })
+  
   realtimeListeners.value = []
   isRealtimeActive.value = false
 }

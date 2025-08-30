@@ -50,6 +50,10 @@ export function usePlanningData() {
   const loadingDisponibilites = ref(false)
   const fetchingRanges = ref(false)
   const saving = ref(false)
+  
+  // Gestion des listeners temps réel
+  const activeListeners = ref<Map<string, string>>(new Map())
+  const isRealtimeActive = ref(false)
 
   // Helpers de date
   function toDateStr(d: Date) {
@@ -383,6 +387,100 @@ export function usePlanningData() {
     }
   }
 
+  // Gestion des listeners temps réel
+  function startRealtimeListeners(startDate: string, endDate: string) {
+    if (isRealtimeActive.value) {
+      console.log('📡 [usePlanningData] Listeners déjà actifs')
+      return
+    }
+
+    console.log(`📡 [usePlanningData] Activation des listeners temps réel pour ${startDate} → ${endDate}`)
+    
+    const listenerId = disponibilitesRTDBService.listenToDisponibilitesByDateRange(
+      startDate,
+      endDate,
+      (disponibilites) => {
+        console.log(`🔄 [usePlanningData] Mise à jour temps réel: ${disponibilites.length} disponibilités`)
+        
+        // Mettre à jour le cache avec les nouvelles données
+        const cacheUpdates = new Map<string, Disponibilite[]>()
+        
+        disponibilites.forEach(dispo => {
+          const collaborateurId = dispo.collaborateurId
+          if (!collaborateurId) return
+          
+          const cacheKey = `${collaborateurId}_${dispo.date}`
+          if (!cacheUpdates.has(cacheKey)) {
+            cacheUpdates.set(cacheKey, [])
+          }
+          cacheUpdates.get(cacheKey)!.push({
+            id: dispo.id,
+            collaborateurId: dispo.collaborateurId,
+            nom: dispo.nom,
+            prenom: dispo.prenom,
+            metier: dispo.metier,
+            phone: dispo.phone,
+            email: dispo.email,
+            ville: dispo.ville,
+            date: dispo.date,
+            lieu: dispo.lieu,
+            heure_debut: dispo.heure_debut,
+            heure_fin: dispo.heure_fin,
+            type: (dispo.type === 'standard' || dispo.type === 'formation' || dispo.type === 'urgence' || dispo.type === 'maintenance') ? 'mission' : 'disponible',
+            tenantId: dispo.tenantId,
+            version: dispo.version || 1,
+            updatedAt: dispo.updatedAt,
+            updatedBy: dispo.updatedBy
+          })
+        })
+
+        // Appliquer les mises à jour du cache
+        cacheUpdates.forEach((dispos, cacheKey) => {
+          disponibilitesCache.value.set(cacheKey, dispos)
+        })
+        
+        // Vider le cache des cellules qui n'ont plus de données
+        for (const [cacheKey] of disponibilitesCache.value.entries()) {
+          if (!cacheUpdates.has(cacheKey)) {
+            const [, date] = cacheKey.split('_')
+            if (date >= startDate && date <= endDate) {
+              disponibilitesCache.value.set(cacheKey, [])
+            }
+          }
+        }
+      }
+    )
+    
+    if (listenerId) {
+      activeListeners.value.set(`${startDate}_${endDate}`, listenerId)
+      isRealtimeActive.value = true
+      console.log(`✅ [usePlanningData] Listener temps réel activé: ${listenerId}`)
+    }
+  }
+
+  function stopRealtimeListeners() {
+    if (!isRealtimeActive.value) {
+      console.log('📡 [usePlanningData] Aucun listener actif')
+      return
+    }
+
+    console.log('📡 [usePlanningData] Arrêt des listeners temps réel')
+    
+    activeListeners.value.forEach((listenerId) => {
+      disponibilitesRTDBService.stopListener(listenerId)
+    })
+    
+    activeListeners.value.clear()
+    isRealtimeActive.value = false
+    
+    console.log('✅ [usePlanningData] Tous les listeners arrêtés')
+  }
+
+  function updateRealtimeListeners(startDate: string, endDate: string) {
+    stopRealtimeListeners()
+    startRealtimeListeners(startDate, endDate)
+  }
+
   return {
     // État
     allCollaborateurs,
@@ -394,6 +492,10 @@ export function usePlanningData() {
     loadingDisponibilites,
     fetchingRanges,
     saving,
+    
+    // État temps réel
+    activeListeners,
+    isRealtimeActive,
     
     // Computed
     isBusy,
@@ -409,6 +511,11 @@ export function usePlanningData() {
     saveDispos,
     loadCollaborateursFromFirebase,
     initializePlanningData,
+    
+    // Gestion temps réel
+    startRealtimeListeners,
+    stopRealtimeListeners,
+    updateRealtimeListeners,
     
     // Helpers
     toDateStr,
