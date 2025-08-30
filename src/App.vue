@@ -20,7 +20,6 @@ const route = useRoute()
 const showNavBar = computed(() => !route.meta.public && route.path !== '/login')
 
 onMounted(() => {
-  console.log('🚀 KeyDispo Application démarrée')
   
   // Écouter les changements d'état d'authentification
   AuthService.onAuthStateChanged((user) => {

@@ -1,0 +1,11 @@
+# Exclude WASM build artifacts
+/wasm-pkg/
+*.wasm
+/target/
+/pkg/
+
+# Keep source files
+!src/
+!Cargo.toml
+!build-wasm.sh
+!README.md

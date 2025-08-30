@@ -1,3 +1,5 @@
+
+
 <!-- TABLEAU DE BORD D'URGENCE FIRESTORE -->
 <template>
   <div id="emergency-firestore-dashboard" style="

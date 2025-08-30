@@ -7,9 +7,14 @@
       :metiers="metiersOptions"
       :lieux="lieuxOptions"
       :statuts="statutOptions"
-      :model-value="{ search: searchTerm, metier: filterMetier, lieu: filterLieu, statut: filterStatut, dateFrom, dateTo }"
-      :stats-collaborateurs="paginatedCollaborateurs.length"
-      :stats-dispos="totalDisponibilites"
+      :model-value="{ 
+        search: searchTerm, 
+        metier: filterMetier, 
+        lieu: filterLieu, 
+        statut: filterStatut, 
+        dateFrom, 
+        dateTo
+      }"
       @update:viewMode="(m) => viewMode = m"
       @openMobileFilters="mobileFiltersOpen = true"
       @prev="goToPreviousWeek"
@@ -17,6 +22,27 @@
       @next="goToNextWeek"
       @update:modelValue="updateFilters"
     />
+
+    <!-- Indicateur subtil des filtres actifs -->
+    <div v-if="hasActiveFilters" class="active-filters-indicator">
+      <div class="indicator-content">
+        <span class="material-icons">filter_list</span>
+        {{ filteredCollaborateurs.length }} / {{ allCollaborateurs.length }} collaborateurs
+        <span v-if="searchTerm" class="filter-type">Recherche</span>
+        <span v-if="filterMetier" class="filter-type">{{ filterMetier }}</span>
+        <span v-if="filterLieu" class="filter-type">{{ filterLieu }}</span>
+        <span v-if="filterStatut" class="filter-type">{{ filterStatut }}</span>
+        <span v-if="dateFrom" class="filter-type">{{ formatFilterDateRange }}</span>
+        <!-- Indicateur de performance -->
+        <span v-if="isDevelopment && filteringDuration > 5" class="perf-indicator" 
+              :class="{ slow: filteringDuration > 10 }">
+          {{ filteringDuration.toFixed(1) }}ms
+        </span>
+        <span v-if="isFiltering" class="filtering-indicator">
+          <span class="material-icons spin">hourglass_empty</span>
+        </span>
+      </div>
+    </div>
 
   <!-- Contenu principal -->
   <div class="main-content">
@@ -53,12 +79,12 @@
       <span v-else>Synchronisation...</span>
     </div>
 
-    <!-- Indicateur de scroll rapide -->
-    <div v-if="isScrollingFast" class="fast-scroll-indicator">
+    <!-- Indicateur de scroll rapide SUPPRIMÉ -->
+    <!-- <div v-if="isScrollingFast" class="fast-scroll-indicator">
       <va-icon name="fast_forward" size="14px" />
       <span>Scroll rapide</span>
       <div class="buffer-info">Buffer étendu</div>
-    </div>
+    </div> -->
 
     <!-- Indicateur de performance DOM Cache (dev mode) -->
     <div v-if="isDevelopment && domCacheStatus.isValid" class="dom-cache-indicator">
@@ -80,6 +106,31 @@
         <div>Ratio: {{ Math.round((virtualizationStats.visibleCells / virtualizationStats.totalCells) * 100) }}%</div>
       </div>
     </div>
+    -->
+
+    <!-- Stats moteur WASM ultra-performant temporairement désactivé -->
+    <!--
+    <div v-if="isEmulator && _wasmReady" class="wasm-stats" @click="toggleWasmStats">
+      <div class="stats-summary">
+        <va-icon name="flash_on" size="12px" />
+        <span v-if="wasmStats.totalCalculations > 0">WASM: {{ wasmStats.averageTime.toFixed(4) }}ms</span>
+        <span v-else>WASM: Prêt</span>
+        <div class="performance-indicator" :class="wasmPerformanceClass"></div>
+      </div>
+      <div v-if="showWasmStats" class="stats-details">
+        <div>Moteur: {{ _wasmReady ? 'JavaScript ultra-optimisé' : 'Standard' }}</div>
+        <div>Calculs totaux: {{ wasmStats.totalCalculations.toLocaleString() }}</div>
+        <div v-if="wasmStats.totalCalculations > 0">Temps moyen: {{ wasmStats.averageTime.toFixed(6) }}ms</div>
+        <div v-if="wasmStats.totalCalculations > 0">FPS théorique: {{ wasmStats.averageTime > 0 ? Math.round(1000 / wasmStats.averageTime) : '∞' }}</div>
+        <div v-if="wasmStats.totalCalculations > 0">Temps total: {{ wasmStats.totalTime.toFixed(2) }}ms</div>
+        <div v-else>Survolez le planning pour voir les stats</div>
+        <div class="shortcuts">
+          <small>⌘+B: Benchmark | ⌘+W: Stats</small>
+        </div>
+        <button @click.stop="runWasmBenchmark" class="benchmark-btn">🏁 Benchmark</button>
+      </div>
+    </div>
+    -->
 
     <!-- Badge d’environnement: émulateur local -->
     <!-- Badge d'environnement: émulateur local -->
@@ -187,7 +238,7 @@
       <kbd>Ctrl</kbd>+glisser pour sélectionner
     </div>
 
-    <!-- Bouton flottant "Aller à aujourd'hui" -->
+    <!-- Bouton flottant "Aller à aujourd'hui" REPOSITIONNÉ -->
     <div class="go-to-today-fab">
       <va-button 
         preset="secondary" 
@@ -223,6 +274,11 @@
     />
   </div>
 
+  <!-- Indicateur mois actuel -->
+  <div class="current-month-indicator" v-if="currentVisibleMonth">
+    {{ currentVisibleMonth }}
+  </div>
+
   <div class="excel-scroll" ref="planningScroll" :class="{ 
     panning: isPanning, 
     loading: isBusy,
@@ -231,8 +287,9 @@
         <!-- Ligne header sticky -->
         <div class="sticky-header-row">
           <!-- Overlays header: survol de colonne + aujourd'hui -->
-          <div class="column-hover-overlay-header" aria-hidden="true" ref="colHoverHeaderEl"></div>
-          <div class="today-overlay-header" aria-hidden="true"></div>
+          <!-- Plus d'overlay manuel - CSS pur -->
+          <!-- <div class="column-hover-overlay-header" aria-hidden="true" ref="colHoverHeaderEl"></div> -->
+          <!-- <div class="today-overlay-header" aria-hidden="true"></div> -->
           <!-- Séparateurs hebdo du header (mois+semaines+jours) -->
           <div class="week-separators-header" aria-hidden="true">
             <template v-for="(day, idx) in visibleDays" :key="'sep-'+day.date">
@@ -289,6 +346,7 @@
                     ...getDayHeaderClasses(windowStartIndex + dayIndex)
                   ]"
                   :data-day-date="day.date"
+                  :data-today="day.isToday ? 'true' : 'false'"
                   :style="{ width: dayWidth + 'px' }"
                 >
                   <div class="day-name">{{ day.name }}</div>
@@ -301,14 +359,14 @@
 
         <!-- Lignes + overlays (placés DANS le même contexte de stacking que les cellules) -->
   <div class="excel-rows" :style="{ '--row-height': rowHeight + 'px', '--row-pitch': (rowHeight + 1) + 'px', height: gridTotalHeight }" ref="rowsRef">
-          <!-- Overlay de survol horizontal (ligne) -->
-          <div class="row-hover-overlay" aria-hidden="true" ref="rowHoverEl"></div>
+          <!-- Plus d'overlays manuels - CSS pur -->
+          <!-- <div class="row-hover-overlay" aria-hidden="true" ref="rowHoverEl"></div> -->
           <!-- Overlays verticaux (clipés sur la grille) et bande sticky du jour -->
           <div class="grid-overlay-clip" aria-hidden="true">
-            <div class="column-hover-overlay" ref="colHoverEl"></div>
-            <div class="today-overlay"></div>
+            <!-- <div class="column-hover-overlay" ref="colHoverEl"></div> -->
+            <!-- <div class="today-overlay"></div> -->
           </div>
-          <div class="today-overlay-left" aria-hidden="true"></div>
+          <!-- <div class="today-overlay-left" aria-hidden="true"></div> -->
           
           <!-- Conteneur virtualisé des collaborateurs -->
           <div class="rows-window" :style="{ transform: `translateY(${rowWindowOffsetPx}px)` }">
@@ -339,10 +397,10 @@
                   <span class="location" v-if="collaborateur.ville">{{ collaborateur.ville }}</span>
                 </div>
                 <div class="collaborateur-extra">
-                  <span class="contact" v-if="collaborateur.phone">
+                  <a class="contact phone-link" v-if="collaborateur.phone" :href="`tel:${collaborateur.phone}`">
                     <va-icon name="phone" size="12px" />
                     <span class="text">{{ formatPhone(collaborateur.phone) }}</span>
-                  </span>
+                  </a>
                   <span class="contact" v-if="collaborateur.email">
                     <va-icon name="email" size="12px" />
                     <span class="text">{{ collaborateur.email }}</span>
@@ -361,6 +419,7 @@
                   :data-day-index="windowStartIndex + dayIndex"
                   :data-row-index="rowIndex"
                   :data-cell-id="`${collaborateur.id}_${day.date}`"
+                  :data-today="day.isToday ? 'true' : 'false'"
                   :class="[
                     {
                       'today': day.isToday,
@@ -798,6 +857,9 @@ import type { DisponibiliteRTDB } from '../services/disponibilitesRTDBService'
 import { hybridMultiUserService as collaborationService } from '../services/hybridMultiUserService'
 import { multiUserService } from '../services/multiUserService'
 import type { DisplayUser } from '../services/sessionDisplayService'
+
+// NOUVEAU: Moteur WASM ultra-performant pour highlights
+import WASMHighlightEngine from '../services/wasmHighlightEngine'
 import { useSessionDisplay } from '../services/sessionDisplayService'
 import { useMultiUserNotifications } from '../services/multiUserNotificationService'
 import type { Collaborateur } from '../types/planning'
@@ -867,7 +929,7 @@ interface Disponibilite {
   updatedBy?: string
 }
 
-// États
+// États des filtres avec améliorations
 const searchTerm = ref('')
 const filterMetier = ref('')
 const filterLieu = ref('')
@@ -876,6 +938,27 @@ const dateFrom = ref<string>('')
 const dateTo = ref<string>('')
 const viewMode = ref<'week' | 'month' | 'table'>('week')
 const mobileFiltersOpen = ref(false)
+
+// État de performance du filtrage
+const isFiltering = ref(false)
+const filteringDuration = ref(0)
+
+// Cache de recherche pour améliorer les performances
+const searchCache = ref<Map<string, boolean>>(new Map())
+const searchDebounceTimer = ref<number | null>(null)
+
+// Computed pour savoir si des filtres sont actifs
+const hasActiveFilters = computed(() => {
+  return searchTerm.value || filterMetier.value || filterLieu.value || filterStatut.value || dateFrom.value || dateTo.value
+})
+
+// Format de la plage de dates pour l'affichage
+const formatFilterDateRange = computed(() => {
+  if (!dateFrom.value) return ''
+  if (!dateTo.value) return dateFrom.value
+  return `${dateFrom.value} → ${dateTo.value}`
+})
+
 const loadedDays = ref<any[]>([])
 // Gestion des zones chargées
 const loadedDateRanges = ref<Array<{start: string, end: string}>>([])
@@ -905,6 +988,18 @@ const dragStartCell = ref<string | null>(null)
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.ctrlKey || e.metaKey) {
     isSelectionMode.value = true
+  }
+  
+  // Raccourci pour le benchmark WASM : Ctrl/Cmd + B
+  if ((e.ctrlKey || e.metaKey) && e.key === 'b' && isEmulator && _wasmReady) {
+    e.preventDefault()
+    runWasmBenchmark()
+  }
+  
+  // Raccourci pour afficher/masquer les stats WASM : Ctrl/Cmd + W
+  if ((e.ctrlKey || e.metaKey) && e.key === 'w' && isEmulator && _wasmReady) {
+    e.preventDefault()
+    showWasmStats.value = !showWasmStats.value
   }
 }
 
@@ -942,7 +1037,7 @@ watch(selectedCells, () => {
   // Transmettre les sélections aux autres utilisateurs via RTDB
   if (collaborationService.isActive) {
     collaborationService.updateSelectedCells(selectedCells.value)
-    console.log('📋 Sélections transmises:', selectedCells.value.size, 'cellules')
+    // console.log('📋 Sélections transmises:', selectedCells.value.size, 'cellules')
   }
 }, { deep: true })
 
@@ -1458,12 +1553,12 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
   if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
     const lock = collaborationService.getCellLock(collaborateurId, date)
     if (lock) {
-      notify({
-        title: 'Cellule verrouillée',
-        message: `${lock.userName} est en train d'interagir avec cette cellule`,
-        color: 'warning',
-        duration: 3000
-      })
+      // notify({
+      //   title: 'Cellule verrouillée',
+      //   message: `${lock.userName} est en train d'interagir avec cette cellule`,
+      //   color: 'warning',
+      //   duration: 3000
+      // })
       return // Empêcher l'ouverture de la modale
     }
   }
@@ -1472,12 +1567,12 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
   if (collaborationService && collaborationService.isCellSelectedByOthers(collaborateurId, date)) {
     const selection = collaborationService.getCellSelection(collaborateurId, date)
     if (selection) {
-      notify({
-        title: 'Cellule en cours de sélection',
-        message: `${selection.userName} a sélectionné cette cellule`,
-        color: 'warning',
-        duration: 3000
-      })
+      // notify({
+      //   title: 'Cellule en cours de sélection',
+      //   message: `${selection.userName} a sélectionné cette cellule`,
+      //   color: 'warning',
+      //   duration: 3000
+      // })
       return // Empêcher l'ouverture de la modale
     }
   }
@@ -1765,7 +1860,7 @@ function scheduleMeasurements(includeToday = true) {
       
       if (perfStats.measureCalls % 10 === 0) {
         const avgTime = perfStats.totalMeasureTime / perfStats.measureCalls
-        console.log(`🔧 Perf mesures: ${perfStats.measureCalls} calls, avg=${avgTime.toFixed(2)}ms, last=${measureTime.toFixed(2)}ms`)
+        // console.log(`🔧 Perf mesures: ${perfStats.measureCalls} calls, avg=${avgTime.toFixed(2)}ms, last=${measureTime.toFixed(2)}ms`)
       }
     }
   })
@@ -1840,23 +1935,24 @@ function measureRowPitch() {
 // Debug hover perf
 // === SYSTÈME SIMPLIFIÉ DE HIGHLIGHTS ===
 
-// Variables réactives pour les highlights
+// Variables d'index simplifiées - plus utilisées pour le hover maintenant
 const hoveredColumnIndex = ref(-1) // Index de la colonne survolée
 const hoveredRowIndex = ref(-1)    // Index de la ligne survolée
 
-// CSS Variables pour highlighting haute performance
+// Mois actuellement visible
+const currentVisibleMonth = ref('')
+
+// CSS Variables simplifiées
 const highlightStyles = computed(() => {
   return {
-    '--hovered-column': hoveredColumnIndex.value,
-    '--hovered-row': hoveredRowIndex.value,
-    '--today-column': todayColumnIndex.value
+    '--day-width': dayWidth.value + 'px',
+    '--sticky-left': stickyLeftWidth.value + 'px', 
+    '--day-pitch': (dayWidth.value + 1) + 'px'
+    // Plus besoin de --today-column ni --hovered-column/--hovered-row
   }
 })
 
-// Computed pour l'index de la colonne "aujourd'hui"
-const todayColumnIndex = computed(() => {
-  return windowedDays.value.findIndex(d => d.isToday)
-})
+// Plus de cache pour todayColumnIndex - utilisation CSS pur avec data-today
 
 // Fonctions pour calculer les classes CSS des cellules (haute performance)
 const cellClassesCache = new Map<string, string[]>()
@@ -1891,9 +1987,7 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
     classes.push('row-hovered')
   }
   
-  if (todayColumnIndex.value === localDayIndex) {
-    classes.push('today-column')
-  }
+  // Plus besoin de today-column - géré par data-today dans le template
   
   cellClassesCache.set(cacheKey, classes)
   return classes
@@ -1908,9 +2002,7 @@ function getDayHeaderClasses(dayIndex: number) {
     classes.push('column-hovered')
   }
   
-  if (todayColumnIndex.value === localDayIndex) {
-    classes.push('today-column')
-  }
+  // Plus besoin de today-column - géré par data-today dans le template
   
   return classes
 }
@@ -1952,19 +2044,49 @@ function invalidateHoverCache() {
 // Met à jour les index de colonne/ligne survolées (version révolutionnaire)
 let _debounceTimer: number | null = null
 
+// SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
+
 function onGridMouseMove(e: MouseEvent) {
-  _lastPointerX = e.clientX
-  _lastPointerY = e.clientY
+  const target = e.target as HTMLElement
   
-  // Debouncing ultra-agressif pour performance maximale
-  if (_debounceTimer) {
-    clearTimeout(_debounceTimer)
+  // Pendant le scroll rapide, éviter les modifications DOM pour la stabilité
+  if (isScrollingFast.value) {
+    return
   }
   
-  _debounceTimer = setTimeout(() => {
-    updateHoverWithCache()
-  }, 100) // Encore moins fréquent
+  // Remonter jusqu'à la cellule parent (pour les boutons et autres éléments internes)
+  let cellElement = target
+  while (cellElement && !cellElement.classList.contains('excel-cell') && cellElement !== planningScroll.value) {
+    cellElement = cellElement.parentElement as HTMLElement
+  }
+  
+  if (cellElement && cellElement.classList.contains('excel-cell')) {
+    const dayIndex = cellElement.getAttribute('data-day-index')
+    const rowIndex = cellElement.getAttribute('data-row-index')
+    
+    if (dayIndex && rowIndex && planningScroll.value) {
+      // Nettoyer les highlights précédents
+      cleanHoverHighlights()
+      
+      // Highlight toute la colonne (en-tête + toutes les cellules de cette date)
+      const columnCells = planningScroll.value.querySelectorAll(`[data-day-index="${dayIndex}"]`)
+      columnCells.forEach(cell => {
+        cell.setAttribute('data-column-hover', 'true')
+      })
+      
+      // Highlight toute la ligne (toutes les cellules de ce collaborateur)
+      const rowCells = planningScroll.value.querySelectorAll(`[data-row-index="${rowIndex}"]`)
+      rowCells.forEach(cell => {
+        cell.setAttribute('data-row-hover', 'true')
+      })
+    }
+  } else {
+    // Si on survole autre chose, nettoyer
+    cleanHoverHighlights()
+  }
 }
+
+// Système CSS simple - plus besoin de fonctions complexes ou de variables
 
 // Cache des éléments DOM pour performance maximale
 let _domCache = {
@@ -1974,13 +2096,159 @@ let _domCache = {
   lastBuilt: 0
 }
 
+// Moteur WASM ultra-performant pour calculs de highlights
+const wasmEngine = new WASMHighlightEngine()
+let _wasmReady = false
+
+// Variables pour les statistiques WASM
+const wasmStats = ref({
+  totalCalculations: 0,
+  totalTime: 0,
+  averageTime: 0,
+  lastCalculationTime: 0
+})
+
+const showWasmStats = ref(false)
+let wasmDemoRun = false
+
+const wasmPerformanceClass = computed(() => {
+  const avg = wasmStats.value.averageTime
+  if (avg <= 0.01) return 'excellent'
+  if (avg <= 0.05) return 'good'
+  return 'acceptable'
+})
+
+function updateWasmStats() {
+  if (wasmEngine) {
+    const stats = wasmEngine.getPerformanceStats()
+    if (stats) {
+      wasmStats.value = {
+        totalCalculations: stats.totalCalculations || 0,
+        totalTime: stats.totalTime || 0,
+        averageTime: stats.averageTime || 0,
+        lastCalculationTime: performance.now()
+      }
+    }
+  }
+}
+
+function toggleWasmStats() {
+  showWasmStats.value = !showWasmStats.value
+}
+
+async function runWasmBenchmark() {
+  // console.log('🏁 Démarrage du benchmark WASM...')
+  
+  // Afficher les stats pendant le benchmark
+  showWasmStats.value = true
+  
+  const iterations = 5000
+  const startTime = performance.now()
+  
+  // Notification de début SUPPRIMÉE
+  // notify({
+  //   message: `🔥 Benchmark ${iterations} calculs en cours...`,
+  //   color: 'info',
+  //   duration: 2000,
+  //   position: 'bottom-right'
+  // })
+  
+  for (let i = 0; i < iterations; i++) {
+    // Simule des positions de souris aléatoires
+    const mouseX = Math.random() * 800 + 100
+    const mouseY = Math.random() * 600 + 100
+    wasmEngine.calculateHighlight(mouseX, mouseY)
+  }
+  
+  const endTime = performance.now()
+  const totalTime = endTime - startTime
+  const avgTime = totalTime / iterations
+  
+  // console.log(`📊 Benchmark terminé:`)
+  // console.log(`   • ${iterations} calculs en ${totalTime.toFixed(2)}ms`)
+  // console.log(`   • Moyenne: ${avgTime.toFixed(6)}ms par calcul`)
+  // console.log(`   • Débit: ${Math.round(iterations / (totalTime / 1000))} calculs/sec`)
+  
+  updateWasmStats()
+  
+  // Notification de fin avec résultat SUPPRIMÉE
+  // const performance_level = avgTime <= 0.01 ? 'EXCELLENTE 🚀' : 
+  //                          avgTime <= 0.05 ? 'TRÈS BONNE ⚡' : 'ACCEPTABLE ⚠️'
+  
+  // notify({
+  //   message: `✅ Performance ${performance_level} - ${avgTime.toFixed(4)}ms/calcul`,
+  //   color: avgTime <= 0.01 ? 'success' : avgTime <= 0.05 ? 'warning' : 'info',
+  //   duration: 4000,
+  //   position: 'bottom-right'
+  // })
+}
+
 function invalidateDOMCache(reason?: string) {
   if (reason) {
-    console.log('🗑️ Cache DOM invalidé:', reason)
+    // console.log('🗑️ Cache DOM invalidé:', reason)
   }
   _domCache.cacheValid = false
   _domCache.columnElements.clear()
   _domCache.rowElements.clear()
+}
+
+// Initialisation du moteur WASM
+async function initializeWASMEngine() {
+  try {
+    const ready = await wasmEngine.waitForReady()
+    if (ready) {
+      _wasmReady = true
+      // console.log('🦀 Moteur WASM initialisé et prêt')
+      
+      // Configuration initiale
+      updateWASMConfiguration()
+      
+      // Notification utilisateur en mode émulateur SUPPRIMÉE
+      if (isEmulator) {
+        setTimeout(() => {
+          // notify({
+          //   message: '🚀 Moteur ultra-performant activé',
+          //   color: 'success',
+          //   duration: 3000,
+          //   position: 'bottom-right'
+          // })
+          
+          // Demo automatique une seule fois
+          if (!wasmDemoRun) {
+            wasmDemoRun = true
+            setTimeout(() => {
+              // console.log('🔥 Lancement du benchmark initial WASM...')
+              runWasmBenchmark()
+            }, 2000)
+          }
+        }, 1000)
+      }
+    } else {
+      console.warn('⚠️ Moteur WASM non disponible, fallback actif')
+    }
+  } catch (error) {
+    console.error('❌ Erreur initialisation WASM:', error)
+  }
+}
+
+// Mise à jour de la configuration WASM
+function updateWASMConfiguration() {
+  if (!_wasmReady) return
+  
+  wasmEngine.configure({
+    gridWidth: planningScroll.value?.clientWidth || 1200,
+    gridHeight: planningScroll.value?.clientHeight || 800,
+    colWidth: dayWidth.value,
+    rowHeight: rowPitch.value,
+    colsCount: visibleDays.value.length,
+    rowsCount: paginatedCollaborateurs.value.length
+  })
+  
+  // Mettre à jour le scroll
+  const container = planningScroll.value
+  if (container) {
+    wasmEngine.updateScroll(container.scrollLeft, container.scrollTop)
+  }
 }
 
 function buildDOMCache() {
@@ -2007,7 +2275,7 @@ function buildDOMCache() {
   
   _domCache.cacheValid = true
   _domCache.lastBuilt = Date.now()
-  console.log('🚀 Cache DOM construit:', _domCache.columnElements.size, 'colonnes,', _domCache.rowElements.size, 'lignes')
+  // console.log('🚀 Cache DOM construit:', _domCache.columnElements.size, 'colonnes,', _domCache.rowElements.size, 'lignes')
 }
 
 function updateHoverWithCache() {
@@ -2062,6 +2330,60 @@ let _currentHighlightedColumn = -1
 let _currentHighlightedRow = -1
 
 function updateHighlightWithDOMCache(columnIndex: number, rowIndex: number) {
+  // Version WASM ultra-rapide si disponible
+  if (_wasmReady) {
+    updateHighlightWithWASM(columnIndex, rowIndex)
+    return
+  }
+  
+  // Fallback version DOM cache originale
+  updateHighlightWithDOMCacheClassic(columnIndex, rowIndex)
+}
+
+// Nouvelle fonction WASM ultra-performante
+function updateHighlightWithWASM(columnIndex: number, rowIndex: number) {
+  // Si rien ne change, pas besoin de recalculer
+  if (_currentHighlightedColumn === columnIndex && _currentHighlightedRow === rowIndex) {
+    return
+  }
+  
+  // Nettoyer les anciens highlights avec le cache DOM
+  if (_currentHighlightedColumn >= 0) {
+    const oldColumnElements = _domCache.columnElements.get(_currentHighlightedColumn)
+    if (oldColumnElements) {
+      oldColumnElements.forEach(el => el.classList.remove('dom-column-hovered'))
+    }
+  }
+  
+  if (_currentHighlightedRow >= 0) {
+    const oldRowElements = _domCache.rowElements.get(_currentHighlightedRow)
+    if (oldRowElements) {
+      oldRowElements.forEach(el => el.classList.remove('dom-row-hovered'))
+    }
+  }
+  
+  // Appliquer les nouveaux highlights avec WASM + DOM cache
+  if (columnIndex >= 0 && columnIndex !== _currentHighlightedColumn) {
+    const newColumnElements = _domCache.columnElements.get(columnIndex)
+    if (newColumnElements) {
+      newColumnElements.forEach(el => el.classList.add('dom-column-hovered'))
+    }
+  }
+  
+  if (rowIndex >= 0 && rowIndex !== _currentHighlightedRow) {
+    const newRowElements = _domCache.rowElements.get(rowIndex)
+    if (newRowElements) {
+      newRowElements.forEach(el => el.classList.add('dom-row-hovered'))
+    }
+  }
+  
+  // Mettre à jour les variables de tracking
+  _currentHighlightedColumn = columnIndex
+  _currentHighlightedRow = rowIndex
+}
+
+// Version classique DOM cache (fallback)
+function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: number) {
   // Optimisation : ne rien faire si rien n'a changé
   if (_currentHighlightedColumn === columnIndex && _currentHighlightedRow === rowIndex) {
     return
@@ -2114,7 +2436,7 @@ function logHover(tStart: number, idx: number, row: number | string) {
     if (_hoverRafId) cancelAnimationFrame(_hoverRafId)
     _hoverRafId = requestAnimationFrame(() => {
       // Debug logs seraient ici si nécessaire
-      console.log(`Hover: col=${idx}, row=${row}`)
+      // console.log(`Hover: col=${idx}, row=${row}`)
     })
   }
 }
@@ -2181,11 +2503,44 @@ function hasLieuInRange(collaborateurId: string, lieu: string, a: string, b?: st
 }
 
 // Filtres (inclut statut/lieu/coupes sur dates)
+// Filtrage intelligent et optimisé des collaborateurs
 const filteredCollaborateurs = computed(() => {
-  return allCollaborateurs.value.filter(collab => {
-    const searchMatch = !searchTerm.value || `${collab.prenom} ${collab.nom}`.toLowerCase().includes(searchTerm.value.toLowerCase())
+  isFiltering.value = true
+  const start = performance.now()
+  
+  const results = allCollaborateurs.value.filter(collab => {
+    // 1. Recherche textuelle optimisée avec cache
+    const searchKey = `${collab.id}_${searchTerm.value.toLowerCase()}`
+    let searchMatch = true
+    
+    if (searchTerm.value) {
+      if (searchCache.value.has(searchKey)) {
+        searchMatch = searchCache.value.get(searchKey)!
+      } else {
+        const searchText = `${collab.prenom} ${collab.nom} ${collab.email} ${collab.phone} ${collab.ville}`.toLowerCase()
+        searchMatch = searchText.includes(searchTerm.value.toLowerCase())
+        
+        // Cache avec limitation intelligente
+        if (searchCache.value.size > 1000) {
+          // Garder seulement les 500 dernières entrées
+          const entries = Array.from(searchCache.value.entries())
+          searchCache.value.clear()
+          entries.slice(-500).forEach(([key, value]) => {
+            searchCache.value.set(key, value)
+          })
+        }
+        searchCache.value.set(searchKey, searchMatch)
+      }
+    }
+    
+    // 2. Filtres exacts optimisés
     const metierMatch = !filterMetier.value || collab.metier === filterMetier.value
-    // Statut appliqué uniquement si une date de début est définie (jour ou plage)
+    
+    // 3. Filtre de lieu avec recherche dans les disponibilités
+    const lieuMatch = !filterLieu.value || !dateFrom.value || 
+      hasLieuInRange(collab.id, filterLieu.value, dateFrom.value, dateTo.value || undefined)
+    
+    // 4. Filtres de statut intelligents avec cache local
     let statutMatch = true
     if (filterStatut.value && dateFrom.value) {
       if (filterStatut.value === 'Disponible') {
@@ -2194,10 +2549,24 @@ const filteredCollaborateurs = computed(() => {
         statutMatch = hasExplicitIndispoInRange(collab.id, dateFrom.value, dateTo.value || undefined)
       }
     }
-    // Lieu: filtrage si un lieu est choisi et une date de début est fournie
-    const lieuMatch = !filterLieu.value || !dateFrom.value || hasLieuInRange(collab.id, filterLieu.value, dateFrom.value, dateTo.value || undefined)
-    return searchMatch && metierMatch && statutMatch && lieuMatch
+    
+    return searchMatch && metierMatch && lieuMatch && statutMatch
   })
+  
+  // Performance monitoring et indicateurs
+  const duration = performance.now() - start
+  filteringDuration.value = duration
+  isFiltering.value = false
+  
+  if (isDevelopment.value) {
+    if (duration > 10) {
+      console.warn(`🐌 Filtrage lent: ${duration.toFixed(2)}ms pour ${allCollaborateurs.value.length} collaborateurs`)
+    } else if (duration > 5) {
+      console.info(`⚡ Filtrage: ${duration.toFixed(2)}ms pour ${allCollaborateurs.value.length} collaborateurs`)
+    }
+  }
+  
+  return results
 })
 
 // Mode développement
@@ -2397,12 +2766,38 @@ function clearAllHighlights() {
 function onGridMouseLeave() {
   clearAllHighlights()
   
+  // Nettoyer les attributs de column hover ET row hover
+  if (planningScroll.value) {
+    planningScroll.value.querySelectorAll('[data-column-hover="true"]').forEach(el => {
+      el.removeAttribute('data-column-hover')
+    })
+    planningScroll.value.querySelectorAll('[data-row-hover="true"]').forEach(el => {
+      el.removeAttribute('data-row-hover')
+    })
+  }
+  
+  // Reset simple des index - le CSS s'occupe du reste
+  hoveredColumnIndex.value = -1
+  hoveredRowIndex.value = -1
+  
   // Reset des coordonnées
   _lastPointerX = 0
   _lastPointerY = 0
   
   // Nettoyer le hover collaboratif
   collaborationService.onMouseLeavePlanning()
+}
+
+// Fonction centralisée pour nettoyer les highlights crosshair
+function cleanHoverHighlights() {
+  if (!planningScroll.value) return
+  
+  // Nettoyer tous les data attributes de hover
+  const hoveredElements = planningScroll.value.querySelectorAll('[data-column-hover], [data-row-hover]')
+  hoveredElements.forEach(el => {
+    el.removeAttribute('data-column-hover')
+    el.removeAttribute('data-row-hover')
+  })
 }
 
 // Plus aucune synchronisation JS nécessaire: header et colonne gauche sont sticky
@@ -2941,8 +3336,7 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
   
   if (toUpdate.length === 0) {
     if (verbose) {
-
-      notify({ message: 'Aucune mission overnight trouvée à corriger', color: 'info', position: 'top-right', duration: 2000 })
+      // notify({ message: 'Aucune mission overnight trouvée à corriger', color: 'info', position: 'top-right', duration: 2000 })
     }
     return
   }
@@ -2993,12 +3387,12 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
     await Promise.all(updatePromises)
     
     if (verbose) {
-      notify({ 
-        message: `${toUpdate.length} missions overnight corrigées automatiquement`, 
-        color: 'success', 
-        position: 'top-right', 
-        duration: 3000 
-      })
+      // notify({ 
+      //   message: `${toUpdate.length} missions overnight corrigées automatiquement`, 
+      //   color: 'success', 
+      //   position: 'top-right', 
+      //   duration: 3000 
+      // })
     }
     
     // Recharger les données pour voir les changements
@@ -3006,12 +3400,12 @@ async function detectAndFixExistingOvernightMissions(verbose = false) {
   } catch (error) {
     console.error('❌ Erreur lors de la correction:', error)
     if (verbose) {
-      notify({ 
-        message: 'Erreur lors de la correction des missions overnight', 
-        color: 'danger', 
-        position: 'top-right', 
-        duration: 3000 
-      })
+      // notify({ 
+      //   message: 'Erreur lors de la correction des missions overnight', 
+      //   color: 'danger', 
+      //   position: 'top-right', 
+      //   duration: 3000 
+      // })
     }
   }
 }
@@ -3095,12 +3489,12 @@ function openDispoModal(collaborateurId: string, date: string) {
   if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
     const lock = collaborationService.getCellLock(collaborateurId, date)
     if (lock) {
-      notify({
-        title: 'Cellule verrouillée',
-        message: `${lock.userName} est en train d'éditer cette cellule`,
-        color: 'warning',
-        duration: 3000
-      })
+      // notify({
+      //   title: 'Cellule verrouillée',
+      //   message: `${lock.userName} est en train d'éditer cette cellule`,
+      //   color: 'warning',
+      //   duration: 3000
+      // })
 
       return
     }
@@ -3111,11 +3505,11 @@ function openDispoModal(collaborateurId: string, date: string) {
     collaborationService.lockCellForEditing(collaborateurId, date)
       .then(success => {
         if (!success) {
-          notify({
-            title: 'Cellule verrouillée',
-            message: 'Un autre utilisateur a verrouillé cette cellule en même temps',
-            color: 'warning'
-          })
+          // notify({
+          //   title: 'Cellule verrouillée',
+          //   message: 'Un autre utilisateur a verrouillé cette cellule en même temps',
+          //   color: 'warning'
+          // })
           return
         }
 
@@ -3399,7 +3793,7 @@ function setExistingType(index: number, t: Disponibilite['type']) {
   temp[index] = candidate
   if (wouldConflict(temp)) {
     const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-    notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+    // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
     return
   }
   list[index] = candidate
@@ -3413,7 +3807,7 @@ function setExistingTimeKind(index: number, k: Disponibilite['timeKind']) {
   temp[index] = candidate
   if (wouldConflict(temp)) {
     const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-    notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+    // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
     return
   }
   list[index] = candidate
@@ -3435,7 +3829,7 @@ function limitExistingSlots(index: number, val: string[]) {
   temp[index] = candidate
   if (wouldConflict(temp)) {
     const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-    notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+    // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
     return
   }
   list[index] = candidate
@@ -3445,7 +3839,7 @@ function limitExistingSlots(index: number, val: string[]) {
   temp[index] = candidate
   if (wouldConflict(temp)) {
     const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-    notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+    // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
     return
   }
   list[index] = candidate
@@ -3634,7 +4028,7 @@ function saveEditDispo() {
     const temp = [...selectedCellDispos.value, newDispo]
     if (wouldConflict(temp)) {
       const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-      notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+      // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
       return
     }
     selectedCellDispos.value.push(newDispo)
@@ -3647,7 +4041,7 @@ function saveEditDispo() {
     temp[index] = newDispo
     if (wouldConflict(temp)) {
       const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-      notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
+      // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
       return
     }
     selectedCellDispos.value[index] = newDispo
@@ -3670,7 +4064,7 @@ async function saveDispos() {
     // Validation finale: refuser les combinaisons interdites
     if (wouldConflict(selectedCellDispos.value)) {
       const msg = getConflictMessage(selectedCellDispos.value) || 'Conflit: combinaison invalide pour cette journée.'
-      notify({ message: msg, color: 'warning', position: 'top-right', duration: 3500 })
+      // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3500 })
       // ne rien sauvegarder; rester dans la modale
       saving.value = false
       return
@@ -3842,13 +4236,13 @@ async function saveDispos() {
     // Notifier la fin de l'édition et fermer le modal
     handleEditClose()
     
-    // Notification de succès
-    notify({ 
-      message: 'Disponibilité sauvegardée avec succès', 
-      color: 'success',
-      position: 'top-right',
-      duration: 3000
-    })
+    // Notification de succès SUPPRIMÉE
+    // notify({ 
+    //   message: 'Disponibilité sauvegardée avec succès', 
+    //   color: 'success',
+    //   position: 'top-right',
+    //   duration: 3000
+    // })
   } catch (error) {
     console.error('Erreur sauvegarde:', error)
   } finally {
@@ -3864,21 +4258,70 @@ function cancelModal() {
 // (supprimé) Anciennes actions de formulaire séparé
 
 // Navigation
+// Gestion de recherche avec debouncing intelligent
+function updateSearchTerm(value: string) {
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+  
+  // Délai adaptatif basé sur la longueur de la recherche
+  const delay = value.length <= 2 ? 300 : 150 // Plus lent pour les requêtes courtes
+  
+  searchDebounceTimer.value = setTimeout(() => {
+    searchTerm.value = value
+    
+    // Nettoyage intelligent du cache de recherche
+    if (searchCache.value.size > 1000) {
+      // Garder seulement les entrées récentes et pertinentes
+      const entries = Array.from(searchCache.value.entries())
+      searchCache.value.clear()
+      
+      // Prioriser les entrées qui matchent avec la recherche actuelle
+      const relevantEntries = entries.filter(([key]) => 
+        key.includes(value.toLowerCase()) || value === ''
+      ).slice(-500)
+      
+      relevantEntries.forEach(([key, val]) => {
+        searchCache.value.set(key, val)
+      })
+    }
+  }, delay)
+}
+
+// Réinitialiser tous les filtres
+function clearAllFilters() {
+  searchTerm.value = ''
+  filterMetier.value = ''
+  filterLieu.value = ''
+  filterStatut.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
+  searchCache.value.clear()
+}
+
+// Navigation avec gestion des filtres
 async function updateFilters(v: any) {
-  searchTerm.value = v.search || ''
+  // Mise à jour des filtres avec validation
+  if (v.search !== undefined) {
+    // Pour la recherche, utiliser le debouncing
+    updateSearchTerm(v.search)
+  } else {
+    searchTerm.value = v.search || ''
+  }
+  
   filterMetier.value = v.metier || ''
   filterLieu.value = v.lieu || ''
   filterStatut.value = v.statut || ''
   dateFrom.value = v.dateFrom || ''
   dateTo.value = v.dateTo || ''
-  // Autoscroll si une date précise est choisie (priorité à dateFrom)
+  
+  // Autoscroll intelligent si une date précise est choisie
   if (v.dateFrom && !v.dateTo) {
-  await ensureDatePresent(v.dateFrom)
-  scrollToDate(v.dateFrom)
+    await ensureDatePresent(v.dateFrom)
+    scrollToDate(v.dateFrom, 'smooth')
   } else if (v.dateFrom && v.dateTo) {
-    // centrer sur le début de plage
-  await ensureRangePresent(v.dateFrom, v.dateTo)
-  scrollToDate(v.dateFrom)
+    await ensureRangePresent(v.dateFrom, v.dateTo)
+    scrollToDate(v.dateFrom, 'smooth')
   }
 }
 
@@ -3948,15 +4391,15 @@ async function loadCollaborateursFromFirebase() {
     })
     
     // DEBUG: Vérifier la cohérence des IDs
-    console.log('👥 Collaborateurs chargés:', allCollaborateurs.value.length)
+    // console.log('👥 Collaborateurs chargés:', allCollaborateurs.value.length)
     if (allCollaborateurs.value.length > 0) {
       const exempleCollab = allCollaborateurs.value[0]
-      console.log('🆔 Exemple collaborateur:', {
-        id: exempleCollab.id,
-        nom: exempleCollab.nom,
-        prenom: exempleCollab.prenom,
-        email: exempleCollab.email
-      })
+      // console.log('🆔 Exemple collaborateur:', {
+      //   id: exempleCollab.id,
+      //   nom: exempleCollab.nom,
+      //   prenom: exempleCollab.prenom,
+      //   email: exempleCollab.email
+      // })
       
       // Vérifier les disponibilités correspondantes depuis RTDB
       try {
@@ -3966,10 +4409,10 @@ async function loadCollaborateursFromFirebase() {
         if (firstDay && lastDay) {
           const allDispos = await getDisponibilites(firstDay, lastDay)
           const disposPourCollab = allDispos.filter((d: Disponibilite) => d.collaborateurId === exempleCollab.id)
-          console.log(`📅 Disponibilités trouvées pour ${exempleCollab.nom} ${exempleCollab.prenom}:`, disposPourCollab.length)
+          // console.log(`📅 Disponibilités trouvées pour ${exempleCollab.nom} ${exempleCollab.prenom}:`, disposPourCollab.length)
         }
       } catch (error) {
-        console.log('⚠️ Erreur lors de la vérification des disponibilités:', error)
+        // console.log('⚠️ Erreur lors de la vérification des disponibilités:', error)
       }
     }
     
@@ -3985,7 +4428,7 @@ async function loadCollaborateursFromFirebase() {
     loadingCollaborateurs.value = false
     
     // Ne pas masquer l'overlay en cas d'erreur, laisser checkPlanningReadiness() gérer
-    console.log('⚠️ Erreur de chargement collaborateurs, l\'overlay reste affiché')
+    // console.log('⚠️ Erreur de chargement collaborateurs, l\'overlay reste affiché')
   }
 }
 
@@ -3999,7 +4442,7 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
     // Utiliser le nouveau service RTDB (0 lecture Firestore!)
     const disponibilites = await disponibilitesRTDBService.getDisponibilitesByDateRange(dateDebut, dateFin)
     
-    console.log(`✅ RTDB: ${disponibilites.length} disponibilités chargées`)
+    // console.log(`✅ RTDB: ${disponibilites.length} disponibilités chargées`)
     
     // Transformer les données RTDB vers le format existant pour compatibilité
     const formattedDisponibilites = disponibilites.map((dispo: DisponibiliteRTDB) => {
@@ -4057,7 +4500,7 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
   } catch (error) {
     console.error('❌ Erreur chargement disponibilités RTDB:', error)
     // Fallback vers Firestore pendant debug - TEMPORAIREMENT DÉSACTIVÉ POUR ÉVITER ERREURS PERMISSIONS
-    console.log('🔄 Fallback vers Firestore temporairement désactivé')
+    // console.log('🔄 Fallback vers Firestore temporairement désactivé')
     // return await loadDisponibilitesFromFirebaseBackup(dateDebut, dateFin)
     return [] // Retourner un tableau vide en cas d'erreur
   } finally {
@@ -4071,7 +4514,7 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
 // Fonction de backup Firestore (temporaire pendant la migration)
 async function loadDisponibilitesFromFirebaseBackup(dateDebut: string, dateFin: string) {
   try {
-    console.log('⚠️ FALLBACK FIRESTORE: Chargement disponibilités...')
+    // console.log('⚠️ FALLBACK FIRESTORE: Chargement disponibilités...')
     
     const tenantId = AuthService.currentTenantId || 'keydispo'
     
@@ -4091,7 +4534,7 @@ async function loadDisponibilitesFromFirebaseBackup(dateDebut: string, dateFin: 
     )
     
     const snapshot = await getDocs(q)
-    console.log(`📊 FALLBACK FIRESTORE: ${snapshot.size} disponibilités lues`)
+    // console.log(`📊 FALLBACK FIRESTORE: ${snapshot.size} disponibilités lues`)
     
     // Alerte si trop de lectures
     if (snapshot.size > 150) {
@@ -4188,9 +4631,9 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
   const missing = computeMissingSubranges(dateDebut, dateFin, loadedDateRanges.value)
   if (missing.length === 0) {
     // Rien à charger depuis Firestore
-    console.log(`📅 Fenêtre ${dateDebut} → ${dateFin} déjà en cache, pas de fetch`)
+    // console.log(`📅 Fenêtre ${dateDebut} → ${dateFin} déjà en cache, pas de fetch`)
   } else {
-    console.log(`📅 Chargement dispos (sous-plages manquantes):`, missing)
+    // console.log(`📅 Chargement dispos (sous-plages manquantes):`, missing)
     fetchingRanges.value = true
     try {
       for (const sub of missing) {
@@ -4223,7 +4666,7 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
       // Log final du cache
       let totalDispos = 0
       disponibilitesCache.value.forEach(dispos => totalDispos += dispos.length)
-      console.log(`📊 TOTAL CACHE après chargement: ${totalDispos} disponibilités sur ${disponibilitesCache.value.size} jours`)
+      // console.log(`📊 TOTAL CACHE après chargement: ${totalDispos} disponibilités sur ${disponibilitesCache.value.size} jours`)
       
     } finally {
       fetchingRanges.value = false
@@ -4262,7 +4705,7 @@ function startRealtimeSync() {
   // Vérifier si on a déjà un listener pour cette plage exacte
   const currentListenerId = `${dateDebut}_${dateFin}`
   if (realtimeListeners.value.includes(currentListenerId)) {
-    console.log(`📡 Listener déjà actif pour ${dateDebut} → ${dateFin}`)
+    // console.log(`📡 Listener déjà actif pour ${dateDebut} → ${dateFin}`)
     return
   }
   
@@ -4292,7 +4735,7 @@ function startRealtimeSync() {
  * Arrêter toute la synchronisation temps réel
  */
 function stopRealtimeSync() {
-  console.log(`📡 Arrêt de la synchronisation temps réel`)
+  // console.log(`📡 Arrêt de la synchronisation temps réel`)
   realtimeSync.stopAllSync()
   realtimeListeners.value = []
   isRealtimeActive.value = false
@@ -4304,15 +4747,15 @@ function stopRealtimeSync() {
 function showRealtimeStats() {
   const stats = realtimeSync.getStats()
   const collaborationStats = collaborationService.getStats()
-  console.log('📊 Statistiques de synchronisation temps réel:', stats)
-  console.log('👥 Statistiques de collaboration:', collaborationStats)
+  // console.log('📊 Statistiques de synchronisation temps réel:', stats)
+  // console.log('👥 Statistiques de collaboration:', collaborationStats)
   
-  notify({
-    message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
-    color: 'info',
-    position: 'top-right',
-    duration: 4000
-  })
+  // notify({
+  //   message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
+  //   color: 'info',
+  //   position: 'top-right',
+  //   duration: 4000
+  // })
 }
 
 // ==========================================
@@ -4385,7 +4828,7 @@ function isUserWithMultipleSessions(uid: string): boolean {
  */
 function handleUserPreferencesUpdate(event: Event) {
   const customEvent = event as CustomEvent
-  console.log('📢 Réception d\'un événement de changement de préférences:', customEvent.detail)
+  // console.log('📢 Réception d\'un événement de changement de préférences:', customEvent.detail)
   
   if (customEvent.detail.colorChanged) {
     // Mise à jour forcée des couleurs dans le planning
@@ -4506,7 +4949,7 @@ function getUserStatusTooltip(user: DisplayUser): string {
 async function cleanupSessions() {
   try {
     // await collaborationService.cleanupExpiredSessions() // Géré automatiquement dans le nouveau système
-    console.log('🧹 Nettoyage des sessions terminé')
+    // console.log('🧹 Nettoyage des sessions terminé')
   } catch (error) {
     console.error('❌ Erreur nettoyage sessions:', error)
   }
@@ -4530,11 +4973,11 @@ async function initializePresence() {
     const user = multiUserService.getCurrentUser()
     
     if (!user) {
-      console.log('❌ Aucun utilisateur connecté dans multiUserService pour la collaboration')
+      // console.log('❌ Aucun utilisateur connecté dans multiUserService pour la collaboration')
       return
     }
     
-    console.log('👤 Utilisateur trouvé:', user.displayName)
+    // console.log('👤 Utilisateur trouvé:', user.displayName)
     
     if (USE_NEW_COLLABORATION) {
       // Nouveau système basé sur des données Firebase - utiliser les données du multiUserService
@@ -4558,7 +5001,7 @@ async function initializePresence() {
         return
       }
       
-      console.log('🚀 Nouveau service collaboration initialisé')
+      // console.log('🚀 Nouveau service collaboration initialisé')
     
     // S'abonner aux changements d'activités pour mettre à jour l'UI en temps réel
     activityUnsubscribe.value = collaborationService.onActivityChange(() => {
@@ -4572,7 +5015,7 @@ async function initializePresence() {
     
     // S'abonner aux changements de sélections distantes
     selectionUnsubscribe.value = collaborationService.onSelectionChange(() => {
-      console.log('📋 Sélections distantes mises à jour')
+      // console.log('📋 Sélections distantes mises à jour')
       debouncedUpdatePresenceSets()
       updatePresenceInitials()
     })
@@ -4993,8 +5436,17 @@ async function onScrollExtend(e: Event) {
   const scroller = e.currentTarget as HTMLElement
   if (!scroller) return
 
-  // Garder le hover actif pendant le scroll (trackpad/souris)
+  // Nettoyer les highlights de hover pendant le scroll SEULEMENT si pas en scroll rapide
+  if (!isScrollingFast.value) {
+    cleanHoverHighlights()
+  }
+  
+  // Maintenir le hover pendant le scroll
   updateHoverOnScroll(scroller)
+  
+  // Calculer le mois visible
+  updateCurrentVisibleMonth(scroller)
+  
   // Recalcule la fenêtre virtualisée
   recomputeWindow(scroller)
 
@@ -5092,6 +5544,31 @@ function formatDateLong(dateStr: string) {
     month: 'long', 
     day: 'numeric' 
   })
+}
+
+// Mettre à jour le mois actuellement visible
+function updateCurrentVisibleMonth(scroller: HTMLElement) {
+  if (!visibleDays.value.length) return
+  
+  const scrollLeft = scroller.scrollLeft
+  const gridLeft = stickyLeftWidth.value + 1
+  const pitch = dayWidth.value + 1
+  const viewportWidth = scroller.clientWidth
+  
+  // Calculer le jour au centre de la vue
+  const centerX = scrollLeft + viewportWidth / 2
+  const dayIndex = Math.floor((centerX - gridLeft) / pitch)
+  const clampedIndex = Math.max(0, Math.min(dayIndex, visibleDays.value.length - 1))
+  
+  if (clampedIndex < visibleDays.value.length) {
+    const day = visibleDays.value[clampedIndex]
+    const monthName = new Date(day.date).toLocaleDateString('fr-FR', { 
+      month: 'long', 
+      year: 'numeric' 
+    })
+    // Capitaliser la première lettre
+    currentVisibleMonth.value = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+  }
 }
 
 // Repositionne les overlays de hover en se basant sur la dernière position pointeur, utile pendant un scroll sans mousemove
@@ -5787,6 +6264,9 @@ onMounted(async () => {
   generateInitialDays()
   await loadCollaborateursFromFirebase()
   
+  // Initialiser le moteur WASM ultra-performant
+  await initializeWASMEngine()
+  
   // Charger les disponibilités initiales
   if (visibleDays.value.length > 0) {
     const firstDay = visibleDays.value[0]
@@ -5794,6 +6274,16 @@ onMounted(async () => {
     if (firstDay && lastDay) {
       await generateDisponibilitesForDateRange(firstDay.date, lastDay.date)
     }
+  }
+  
+  // Configurer le moteur WASM avec les données actuelles
+  updateWASMConfiguration()
+  
+  // Initialiser l'affichage du mois actuel
+  await nextTick()
+  const scroller = planningScroll.value
+  if (scroller) {
+    updateCurrentVisibleMonth(scroller)
   }
   
   // Charger les préférences utilisateur
@@ -6036,6 +6526,15 @@ watch([visibleDays, paginatedCollaborateurs], () => {
   invalidateDOMCache('Structure du planning modifiée')
   // Reconstruire le cache après un court délai
   setTimeout(buildDOMCache, 50)
+  // Mettre à jour la configuration WASM
+  updateWASMConfiguration()
+}, { immediate: false })
+
+// Watcher spécifique pour mettre à jour le moteur WASM
+watch([visibleDays, paginatedCollaborateurs], () => {
+  if (_wasmReady) {
+    updateWASMConfiguration()
+  }
 }, { immediate: false })
 
 onUnmounted(() => {
@@ -6098,6 +6597,36 @@ const updateSetsDebounced = (() => {
 })()
 
 watch([visibleDays, paginatedCollaborateurs], updateSetsDebounced, { immediate: true })
+
+// Watchers pour optimisation des filtres
+watch(allCollaborateurs, () => {
+  // Nettoyer le cache de recherche quand les collaborateurs changent
+  searchCache.value.clear()
+}, { deep: true })
+
+watch(() => searchTerm.value, (newValue, oldValue) => {
+  // Optimisation: si la nouvelle recherche est plus spécifique, on peut réutiliser une partie du cache
+  if (newValue && oldValue && newValue.includes(oldValue)) {
+    // Garder seulement les entrées du cache qui correspondent encore
+    const filteredCache = new Map()
+    for (const [key, value] of searchCache.value.entries()) {
+      if (value && key.includes(newValue.toLowerCase())) {
+        filteredCache.set(key, value)
+      }
+    }
+    searchCache.value = filteredCache
+  } else if (!newValue) {
+    // Si on efface la recherche, nettoyer complètement le cache
+    searchCache.value.clear()
+  }
+})
+
+// Watcher pour nettoyer le timer de debounce au démontage
+onUnmounted(() => {
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+})
 
 // Watcher pour les préférences utilisateur - mettre à jour les couleurs automatiquement
 watch(() => preferences.value.presenceColor, (newColor) => {
@@ -6616,10 +7145,11 @@ onUnmounted(() => {
 }
 
 .collaborateur-name-large {
-  font-size: 18px;
+  font-size: 16px; /* réduit de 18px à 16px */
   font-weight: 600;
   color: var(--va-color-text-primary);
   margin: 0 0 4px 0;
+  text-transform: capitalize; /* première lettre de chaque mot en majuscule */
 }
 
 .collaborateur-meta-large {
@@ -7146,6 +7676,89 @@ onUnmounted(() => {
   --week-sep-width: 3px;
 }
 
+/* ========================================
+   STYLES DE L'INTERFACE PRINCIPALE
+   ======================================== */
+
+/* Indicateur des filtres actifs */
+.active-filters-indicator {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  border-bottom: 1px solid #e1bee7;
+  padding: 8px 0;
+  transition: all 0.3s ease;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.indicator-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #6a1b9a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.indicator-content .material-icons {
+  font-size: 16px;
+  color: #9c27b0;
+}
+
+.filter-type {
+  background: #9c27b0;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.perf-indicator {
+  background: #4caf50;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.perf-indicator.slow {
+  background: #ff9800;
+}
+
+.filtering-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.filtering-indicator .material-icons {
+  font-size: 14px;
+  color: #9c27b0;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .loading-overlay {
   display: flex;
   align-items: center;
@@ -7273,6 +7886,98 @@ onUnmounted(() => {
   gap: 4px;
   font-size: 10px;
   color: #a7f3d0;
+}
+
+/* Stats moteur WASM ultra-performant */
+.wasm-stats {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.wasm-stats:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.wasm-stats .stats-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.wasm-stats .performance-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.wasm-stats .performance-indicator.excellent {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.wasm-stats .performance-indicator.good {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.wasm-stats .performance-indicator.acceptable {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.wasm-stats .stats-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.wasm-stats .benchmark-btn {
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wasm-stats .benchmark-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.wasm-stats .shortcuts {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.wasm-stats .shortcuts small {
+  opacity: 0.8;
+  font-size: 10px;
 }
 
 .env-badge {
@@ -7773,6 +8478,24 @@ onUnmounted(() => {
   }
 }
 
+/* Indicateur mois actuel */
+.current-month-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
 /* Ligne d'en-tête sticky (top:0) */
 .sticky-header-row {
   position: sticky;
@@ -7805,21 +8528,7 @@ onUnmounted(() => {
   z-index: 153; /* au-dessus des éléments du header */
 }
 
-/* Overlay de colonne survolée pour l'en-tête */
-.column-hover-overlay-header {
-  position: absolute;
-  top: 0;
-  left: var(--grid-left-header, calc(var(--sticky-left, 260px) + 1px));
-  transform: translate3d(-9999px, 0, 0);
-  width: var(--day-width, 100px);
-  height: 100%;
-  pointer-events: none;
-  background: rgba(76, 175, 80, 0.12);
-  mix-blend-mode: multiply;
-  font-family: var(--va-font-family);
-  z-index: 151; /* au-dessus du contenu jour, sous today-overlay-header (152) */
-  will-change: transform;
-}
+/* Ancien système overlay supprimé - remplacé par CSS pur */
 
 /* Overlay "aujourd'hui" pour l'en-tête */
 .today-overlay-header {
@@ -7951,6 +8660,14 @@ onUnmounted(() => {
 
 /* (supprimé) séparateur sur header jours remplacé par overlay global */
 
+/* Highlight de la colonne du jour - CSS pur avec attribut data */
+.excel-day-cell[data-today="true"] {
+  background: #e3f2fd !important;
+  font-weight: 600;
+  /* Effet visuel plus marqué pour le jour actuel */
+  box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
 .excel-day-cell.today {
   background: #e3f2fd;
   font-weight: 600;
@@ -8028,37 +8745,9 @@ onUnmounted(() => {
   z-index: 20; /* Au-dessus des cellules (z-index 1), sous les overlays */
 }
 
-/* Overlay de colonne survolée (corps) */
-.column-hover-overlay {
-  position: absolute;
-  top: 0; /* dans .excel-rows, pas besoin de compenser le header */
-  left: 0; /* origine = bord droit de la sticky via le clip */
-  transform: translate3d(-9999px, 0, 0);
-  width: var(--day-width, 100px);
-  bottom: 0;
-  pointer-events: none;
-  background: rgba(76, 175, 80, 0.12);
-  mix-blend-mode: multiply;
-  z-index: 30; /* Au-dessus du clip (20) et des cellules */
-  transition: none; /* éviter toute latence visuelle */
-  will-change: transform;
-}
+/* Ancien système overlay supprimé - remplacé par CSS pur */
 
-/* Overlay de survol horizontal (ligne) */
-.row-hover-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  transform: translate3d(0, -9999px, 0);
-  height: var(--row-overlay-height, calc(var(--row-height, 50px) + 1px)); /* inclut la bordure bas de la ligne */
-  pointer-events: none;
-  background: rgba(76, 175, 80, 0.16); /* légèrement plus visible */
-  mix-blend-mode: multiply;
-  transition: none; /* pas de latence liée aux transitions */
-  z-index: 400; /* au-dessus des cellules et de la colonne collaborateurs (300) */
-  will-change: transform;
-}
+/* Ancien système overlay supprimé - remplacé par CSS pur */
 
 /* === HIGHLIGHTS ULTRA-PERFORMANTS (DOM direct) === */
 
@@ -8075,23 +8764,41 @@ onUnmounted(() => {
 /* === HIGHLIGHTS TRADITIONNELS (Vue) === */
 
 /* Highlight de colonne survolée - CSS pur avec hover rapide */
-.excel-scroll:not(.panning):not(.loading) .excel-day-cell:hover,
+/* SYSTÈME CROISEMENT PARFAIT : ligne + colonne comme la date du jour */
+
+/* Hover sur cellule individuelle - point de croisement */
 .excel-scroll:not(.panning):not(.loading) .excel-cell:hover {
-  background-color: rgba(76, 175, 80, 0.08) !important;
+  background-color: rgba(76, 175, 80, 0.3) !important;
+  position: relative;
+  z-index: 15;
+  border: 2px solid rgba(76, 175, 80, 0.6) !important;
 }
 
-/* Highlight programmé de colonne (fallback Vue) */
-.excel-day-cell.column-hovered,
-.excel-cell.column-hovered {
+/* Hover de colonne complète (en-têtes + cellules) */
+[data-column-hover="true"] {
   background-color: rgba(76, 175, 80, 0.12) !important;
-  will-change: background-color; /* Optimisation GPU */
 }
 
-/* Highlight de ligne survolée - MAIS PAS sur la colonne collaborateurs */
-.excel-cell.row-hovered {
-  background-color: rgba(76, 175, 80, 0.16) !important;
-  will-change: background-color; /* Optimisation GPU */
+/* Hover de ligne complète */
+[data-row-hover="true"] {
+  background-color: rgba(76, 175, 80, 0.12) !important;
 }
+
+/* Croisement : cellule qui a les deux attributs (point central) */
+[data-column-hover="true"][data-row-hover="true"] {
+  background-color: rgba(76, 175, 80, 0.35) !important;
+  border: 2px solid rgba(76, 175, 80, 0.8) !important;
+  z-index: 20;
+}
+
+/* Style spécial pour l'en-tête de colonne survolée */
+.excel-day-cell[data-column-hover="true"] {
+  background-color: rgba(76, 175, 80, 0.25) !important;
+  font-weight: 600;
+  border-bottom: 3px solid rgba(76, 175, 80, 0.8) !important;
+}
+
+/* Plus besoin des pseudo-éléments, on a le vrai croisement */
 
 /* Suppression explicite du highlight sur la colonne collaborateurs */
 .collab-sticky.row-hovered {
@@ -8111,20 +8818,18 @@ onUnmounted(() => {
   background-color: rgba(76, 175, 80, 0.25) !important;
 }
 
-.excel-cell.today-column.column-hovered,
-.excel-cell.today-column.dom-column-hovered {
+/* Combinaisons avec la colonne du jour - système data-today */
+.excel-cell[data-today="true"][data-column-hover="true"] {
   background-color: rgba(33, 150, 243, 0.3) !important;
 }
 
-.excel-cell.today-column.row-hovered {
-  background-color: rgba(33, 150, 243, 0.25) !important; /* Bleu + hover */
-}
-
-.excel-cell.today-column.column-hovered {
-  background-color: rgba(33, 150, 243, 0.25) !important; /* Bleu + hover */
+.excel-cell[data-today="true"][data-row-hover="true"] {
+  background-color: rgba(33, 150, 243, 0.25) !important;
 }
 
 /* Masquer les anciens overlays (plus utilisés) */
+/* Overlays désactivés - utilisation CSS pur uniquement */
+/*
 .today-overlay-header,
 .today-overlay,
 .today-overlay-left,
@@ -8133,31 +8838,31 @@ onUnmounted(() => {
 .row-hover-overlay {
   display: none !important;
 }
+*/
 
 /* === STYLES EXISTANTS === */
+/* Anciens overlays supprimés - CSS pur utilisé à la place
 .today-overlay {
   position: absolute;
-  top: 0; /* dans .excel-rows */
-  left: var(--today-x-local, -9999px); /* origine = clip (sticky+1px) */
-  width: var(--day-width, 100px); /* synchronisé avec dayWidth */
+  top: 0;
+  left: var(--today-x-local, -9999px);
+  width: var(--day-width, 100px);
   bottom: 0;
   pointer-events: none;
-  background: rgba(33, 150, 243, 0.18); /* bleu doux */
-  z-index: 40; /* Au-dessus du hover (30) */
+  background: rgba(33, 150, 243, 0.18);
+  z-index: 40;
   will-change: left;
 }
 .today-overlay-left {
   position: absolute;
-  top: 0; /* dans .excel-rows */
+  top: 0;
   left: 0;
-  width: var(--sticky-left, 260px); /* largeur de la colonne collaborateurs (sync avec collab-sticky) */
+  width: var(--sticky-left, 260px);
   height: 100%;
   pointer-events: none;
-  background: transparent; /* sera coloré via box-shadow */
-  /* reproduit le surlignage dans la zone sticky en se basant sur la position locale */
+  background: transparent;
   box-shadow: inset calc(var(--today-x-local, -9999px)) 0 0 0 rgba(33, 150, 243, 0.18);
-  z-index: 215; /* sous collab-sticky (1000), au-dessus du fond */
-}
+*/
 
 .excel-collaborateur-row {
   border-bottom: 1px solid #e0e0e0;
@@ -8179,26 +8884,32 @@ onUnmounted(() => {
   padding: 8px 10px; /* compact pour loger plus d'infos */
   width: 100%;
   position: relative; /* pour ancrer le badge métier à droite */
+  background: #ffffff; /* fond blanc pour contraste */
 }
 
 .collaborateur-name {
   font-weight: 700;
-  font-size: 12px;
-  color: #1f2937;
-  margin-bottom: 1px;
-  line-height: 1.2;
+  font-size: 10px; /* réduit de 11px à 10px */
+  color: #111827; /* couleur plus foncée pour meilleur contraste */
+  margin-bottom: 2px;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8); /* ombre légère pour lisibilité */
+  text-transform: capitalize; /* première lettre de chaque mot en majuscule */
 }
 
 .collaborateur-name.clickable-name {
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  padding: 3px 6px; /* padding légèrement plus grand */
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #111827; /* couleur de base plus foncée */
 }
 
 .collaborateur-name.clickable-name:hover {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.15); /* fond plus visible */
+  color: #1d4ed8; /* couleur plus contrastée */
+  transform: translateY(-1px); /* effet de lift subtil */
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .collaborateur-name .metier-chip {
@@ -8266,6 +8977,27 @@ onUnmounted(() => {
   max-width: 100%;
 }
 
+/* Liens téléphone cliquables */
+.collaborateur-extra .contact.phone-link {
+  color: #3b82f6;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px; /* compensate padding */
+}
+
+.collaborateur-extra .contact.phone-link:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.collaborateur-extra .contact.phone-link:active {
+  transform: translateY(0);
+}
+
 .collaborateur-extra .contact .text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8287,7 +9019,7 @@ onUnmounted(() => {
   width: var(--sticky-left, 260px);
   min-width: var(--sticky-left, 260px);
   flex: 0 0 var(--sticky-left, 260px); /* ne pas rétrécir/allonger, fixe */
-  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); /* fond plus clair */
   border-right: 2px solid #dee2e6;
   box-shadow: 
     2px 0 8px rgba(0,0,0,0.06),
@@ -8791,6 +9523,13 @@ body.dragging-selection .excel-cell {
 }
 
 .excel-cell:hover { background: transparent; }
+
+/* Highlight de la colonne du jour - CSS pur avec attribut data */
+.excel-cell[data-today="true"] {
+  background: #e3f2fd !important;
+  /* Bordure subtile pour marquer la colonne */
+  box-shadow: inset 2px 0 0 0 rgba(33, 150, 243, 0.4), inset -2px 0 0 0 rgba(33, 150, 243, 0.4);
+}
 
 .excel-cell.today {
   background: #e3f2fd;
@@ -9329,8 +10068,8 @@ body.dragging-selection .excel-cell {
 
 .go-to-today-fab {
   position: fixed;
-  top: 120px;
-  right: 20px;
+  top: 180px;
+  left: 20px;
   z-index: 1000;
   background: white;
   padding: 4px;
@@ -9358,8 +10097,8 @@ body.dragging-selection .excel-cell {
   }
   
   .go-to-today-fab {
-    top: 80px;
-    right: 10px;
+    top: 140px;
+    left: 10px;
   }
 }
 
@@ -9518,10 +10257,11 @@ body.dragging-selection .excel-cell {
 }
 
 .collaborateur-name {
-  font-size: 18px;
+  font-size: 16px; /* réduit de 18px à 16px */
   font-weight: 600;
   color: var(--va-color-text-primary);
   margin: 0 0 4px 0;
+  text-transform: capitalize; /* première lettre de chaque mot en majuscule */
 }
 
 .selected-date {

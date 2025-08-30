@@ -1,3 +1,6 @@
+
+
+
 #!/bin/bash
 
 # Script de test de l'optimisation Firestore

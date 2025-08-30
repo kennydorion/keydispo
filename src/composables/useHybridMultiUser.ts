@@ -91,7 +91,6 @@ export function useHybridMultiUser() {
     }
 
     try {
-      console.log('🚀 Initialisation du service hybride multi-utilisateur...')
       
       await hybridMultiUserService.init(tenantId.value, {
         uid: currentUser.value.uid,
@@ -105,7 +104,6 @@ export function useHybridMultiUser() {
       // Démarrer la synchronisation des états
       startReactiveSync()
       
-      console.log('✅ Service hybride initialisé avec succès')
       return true
       
     } catch (error) {
@@ -120,7 +118,6 @@ export function useHybridMultiUser() {
     if (!isInitialized.value) return
 
     try {
-      console.log('🔄 Arrêt du service hybride...')
       
       await hybridMultiUserService.destroy()
       
@@ -130,7 +127,6 @@ export function useHybridMultiUser() {
       activities.value.clear()
       locks.value.clear()
       
-      console.log('✅ Service hybride arrêté')
       
     } catch (error) {
       console.error('❌ Erreur lors de l\'arrêt du service hybride:', error)
@@ -217,7 +213,6 @@ export function useHybridMultiUser() {
       const success = await hybridMultiUserService.lockCell(collaborateurId, date, lockType)
       
       if (success) {
-        console.log(`🔒 Cellule verrouillée: ${collaborateurId}_${date} (${lockType})`)
       } else {
         console.warn(`⚠️ Impossible de verrouiller: ${collaborateurId}_${date}`)
       }
@@ -234,7 +229,6 @@ export function useHybridMultiUser() {
 
     try {
       await hybridMultiUserService.unlockCell(collaborateurId, date)
-      console.log(`🔓 Cellule déverrouillée: ${collaborateurId}_${date}`)
       return true
     } catch (error) {
       console.error(`❌ Erreur déverrouillage cellule ${collaborateurId}_${date}:`, error)
@@ -327,10 +321,8 @@ export function useHybridMultiUser() {
     () => [currentUser.value, tenantId.value, isAuthenticated.value],
     async ([user, tenantIdValue, isAuth]) => {
       if (isAuth && user && tenantIdValue && !isInitialized.value) {
-        console.log('🔄 Auto-initialisation du service hybride détectée')
         await init()
       } else if (!isAuth && isInitialized.value) {
-        console.log('🔄 Déconnexion détectée, arrêt du service hybride')
         await destroy()
       }
     },

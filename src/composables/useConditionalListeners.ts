@@ -14,7 +14,6 @@ export class ConditionalListenerManager {
   
   init(tenantId: string) {
     this.tenantId = tenantId
-    console.log('🎯 ConditionalListenerManager initialisé pour tenant:', tenantId)
   }
   
   /**
@@ -24,7 +23,6 @@ export class ConditionalListenerManager {
     const oldRange = this.visibleRange.value
     this.visibleRange.value = { startDate, endDate, startRow, endRow }
     
-    console.log(`🔍 Mise à jour zone visible: ${startDate} → ${endDate}, lignes ${startRow}-${endRow}`)
     
     // Si la zone a changé significativement, réorganiser les listeners
     if (this.hasRangeChangedSignificantly(oldRange, this.visibleRange.value)) {
@@ -88,7 +86,6 @@ export class ConditionalListenerManager {
       this.activeListeners.set('sessions', sessionsListenerId)
     }
     
-    console.log(`📡 ${this.activeListeners.size} listeners créés pour zone visible`)
   }
   
   /**
@@ -109,7 +106,6 @@ export class ConditionalListenerManager {
       return firestoreListenerManager.subscribe(
         dispoQuery,
         (snapshot: any) => {
-          console.log(`📅 Disponibilités mises à jour: ${snapshot.size || 0} documents`)
           // Émettre un événement pour notifier les composants
           document.dispatchEvent(new CustomEvent('disponibilites-updated', { 
             detail: { snapshot, dateRange: { startDate, endDate } } 
@@ -137,7 +133,6 @@ export class ConditionalListenerManager {
       return firestoreListenerManager.subscribe(
         activitiesQuery,
         (snapshot: any) => {
-          console.log(`🔄 Activités cellules mises à jour: ${snapshot.size || 0} documents`)
           document.dispatchEvent(new CustomEvent('cell-activities-updated', { 
             detail: { snapshot } 
           }))
@@ -165,7 +160,6 @@ export class ConditionalListenerManager {
       return firestoreListenerManager.subscribe(
         sessionsQuery,
         (snapshot: any) => {
-          console.log(`👥 Sessions actives mises à jour: ${snapshot.size || 0} utilisateurs`)
           document.dispatchEvent(new CustomEvent('active-sessions-updated', { 
             detail: { snapshot } 
           }))
@@ -184,7 +178,6 @@ export class ConditionalListenerManager {
   cleanup() {
     for (const [zone, listenerId] of this.activeListeners.entries()) {
       firestoreListenerManager.unsubscribe(listenerId)
-      console.log(`🧹 Listener nettoyé: ${zone}`)
     }
     this.activeListeners.clear()
   }
@@ -205,7 +198,6 @@ export class ConditionalListenerManager {
    * Forcer la réorganisation des listeners
    */
   forceReorganize() {
-    console.log('🔄 Réorganisation forcée des listeners')
     this.reorganizeListeners()
   }
 }

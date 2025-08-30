@@ -121,10 +121,10 @@ export function usePlanningData() {
       return allCollaborateurs.value
     } catch (error) {
       console.error('❌ [usePlanningData] Erreur chargement collaborateurs:', error)
-      toast.init({
-        message: 'Erreur lors du chargement des collaborateurs',
-        color: 'danger'
-      })
+      // toast.init({
+      //   message: 'Erreur lors du chargement des collaborateurs',
+      //   color: 'danger'
+      // })
       return []
     } finally {
       loadingCollaborateurs.value = false
@@ -257,10 +257,10 @@ export function usePlanningData() {
 
     } catch (error) {
       console.error('❌ [usePlanningData] Erreur lors du chargement des disponibilités:', error)
-      toast.init({
-        message: 'Erreur lors du chargement des disponibilités',
-        color: 'danger'
-      })
+      // toast.init({
+      //   message: 'Erreur lors du chargement des disponibilités',
+      //   color: 'danger'
+      // })
     } finally {
       fetchingRanges.value = false
     }
@@ -338,18 +338,18 @@ export function usePlanningData() {
       // Forcer la réactivité
       await nextTick()
 
-      toast.init({
-        message: `${dispos.length} disponibilité(s) sauvegardée(s)`,
-        color: 'success'
-      })
+      // toast.init({
+      //   message: `${dispos.length} disponibilité(s) sauvegardée(s)`,
+      //   color: 'success'
+      // })
 
       return true
     } catch (error) {
       console.error('❌ [usePlanningData] Erreur lors de la sauvegarde:', error)
-      toast.init({
-        message: 'Erreur lors de la sauvegarde',
-        color: 'danger'
-      })
+      // toast.init({
+      //   message: 'Erreur lors de la sauvegarde',
+      //   color: 'danger'
+      // })
       return false
     } finally {
       saving.value = false

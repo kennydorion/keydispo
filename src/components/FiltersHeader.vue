@@ -25,7 +25,7 @@
     <!-- Section filtres -->
     <div class="filters-section">
       <div class="filters-container">
-        <!-- Barre de recherche principale -->
+        <!-- Barre de recherche principale avec indicateur de résultats et suggestions -->
         <div class="search-container">
           <div class="search-wrapper">
             <div class="search-icon">
@@ -34,16 +34,46 @@
             <input 
               v-model="local.search" 
               type="text"
-              placeholder="Rechercher un collaborateur..."
+              placeholder="Rechercher un collaborateur (nom, email, téléphone)..."
               class="search-input"
+              @input="onSearchInput"
+              @focus="showSuggestions = true"
+              @blur="hideSuggestions"
             />
+            <!-- Bouton de reset de recherche si elle n'est pas vide -->
+            <button 
+              v-if="local.search" 
+              @click="clearSearch" 
+              class="search-clear-btn"
+              type="button"
+            >
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          
+          <!-- Suggestions de recherche intelligentes -->
+          <div v-if="showSuggestions && searchSuggestions.length > 0" class="search-suggestions">
+            <div 
+              v-for="suggestion in searchSuggestions.slice(0, 5)" 
+              :key="suggestion.value"
+              @click="selectSuggestion(suggestion)"
+              class="suggestion-item"
+            >
+              <span class="material-icons">{{ suggestion.icon }}</span>
+              <span class="suggestion-text">{{ suggestion.text }}</span>
+              <span class="suggestion-type">{{ suggestion.type }}</span>
+            </div>
           </div>
         </div>
         
-        <!-- Filtres avancés -->
+        <!-- Filtres avancés avec indicateurs visuels -->
         <div class="filters-grid">
           <div class="filter-group">
-            <label class="filter-label">Métier</label>
+            <label class="filter-label">
+              <span class="material-icons">work</span>
+              Métier
+              <span v-if="local.metier" class="active-indicator"></span>
+            </label>
             <va-select 
               v-model="local.metier" 
               :options="metiers" 
@@ -54,7 +84,11 @@
           </div>
           
           <div class="filter-group">
-            <label class="filter-label">Lieu</label>
+            <label class="filter-label">
+              <span class="material-icons">location_on</span>
+              Lieu
+              <span v-if="local.lieu" class="active-indicator"></span>
+            </label>
             <va-select 
               v-model="local.lieu" 
               :options="lieux" 
@@ -65,7 +99,11 @@
           </div>
           
           <div class="filter-group">
-            <label class="filter-label">Statut</label>
+            <label class="filter-label">
+              <span class="material-icons">info</span>
+              Statut
+              <span v-if="local.statut" class="active-indicator"></span>
+            </label>
             <va-select 
               v-model="local.statut" 
               :options="statuts" 
@@ -76,7 +114,11 @@
           </div>
           
           <div class="filter-group">
-            <label class="filter-label">Du</label>
+            <label class="filter-label">
+              <span class="material-icons">date_range</span>
+              Du
+              <span v-if="local.dateFrom" class="active-indicator"></span>
+            </label>
             <input 
               v-model="local.dateFrom" 
               type="date" 
@@ -85,12 +127,24 @@
           </div>
           
           <div class="filter-group">
-            <label class="filter-label">Au</label>
+            <label class="filter-label">
+              <span class="material-icons">date_range</span>
+              Au
+              <span v-if="local.dateTo" class="active-indicator"></span>
+            </label>
             <input 
               v-model="local.dateTo" 
               type="date" 
               class="date-input"
             />
+          </div>
+          
+          <!-- Bouton de reset de tous les filtres -->
+          <div class="filter-group reset-group" v-if="hasActiveFilters">
+            <button @click="clearAllFilters" class="clear-all-btn">
+              <span class="material-icons">clear_all</span>
+              Effacer tous les filtres
+            </button>
           </div>
         </div>
       </div>
@@ -99,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed, ref } from 'vue'
 
 const props = defineProps<{
   viewMode: 'week'|'month'|'table',
@@ -115,6 +169,94 @@ const emit = defineEmits(['update:viewMode','update:modelValue','openMobileFilte
 const local = reactive({ dateFrom: '', dateTo: '', ...props.modelValue })
 watch(() => props.modelValue, (v) => Object.assign(local, v))
 watch(local, () => emit('update:modelValue', { ...local }))
+
+// États pour les suggestions de recherche
+const showSuggestions = ref(false)
+
+// Fonction pour gérer la recherche avec debounce
+let searchTimeout: number | null = null
+function onSearchInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  searchTimeout = setTimeout(() => {
+    local.search = target.value
+  }, 200) // Debounce de 200ms pour éviter trop d'appels
+}
+
+// Fonction pour effacer la recherche
+function clearSearch() {
+  local.search = ''
+  showSuggestions.value = false
+}
+
+// Computed pour savoir si des filtres sont actifs
+const hasActiveFilters = computed(() => {
+  return local.search || local.metier || local.lieu || local.statut || local.dateFrom || local.dateTo
+})
+
+// Fonction pour effacer tous les filtres
+function clearAllFilters() {
+  local.search = ''
+  local.metier = ''
+  local.lieu = ''
+  local.statut = ''
+  local.dateFrom = ''
+  local.dateTo = ''
+}
+
+// Suggestions de recherche intelligentes
+const searchSuggestions = computed(() => {
+  if (!local.search || local.search.length < 2) return []
+  
+  const suggestions: Array<{value: string, text: string, type: string, icon: string}> = []
+  const searchLower = local.search.toLowerCase()
+  
+  // Suggestions basées sur les métiers
+  props.metiers.forEach(metier => {
+    if (metier.text.toLowerCase().includes(searchLower)) {
+      suggestions.push({
+        value: metier.value,
+        text: metier.text,
+        type: 'Métier',
+        icon: 'work'
+      })
+    }
+  })
+  
+  // Suggestions basées sur les lieux
+  props.lieux.forEach(lieu => {
+    if (lieu.text.toLowerCase().includes(searchLower)) {
+      suggestions.push({
+        value: lieu.value,
+        text: lieu.text,
+        type: 'Lieu',
+        icon: 'location_on'
+      })
+    }
+  })
+  
+  return suggestions.slice(0, 5)
+})
+
+// Gestion des suggestions
+function selectSuggestion(suggestion: any) {
+  if (suggestion.type === 'Métier') {
+    local.metier = suggestion.value
+  } else if (suggestion.type === 'Lieu') {
+    local.lieu = suggestion.value
+  }
+  local.search = ''
+  showSuggestions.value = false
+}
+
+function hideSuggestions() {
+  // Délai pour permettre le clic sur une suggestion
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 200)
+}
 </script>
 
 <style scoped>
@@ -223,11 +365,66 @@ watch(local, () => emit('update:modelValue', { ...local }))
 
 .search-container {
   margin-bottom: 24px;
+  position: relative;
 }
 
 .search-wrapper {
   position: relative;
   max-width: 500px;
+  display: flex;
+  align-items: center;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid var(--dark-border);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: var(--dark-surface-secondary);
+}
+
+.suggestion-item .material-icons {
+  font-size: 16px;
+  color: var(--dark-text-secondary);
+}
+
+.suggestion-text {
+  flex: 1;
+  color: var(--dark-text-primary);
+  font-weight: 500;
+}
+
+.suggestion-type {
+  font-size: 12px;
+  color: var(--dark-text-secondary);
+  background: var(--dark-border);
+  padding: 2px 8px;
+  border-radius: 8px;
 }
 
 .search-icon {
@@ -243,6 +440,7 @@ watch(local, () => emit('update:modelValue', { ...local }))
 .search-input {
   width: 100%;
   padding: 16px 20px 16px 48px;
+  padding-right: 48px; /* Espace pour le bouton clear */
   border: 1px solid var(--dark-border);
   border-radius: 16px;
   font-size: 1rem;
@@ -251,6 +449,33 @@ watch(local, () => emit('update:modelValue', { ...local }))
   color: var(--dark-text-primary);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--dark-text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.search-clear-btn:hover {
+  background: var(--dark-surface);
+  color: var(--dark-text-primary);
+}
+
+.search-clear-btn .material-icons {
+  font-size: 18px;
 }
 
 .search-input::placeholder {
@@ -281,6 +506,62 @@ watch(local, () => emit('update:modelValue', { ...local }))
   color: var(--dark-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.filter-label .material-icons {
+  font-size: 16px;
+  color: var(--dark-text-secondary);
+}
+
+.active-indicator {
+  width: 6px;
+  height: 6px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  margin-left: auto;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.reset-group {
+  display: flex;
+  align-items: end;
+}
+
+.clear-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--dark-card);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  color: var(--dark-text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.clear-all-btn:hover {
+  background: var(--dark-surface);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.clear-all-btn .material-icons {
+  font-size: 18px;
 }
 
 .modern-select {

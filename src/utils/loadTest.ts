@@ -5,7 +5,7 @@
 
 // Simuler l'utilisation de l'application
 function simulateUserActivity() {
-  console.log('🎭 Simulation d\'activité utilisateur...')
+  console.log('🎭 Simulation d'activité utilisateur...')
   
   // Simuler le scroll dans le planning
   simulateScrolling()

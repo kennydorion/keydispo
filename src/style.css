@@ -225,14 +225,14 @@ input[type="time"]::-webkit-clear-button {
   transform: none !important;
 }
 
-/* Correction de la taille et overflow des toasts */
+/* Correction de la taille et overflow des toasts - HAUTEUR AUTOMATIQUE */
 .va-toast__content,
 .va-toast__group {
-  max-width: 500px !important;
-  min-width: 300px !important;
+  max-width: 450px !important;
+  min-width: 280px !important;
   width: auto !important;
   height: auto !important;
-  min-height: 60px !important;
+  min-height: auto !important;
   max-height: none !important;
   overflow: visible !important;
   white-space: normal !important;
@@ -241,9 +241,9 @@ input[type="time"]::-webkit-clear-button {
 }
 
 .va-toast__content {
-  padding: 16px 20px !important;
-  line-height: 1.5 !important;
-  font-size: 14px !important;
+  padding: 12px 16px !important;
+  line-height: 1.4 !important;
+  font-size: 13px !important;
   display: block !important;
 }
 
@@ -253,10 +253,10 @@ input[type="time"]::-webkit-clear-button {
   width: auto !important;
 }
 
-/* Toast individuel */
+/* Toast individuel - PLUS COMPACT */
 .va-toast {
-  max-width: 500px !important;
-  min-width: 300px !important;
+  max-width: 450px !important;
+  min-width: 280px !important;
   width: auto !important;
   height: auto !important;
   max-height: none !important;
@@ -280,7 +280,7 @@ input[type="time"]::-webkit-clear-button {
   text-wrap: wrap !important;
 }
 
-/* Sélecteurs ultra-spécifiques pour Vuestic */
+/* Sélecteurs ultra-spécifiques pour Vuestic - HAUTEUR AUTO */
 div.va-toast div.va-toast__content,
 div.va-toast div.va-toast__group,
 .va-toasts-container .va-toast .va-toast__content,
@@ -290,7 +290,7 @@ body > .va-toasts-container .va-toast .va-toast__content {
   white-space: normal !important;
   width: auto !important;
   height: auto !important;
-  min-height: 60px !important;
+  min-height: auto !important;
   max-height: none !important;
   display: block !important;
   flex-wrap: wrap !important;
