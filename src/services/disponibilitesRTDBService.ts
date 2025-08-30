@@ -91,8 +91,8 @@ export class DisponibilitesRTDBService {
   /**
    * Formater une disponibilité pour RTDB (structure plate)
    */
-  private formatDispoForRTDB(dispo: Partial<DisponibiliteRTDB>): DisponibiliteRTDB {
-    return {
+  private formatDispoForRTDB(dispo: Partial<DisponibiliteRTDB>): any {
+    const formatted: any = {
       id: dispo.id || this.generateDispoId(),
       collaborateurId: dispo.collaborateurId || '',
       tenantId: this.tenantId,
@@ -106,18 +106,32 @@ export class DisponibilitesRTDBService {
       lieu: dispo.lieu || '',
       heure_debut: dispo.heure_debut || '',
       heure_fin: dispo.heure_fin || '',
-      type: dispo.type,
-      timeKind: dispo.timeKind,
-      slots: dispo.slots,
-      isFullDay: dispo.isFullDay,
       version: dispo.version || 1,
       updatedAt: Date.now(),
       updatedBy: dispo.updatedBy || auth.currentUser?.uid || 'system',
       tags: dispo.tags || [],
       isArchived: dispo.isArchived || false,
-      hasConflict: dispo.hasConflict || false,
-      _cont: dispo._cont
+      hasConflict: dispo.hasConflict || false
     }
+
+    // Ajouter les propriétés optionnelles seulement si elles ne sont pas undefined
+    if (dispo.type !== undefined) {
+      formatted.type = dispo.type
+    }
+    if (dispo.timeKind !== undefined) {
+      formatted.timeKind = dispo.timeKind
+    }
+    if (dispo.slots !== undefined) {
+      formatted.slots = dispo.slots
+    }
+    if (dispo.isFullDay !== undefined) {
+      formatted.isFullDay = dispo.isFullDay
+    }
+    if (dispo._cont !== undefined) {
+      formatted._cont = dispo._cont
+    }
+
+    return formatted
   }
 
   // =============================================
