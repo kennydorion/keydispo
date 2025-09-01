@@ -420,6 +420,7 @@
                   :data-row-index="rowIndex"
                   :data-cell-id="`${collaborateur.id}_${day.date}`"
                   :data-today="day.isToday ? 'true' : 'false'"
+                  :data-initials="getHoveringUserInitials(collaborateur.id, day.date)"
                   :class="[
                     {
                       'today': day.isToday,
@@ -1029,10 +1030,8 @@ watch(isDraggingSelection, (newValue) => {
 
 // Watcher pour la sélection de cellules (mettre à jour les initiales + transmettre aux autres)
 watch(selectedCells, () => {
-  // Utiliser nextTick pour s'assurer que le DOM est mis à jour
-  nextTick(() => {
-    updatePresenceInitials()
-  })
+  // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
+  // Plus besoin de updatePresenceInitials()
   
   // Transmettre les sélections aux autres utilisateurs via RTDB
   if (collaborationService.isActive) {
@@ -1194,6 +1193,11 @@ let hoverEndGraceTimer: ReturnType<typeof setTimeout> | null = null
 const hoveredCells = ref(new Set<string>())
 const lockedCells = ref(new Set<string>())
 
+// Variables réactives pour synchroniser avec hybridMultiUserService
+const collaborationActivities = ref(new Map())
+const collaborationLocks = ref(new Map())
+const collaborationPresence = ref(new Map())
+
 // Debounce pour les listeners de collaboration
 let listenersDebounceTimer: number | null = null
 
@@ -1204,23 +1208,40 @@ function debouncedUpdatePresenceSets() {
 
 // Fonctions helpers pour vérifier les états
 function isHoveredByOthers(collaborateurId: string, date: string): boolean {
-  const cellId = `${collaborateurId}_${date}`
-  return hoveredCells.value.has(cellId)
+  if (!collaborationService) return false
+  
+  // Utiliser les variables réactives pour la réactivité Vue
+  collaborationActivities.value // Lire pour déclencher la réactivité
+  
+  // Utiliser le service de collaboration RTDB pour détecter les survols d'autres utilisateurs
+  const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
+  return hoveringUsers && hoveringUsers.length > 0
 }
 
 /**
  * Obtenir l'utilisateur qui survole une cellule spécifique
  */
 function getHoveringUser(collaborateurId: string, date: string): any | null {
-  const cellId = `${collaborateurId}_${date}`
-  if (!hoveredCells.value.has(cellId)) return null
+  if (!collaborationService) return null
   
-  // Pour l'instant, on simule en retournant l'utilisateur actuel
-  // Dans un vrai système multi-utilisateur, on rechercherait dans les données de collaboration
+  // Utiliser les variables réactives pour la réactivité Vue
+  collaborationActivities.value // Lire pour déclencher la réactivité
+  
+  // Utiliser le service de collaboration RTDB pour obtenir les vrais utilisateurs qui survolent
+  const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
+  if (!hoveringUsers || hoveringUsers.length === 0) return null
+  
+  // Retourner le premier utilisateur (le plus récent)
+  const user = hoveringUsers[0]
+  
   return {
-    uid: auth.currentUser?.uid || 'unknown',
-    displayName: auth.currentUser?.displayName || 'Utilisateur',
-    email: auth.currentUser?.email || ''
+    uid: user.userId,
+    displayName: user.userName,
+    userName: user.userName,
+    email: user.userEmail || '',
+    sessionId: user.sessionId,
+    // Pour les initiales, on utilise les données de l'utilisateur connecté
+    // Pas du collaborateur de la ligne
   }
 }
 
@@ -1232,6 +1253,16 @@ function getHoveringUserColor(collaborateurId: string, date: string): string {
   if (!hoveringUser) return 'var(--va-primary)' // Couleur par défaut
   
   return getUserColorWrapper(hoveringUser.uid)
+}
+
+/**
+ * Obtenir les initiales de l'utilisateur qui survole une cellule
+ */
+function getHoveringUserInitials(collaborateurId: string, date: string): string {
+  const hoveringUser = getHoveringUser(collaborateurId, date)
+  if (!hoveringUser) return '' // Retourner chaîne vide au lieu de "??"
+  
+  return getUserInitials(hoveringUser)
 }
 
 function isLockedByOthers(collaborateurId: string, date: string): boolean {
@@ -1285,9 +1316,14 @@ function updateCellInitials(cellId: string) {
     // Obtenir les utilisateurs qui survolent cette cellule (priorité haute pour l'interactivité)
     const hoveringUsers = collaborationService.getHoveringUsers(collaborateurId, date)
     if (hoveringUsers && hoveringUsers.length > 0) {
-      // Prendre le premier utilisateur qui survole
+      // Prendre le premier utilisateur qui survole et utiliser ses vraies initiales
       const user = hoveringUsers[0]
-      const initials = getUserInitials(user)
+      const initials = getUserInitials({
+        uid: user.userId,
+        displayName: user.userName,
+        email: user.userEmail,
+        sessionId: user.sessionId
+      })
       
       // Définir les initiales via attribut data pour utilisation CSS
       cellElement.setAttribute('data-initials', initials)
@@ -1304,7 +1340,12 @@ function updateCellInitials(cellId: string) {
     // Priorité 2: Obtenir l'utilisateur qui a un lock sur cette cellule (seulement si pas de hover)
     const lockData = collaborationService.getCellLock(collaborateurId, date)
     if (lockData) {
-      const initials = getUserInitials({ userEmail: lockData.userName })
+      const initials = getUserInitials({
+        uid: lockData.userId,
+        displayName: lockData.userName,
+        email: lockData.userEmail || '',
+        sessionId: lockData.sessionId
+      })
       cellElement.setAttribute('data-initials', initials)
       cellElement.classList.add('has-initials-locked')
       return
@@ -1313,7 +1354,12 @@ function updateCellInitials(cellId: string) {
     // Priorité 3: Obtenir l'utilisateur qui a sélectionné cette cellule (multiselect)
     const selectionData = collaborationService.getCellSelection(collaborateurId, date)
     if (selectionData) {
-      const initials = getUserInitials({ userEmail: selectionData.userEmail })
+      const initials = getUserInitials({
+        uid: selectionData.userId,
+        displayName: selectionData.userName,
+        email: selectionData.userEmail || '',
+        sessionId: selectionData.sessionId
+      })
       cellElement.setAttribute('data-initials', initials)
       cellElement.classList.add('has-initials-locked') // Traiter comme un lock temporaire
       return
@@ -1436,10 +1482,8 @@ function updatePresenceSets() {
   
   // Mettre à jour les initiales après changement de présence
   if (hoveredChanged) {
-    // Utiliser nextTick pour s'assurer que le DOM est mis à jour
-    nextTick(() => {
-      updatePresenceInitials()
-    })
+    // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
+    // Plus besoin de updatePresenceInitials()
   }
 }
 
@@ -4678,6 +4722,64 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
   
   // Mettre à jour les options de lieux
   updateLieuxOptions()
+  
+  // 🔄 AJOUT LISTENER TEMPS RÉEL pour synchronisation automatique
+  console.log(`📡 Configuration listener RTDB pour ${dateDebut} → ${dateFin}`)
+  
+  const listenerId = disponibilitesRTDBService.listenToDisponibilitesByDateRange(
+    dateDebut, 
+    dateFin,
+    (disponibilites) => {
+      console.log(`🔄 Sync temps réel reçue: ${disponibilites.length} disponibilités`)
+      
+      // Organiser par date exactement comme le chargement initial
+      const byDate = new Map<string, any[]>()
+      
+      if (Array.isArray(disponibilites)) {
+        disponibilites.forEach(dispo => {
+          const canonLieu = canonicalizeLieu(dispo.lieu || '')
+          
+          // Transformer au format existant pour compatibilité totale
+          const formatted = {
+            id: dispo.id,
+            collaborateurId: dispo.collaborateurId,
+            date: dispo.date,
+            lieu: canonLieu,
+            heure_debut: dispo.heure_debut || '',
+            heure_fin: dispo.heure_fin || '',
+            type: dispo.type === 'standard' ? 'disponible' : 
+                  (dispo.type === 'formation' || dispo.type === 'urgence') ? 'mission' : 
+                  dispo.type === 'maintenance' ? 'indisponible' : 'disponible',
+            timeKind: dispo.timeKind === 'fixed' ? 'slot' : 'range',
+            slots: Array.isArray(dispo.slots) ? dispo.slots : undefined,
+            isFullDay: dispo.isFullDay ?? undefined,
+            nom: dispo.nom || '',
+            prenom: dispo.prenom || '',
+            metier: dispo.metier || '',
+            phone: dispo.phone || '',
+            email: dispo.email || '',
+            ville: dispo.ville || '',
+            tenantId: dispo.tenantId,
+            version: dispo.version || 1,
+            updatedAt: dispo.updatedAt,
+            updatedBy: dispo.updatedBy
+          }
+          
+          if (!byDate.has(dispo.date)) byDate.set(dispo.date, [])
+          byDate.get(dispo.date)!.push(formatted)
+        })
+        
+        // Mettre à jour le cache existant SANS changer le format
+        byDate.forEach((dispos, date) => {
+          disponibilitesCache.value.set(date, dispos)
+        })
+        
+        console.log(`✅ Cache synchronisé temps réel: ${byDate.size} dates mises à jour`)
+      }
+    }
+  )
+  
+  console.log(`📡 Listener temps réel démarré: ${listenerId}`)
 }
 
 // ==========================================
@@ -5068,12 +5170,14 @@ async function initializePresence() {
       // console.log('🚀 Nouveau service collaboration initialisé')
     
     // S'abonner aux changements d'activités pour mettre à jour l'UI en temps réel
-    activityUnsubscribe.value = collaborationService.onActivityChange(() => {
+    activityUnsubscribe.value = collaborationService.onActivityChange((activities) => {
+      collaborationActivities.value = activities // Synchroniser pour la réactivité
       debouncedUpdatePresenceSets()
     })
     
     // S'abonner aux changements de locks
-    lockUnsubscribe.value = collaborationService.onLockChange(() => {
+    lockUnsubscribe.value = collaborationService.onLockChange((locks) => {
+      collaborationLocks.value = locks // Synchroniser pour la réactivité
       debouncedUpdatePresenceSets()  
     })
     
@@ -5081,7 +5185,7 @@ async function initializePresence() {
     selectionUnsubscribe.value = collaborationService.onSelectionChange(() => {
       // console.log('📋 Sélections distantes mises à jour')
       debouncedUpdatePresenceSets()
-      updatePresenceInitials()
+      // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
     })
     }
     
@@ -8749,10 +8853,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.excel-day-cell.weekend {
-  background: inherit; /* même style que les autres jours */
-}
-
 .excel-day-cell.hovered {
   background: #e8f5e8 !important;
   /* Couleur verte harmonieuse avec les disponibilités */
@@ -9188,8 +9288,8 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.excel-cell.has-presence::after {
-  /* Afficher les initiales via l'attribut data-initials */
+.excel-cell.has-presence[data-initials]:not([data-initials=""])::after {
+  /* Afficher les initiales via l'attribut data-initials seulement si non vide */
   content: attr(data-initials);
   position: absolute;
   top: 50%;
@@ -9249,14 +9349,11 @@ onUnmounted(() => {
   animation: initialsAppear 0.3s ease-out;
 }
 
-/* Animation d'apparition des initiales */
+/* Animation d'apparition des initiales - simplifiée pour éviter les conflits */
 @keyframes initialsAppear {
   0% {
-    transform: translate(-50%, -50%) scale(0.5);
+    transform: translate(-50%, -50%) scale(0.8);
     opacity: 0;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.1);
   }
   100% {
     transform: translate(-50%, -50%) scale(1);
@@ -9391,7 +9488,8 @@ onUnmounted(() => {
 }
 
 .excel-cell.has-presence {
-  animation: presenceAppear 0.3s ease-out, presencePulse 2s infinite ease-in-out 0.3s;
+  /* Garder seulement l'animation de pulsation, pas l'animation d'apparition */
+  animation: presencePulse 2s infinite ease-in-out;
 }
 
 /* Mode sombre - les couleurs CSS Vuestic s'adaptent automatiquement */
@@ -9597,10 +9695,6 @@ body.dragging-selection .excel-cell {
 
 .excel-cell.today {
   background: #e3f2fd;
-}
-
-.excel-cell.weekend {
-  background: inherit; /* même style que les autres jours */
 }
 
 .excel-cell.has-dispos { background: #f8f8f8; }
