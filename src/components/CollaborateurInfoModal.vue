@@ -284,7 +284,7 @@ const collaborateurStats = computed(() => {
 })
 
 const hasNotesChanges = computed(() => {
-  const originalNotes = props.collaborateur?.notes || ''
+  const originalNotes = props.collaborateur?.notes || props.collaborateur?.note || ''
   return localNotes.value !== originalNotes
 })
 
@@ -307,14 +307,14 @@ const avatarColor = computed(() => {
 // Watchers
 watch(() => props.collaborateur, (newCollaborateur) => {
   if (newCollaborateur) {
-    localNotes.value = newCollaborateur.notes || ''
+    localNotes.value = newCollaborateur.notes || newCollaborateur.note || ''
     editMode.value = false
   }
 }, { immediate: true })
 
 watch(() => props.visible, (visible) => {
   if (visible && props.collaborateur) {
-    localNotes.value = props.collaborateur.notes || ''
+    localNotes.value = props.collaborateur.notes || props.collaborateur.note || ''
   }
 })
 
@@ -370,7 +370,7 @@ const saveNotes = async () => {
 }
 
 const cancelNotesEdit = () => {
-  localNotes.value = props.collaborateur?.notes || ''
+  localNotes.value = props.collaborateur?.notes || props.collaborateur?.note || ''
   editMode.value = false
 }
 </script>

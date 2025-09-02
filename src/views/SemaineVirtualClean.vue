@@ -6381,22 +6381,40 @@ const handleEditCollaborateur = (collaborateur: Collaborateur) => {
 
 const handleSaveCollaborateurNotes = async (collaborateur: Collaborateur, notes: string) => {
   try {
-    // TODO: Sauvegarder les notes via le service de collaborateurs
-    // Pour l'instant, on simule la sauvegarde car le type CollaborateurV2 peut ne pas avoir notes
-    console.log('Sauvegarde des notes pour', collaborateur.nom, ':', notes)
+    console.log('🔄 Sauvegarde des notes pour', collaborateur.nom, ':', notes)
     
-    // Mettre à jour localement
+    // Sauvegarder via le service de collaborateurs
+    const tenantId = AuthService.currentTenantId || 'keydispo'
+    const userId = auth.currentUser?.uid || 'anonymous'
+    
+    await CollaborateursServiceV2.updateCollaborateur(
+      tenantId,
+      collaborateur.id || '', 
+      { note: notes }, // Utiliser 'note' pour correspondre au type CollaborateurV2
+      userId
+    )
+    
+    // Mettre à jour localement après sauvegarde réussie (les deux champs pour compatibilité)
     const index = collaborateurs.value.findIndex(c => c.id === collaborateur.id)
     if (index !== -1) {
-      collaborateurs.value[index].notes = notes
+      collaborateurs.value[index].note = notes
+      collaborateurs.value[index].notes = notes // Compatibilité
+    }
+    
+    // Mettre à jour aussi dans la modale si elle est ouverte
+    if (collaborateurInfoModal.value.collaborateur?.id === collaborateur.id) {
+      collaborateurInfoModal.value.collaborateur.note = notes
+      collaborateurInfoModal.value.collaborateur.notes = notes // Compatibilité
     }
     
     notify({
       message: 'Notes sauvegardées avec succès',
       color: 'success'
     })
+    
+    console.log('✅ Notes sauvegardées avec succès')
   } catch (error) {
-    console.error('Erreur lors de la sauvegarde des notes:', error)
+    console.error('❌ Erreur lors de la sauvegarde des notes:', error)
     notify({
       message: 'Erreur lors de la sauvegarde des notes',
       color: 'danger'
