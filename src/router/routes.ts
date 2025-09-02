@@ -18,6 +18,30 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Planning', icon: 'calendar_month', requiresAuth: true }
   },
   {
+    path: '/collaborateurs',
+    name: 'Collaborateurs',
+    component: () => import('../views/ListeCollaborateurs.vue'),
+    meta: { title: 'Collaborateurs', icon: 'people', requiresAuth: true }
+  },
+  {
+    path: '/collaborateurs/nouveau',
+    name: 'NouveauCollaborateur',
+    component: () => import('../views/ModifierCollaborateur.vue'),
+    meta: { title: 'Nouveau collaborateur', icon: 'person_add', requiresAuth: true }
+  },
+  {
+    path: '/collaborateurs/:id/detail',
+    name: 'DetailCollaborateur',
+    component: () => import('../views/DetailCollaborateur.vue'),
+    meta: { title: 'Détail collaborateur', icon: 'person', requiresAuth: true }
+  },
+  {
+    path: '/collaborateurs/:id',
+    name: 'ModifierCollaborateur',
+    component: () => import('../views/ModifierCollaborateur.vue'),
+    meta: { title: 'Modifier collaborateur', icon: 'edit', requiresAuth: true }
+  },
+  {
     path: '/import',
     name: 'Import',
     component: () => import('../features/import/ImportDispos.vue'),

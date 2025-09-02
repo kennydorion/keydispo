@@ -145,6 +145,7 @@ const { preferences, loadPreferences } = useUserPreferences()
 const navigationItems = [
   { path: '/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
   { path: '/semaine', label: 'Planning', icon: 'calendar_today' },
+  { path: '/collaborateurs', label: 'Collaborateurs', icon: 'people' },
   { path: '/import', label: 'Import', icon: 'upload_file' }
 ]
 

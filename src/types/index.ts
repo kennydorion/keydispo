@@ -3,24 +3,17 @@ export type { CollaborateurV2, DisponibiliteV2, PlanningDataV2, BatchUpdateV2, I
 // Types existants
 export interface Disponibilite {
   id?: string;
-  collaborateurId: string; // AJOUTÉ: requis pour le filtrage et l'affichage
   tenantId: string;
   nom: string;
   prenom: string;
   metier: string;
   phone: string;
   email: string;
-  ville: string;
+  note: string;
   date: string; // YYYY-MM-DD
   lieu: string;
   heure_debut: string; // HH:MM
   heure_fin: string; // HH:MM
-  // Nouveaux champs pour compatibilité avec RTDB et nouvelles fonctionnalités
-  type?: 'mission' | 'disponible' | 'indisponible' | 'standard' | 'formation' | 'urgence' | 'maintenance';
-  timeKind?: 'range' | 'slot' | 'full-day' | 'overnight' | 'fixed' | 'flexible' | 'oncall';
-  slots?: string[];
-  isFullDay?: boolean;
-  // Métadonnées
   version: number;
   updatedAt: Date;
   updatedBy: string;
@@ -34,7 +27,8 @@ export interface Collaborateur {
   metier: string;
   phone: string;
   email: string;
-  ville: string;
+  note: string;
+  color?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,7 +79,7 @@ export interface ExcelImportConfig {
     metier: string;
     phone: string;
     email: string;
-    ville: string;
+    note: string;
   };
   dateColumns: Array<{
     date: string;
@@ -101,7 +95,7 @@ export interface FilterOptions {
   collaborateurs?: string[];
   lieux?: string[];
   metiers?: string[];
-  villes?: string[];
+  notes?: string[];
 }
 
 export interface ViewOptions {

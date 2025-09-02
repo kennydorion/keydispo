@@ -1,5 +1,3 @@
-import { getDocs, onSnapshot } from 'firebase/firestore'
-
 // AUDIT FIRESTORE - Version simple pour mesurer la consommation
 export class FirestoreReadCounter {
   private static instance: FirestoreReadCounter

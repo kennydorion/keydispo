@@ -8,7 +8,7 @@ export interface CollaborateurOptimized {
   metier: string
   phone: string | null
   email: string | null
-  ville: string | null
+  note: string | null
   actif: boolean
   createdAt: Date
   updatedAt: Date

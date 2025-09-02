@@ -8,10 +8,10 @@
     @close="closeModal"
   >
     <div v-if="collaborateur" class="collaborateur-info-compact">
-      <!-- En-tête compact -->
-      <div class="collaborateur-header-compact">
+      <!-- En-tête compact avec couleur du collaborateur -->
+      <div class="collaborateur-header-compact" :style="{ '--collaborateur-color': collaborateurColor }">
         <div class="collaborateur-main-info">
-          <div class="collaborateur-avatar" :style="{ backgroundColor: avatarColor }">
+          <div class="collaborateur-avatar" :style="{ backgroundColor: collaborateurColor }">
             {{ avatarInitials }}
           </div>
           <div class="collaborateur-details">
@@ -22,10 +22,12 @@
               <span class="meta-item">{{ collaborateur.ville }}</span>
             </div>
           </div>
-          <div class="stats-badge">
+          <div class="stats-badge" :style="{ backgroundColor: collaborateurColor }">
             {{ collaborateurStats.totalDispos }}
           </div>
         </div>
+        <!-- Indicateur de couleur -->
+        <div class="color-indicator" :style="{ backgroundColor: collaborateurColor }"></div>
       </div>
 
       <!-- Section 1: Contact (pliable) -->
@@ -374,20 +376,39 @@ const cancelNotesEdit = () => {
 </script>
 
 <style scoped>
-/* Design compact avec sections pliables */
+/* Design compact avec sections pliables - avec marge confortable */
 .collaborateur-info-compact {
-  padding: 8px;
-  max-width: 500px;
+  padding: 8px; /* Marge plus confortable */
+  max-width: 100%; /* Utilise toute la largeur de la modale */
   font-size: 13px;
 }
 
-/* En-tête compact */
+/* En-tête compact avec thème couleur - bord à bord */
+.collaborateur-header-compact {
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 5%, #f8fafc) 0%, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 8%, #e2e8f0) 100%);
+  border-radius: 0; /* Suppression des coins arrondis pour être bord à bord */
+  padding: 16px; /* Padding interne approprié */
+  margin-bottom: 0; /* Suppression de la marge */
+  border: none; /* Suppression de la bordure */
+  border-bottom: 1px solid color-mix(in srgb, var(--collaborateur-color, #3b82f6) 20%, #e2e8f0); /* Bordure uniquement en bas */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fallback pour navigateurs sans color-mix */
 .collaborateur-header-compact {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid #e2e8f0;
+}
+
+.color-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
 }
 
 .collaborateur-main-info {
@@ -443,7 +464,6 @@ const cancelNotesEdit = () => {
 }
 
 .stats-badge {
-  background: var(--va-primary);
   color: white;
   border-radius: 12px;
   padding: 4px 8px;
@@ -452,13 +472,15 @@ const cancelNotesEdit = () => {
   min-width: 20px;
   text-align: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Sections pliables */
+/* Sections pliables - ajustées pour le format bord à bord */
 .collapsible-section {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  margin-bottom: 6px;
+  border: none; /* Suppression des bordures pour un look plus épuré */
+  border-bottom: 1px solid #e2e8f0; /* Bordure seulement en bas */
+  border-radius: 0; /* Suppression des coins arrondis */
+  margin-bottom: 0; /* Suppression des marges */
   overflow: hidden;
 }
 
@@ -661,14 +683,15 @@ const cancelNotesEdit = () => {
   justify-content: flex-end;
 }
 
-/* Actions principales compactes */
+/* Actions principales compactes - avec padding pour le format bord à bord */
 .modal-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  padding-top: 8px;
+  padding: 16px; /* Padding sur tous les côtés */
   border-top: 1px solid var(--va-color-border);
-  margin-top: 4px;
+  margin-top: 0; /* Suppression de la marge */
+  background: var(--va-color-background-element); /* Fond légèrement différent */
 }
 
 /* Suppression du fond noir/overlay */

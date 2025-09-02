@@ -238,19 +238,6 @@
       <kbd>Ctrl</kbd>+glisser pour sélectionner
     </div>
 
-    <!-- Bouton flottant "Aller à aujourd'hui" REPOSITIONNÉ -->
-    <div class="go-to-today-fab">
-      <va-button 
-        preset="secondary" 
-        icon="today"
-        @click="goToToday"
-        size="small"
-        title="Aller à la colonne d'aujourd'hui"
-      >
-        Aujourd'hui
-      </va-button>
-    </div>
-
     <!-- Planning Excel synchronisé - Scroll unique, sticky header + colonne -->
     <!-- Planning Excel synchronisé - Scroll unique, sticky header + colonne -->
     <div class="excel-planning-container">
@@ -302,8 +289,18 @@
           </div>
           <!-- Coin sticky top+left -->
           <div class="excel-corner corner-sticky">
-            <div class="corner-title">Collaborateurs</div>
-            <div class="corner-count">{{ filteredCollaborateurs.length }}</div>
+            <!-- Bouton Aujourd'hui en haut -->
+            <button class="today-btn" @click="goToToday" title="Aller à aujourd'hui">
+              <span class="material-icons">today</span>
+              <span>Aujourd'hui</span>
+            </button>
+            <!-- Ligne de séparation -->
+            <div class="corner-separator"></div>
+            <!-- Titre et nombre en bas -->
+            <div class="corner-bottom">
+              <div class="corner-title">Collaborateurs</div>
+              <div class="corner-count">{{ filteredCollaborateurs.length }}</div>
+            </div>
           </div>
           <!-- En-têtes des jours (défilent horizontalement avec la grille, sticky vertical) -->
           <div class="days-header">
@@ -339,7 +336,6 @@
                   :class="[
                     {
                       'today': day.isToday,
-                      'weekend': day.isWeekend,
                       'loading-placeholder': !isDayLoaded(day.date),
                       'week-boundary-right': isWeekBoundary(day.date)
                     },
@@ -375,7 +371,10 @@
               :key="collaborateur.id"
               class="excel-row"
               :data-collaborateur-id="collaborateur.id"
-              :style="{ height: rowHeight + 'px' }"
+              :style="{ 
+                height: rowHeight + 'px',
+                '--collaborateur-color': getCollaborateurColor(collaborateur.id)
+              }"
             >
             <!-- Colonne gauche sticky -->
             <div 
@@ -397,7 +396,7 @@
                   <span class="location" v-if="collaborateur.ville">{{ collaborateur.ville }}</span>
                 </div>
                 <div class="collaborateur-extra">
-                  <a class="contact phone-link" v-if="collaborateur.phone" :href="`tel:${collaborateur.phone}`">
+                  <a class="contact phone-link" v-if="collaborateur.phone" :href="`tel:${phoneToHref(collaborateur.phone)}`">
                     <va-icon name="phone" size="12px" />
                     <span class="text">{{ formatPhone(collaborateur.phone) }}</span>
                   </a>
@@ -424,7 +423,6 @@
                   :class="[
                     {
                       'today': day.isToday,
-                      'weekend': day.isWeekend,
                       'has-dispos': getDisponibilites(collaborateur.id, day.date).length > 0,
                       'loading-placeholder': !isDayLoaded(day.date),
                       'week-boundary-right': isWeekBoundary(day.date),
@@ -537,23 +535,25 @@
       @close="cancelModal"
     >
       <div class="dispo-modal-mobile" v-if="selectedCell">
-        <!-- En-tête détaillé (style batch) -->
-        <div class="dispo-header-detailed">
+        <!-- En-tête détaillé avec couleur du collaborateur -->
+        <div class="dispo-header-detailed" :style="{ '--collaborateur-color': getCollaborateurColor(getSelectedCollaborateur()?.id || '') }">
           <div class="collaborateur-section">
-            <div class="collaborateur-avatar-large">
+            <div class="collaborateur-avatar-large" :style="{ backgroundColor: getCollaborateurColor(getSelectedCollaborateur()?.id || '') }">
               {{ getUserInitials(getSelectedCollaborateur() || {}) }}
             </div>
             <div class="collaborateur-info-detailed">
               <h3 class="collaborateur-name-large">{{ getSelectedCollaborateur()?.prenom }} {{ getSelectedCollaborateur()?.nom }}</h3>
               <p class="collaborateur-meta-large">{{ formatModalDate(selectedCell.date) }}</p>
             </div>
+            <!-- Indicateur de couleur -->
+            <div class="color-indicator-modal" :style="{ backgroundColor: getCollaborateurColor(getSelectedCollaborateur()?.id || '') }"></div>
           </div>
         </div>
 
         <!-- Section 1: Lignes existantes -->
         <div class="form-section-primary">
           <h3 class="section-title-primary">
-            <span style="background: var(--va-primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600;">1</span>
+            <span class="section-number" :style="{ backgroundColor: getCollaborateurColor(getSelectedCollaborateur()?.id || '') }">1</span>
             Disponibilités ({{ selectedCellDispos.length }})
           </h3>
           
@@ -630,7 +630,7 @@
         <Transition name="form-slide" mode="out-in">
           <div v-if="editingDispoIndex !== null || isAddingNewDispo" key="edit-form" class="form-section-primary edit-form-section">
             <h3 class="section-title-primary">
-              <span style="background: var(--va-success); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600;">✎</span>
+              <span class="section-number edit-mode" :style="{ backgroundColor: getCollaborateurColor(getSelectedCollaborateur()?.id || '') }">✎</span>
               {{ isAddingNewDispo ? 'Ajouter une disponibilité' : 'Modifier la disponibilité' }}
             </h3>
 
@@ -832,6 +832,7 @@
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import LieuCombobox from '../components/LieuCombobox.vue'
 import { useToast } from 'vuestic-ui'
 import FiltersHeader from '../components/FiltersHeader.vue'
@@ -844,11 +845,12 @@ import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vu
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
 import { useUserPreferences } from '../services/userPreferences'
-import { getUserInitials, getUserColor } from '../services/avatarUtils'
+import { getUserInitials } from '../services/avatarUtils'
+import { UserColorsService } from '../services/userColorsService'
+import { formatPhone as formatPhoneUtil, phoneToHref } from '../utils/phoneFormatter'
 // firestoreCounter et firestoreCache supprimés: migration RTDB terminée
 import { db, auth } from '../services/firebase'
-import { collection, query, where, orderBy, getDocs, doc, onSnapshot, limit } from 'firebase/firestore'
-import { realtimeSync } from '../services/realtimeSync'
+import { doc, onSnapshot } from 'firebase/firestore'
 
 // NOUVEAU: Service RTDB pour les disponibilités (migration complète)
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
@@ -865,10 +867,14 @@ import { useSessionDisplay } from '../services/sessionDisplayService'
 import { useMultiUserNotifications } from '../services/multiUserNotificationService'
 import type { Collaborateur } from '../types/planning'
 
+// ⚠️ OPTIMISATION D'URGENCE
+import { emergencyOptimization } from '../services/emergencyOptimization'
+
 // Flag pour tester le nouveau système
 const USE_NEW_COLLABORATION = true
 
 const { notify } = useToast()
+const route = useRoute()
 
 // Initialisation des services multi-utilisateur (Phase 4)
 const notificationService = useMultiUserNotifications()
@@ -939,6 +945,14 @@ const dateFrom = ref<string>('')
 const dateTo = ref<string>('')
 const viewMode = ref<'week' | 'month' | 'table'>('week')
 const mobileFiltersOpen = ref(false)
+
+// Initialisation des filtres depuis les paramètres de query
+const initFiltersFromQuery = () => {
+  if (route.query.collaborateur) {
+    searchTerm.value = route.query.collaborateur as string
+    console.log(`🔍 Filtre collaborateur appliqué: "${searchTerm.value}"`)
+  }
+}
 
 // État de performance du filtrage
 const isFiltering = ref(false)
@@ -1628,7 +1642,7 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
 const isMobileView = ref(false)
 const dayWidthRef = ref(124)
 const stickyLeftWidthRef = ref(260)
-const rowHeightRef = ref(56)
+const rowHeightRef = ref(65) // Réduit à 65px pour une meilleure proportion
 const rowPitchRef = computed(() => rowHeightRef.value + 1)
 
 function computeResponsive() {
@@ -1652,17 +1666,17 @@ function computeResponsive() {
   // Calculer les nouvelles dimensions selon la taille d'écran
   let sticky = 260
   let day = 124
-  let rowH = 56
+  let rowH = 65 // Réduit à 65px pour une meilleure proportion
   if (w <= 390) { // iPhone 12 width
-    sticky = 72; day = Math.max(44, Math.min(60, Math.floor((w - sticky - 8)/7))); rowH = 48
+    sticky = 72; day = Math.max(44, Math.min(60, Math.floor((w - sticky - 8)/7))); rowH = 55 // Réduit
   } else if (w <= 430) {
-    sticky = 78; day = Math.max(48, Math.min(64, Math.floor((w - sticky - 10)/7))); rowH = 50
+    sticky = 78; day = Math.max(48, Math.min(64, Math.floor((w - sticky - 10)/7))); rowH = 58 // Réduit
   } else if (w <= 520) {
-    sticky = 90; day = Math.max(54, Math.min(70, Math.floor((w - sticky - 12)/7))); rowH = 52
+    sticky = 90; day = Math.max(54, Math.min(70, Math.floor((w - sticky - 12)/7))); rowH = 60 // Réduit
   } else if (w <= 640) {
-    sticky = 110; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 16)/7))); rowH = 54
+    sticky = 110; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 16)/7))); rowH = 62 // Réduit
   } else if (w <= 900) {
-    sticky = 140; day = Math.max(70, Math.min(96, Math.floor((w - sticky - 20)/7))); rowH = 56
+    sticky = 140; day = Math.max(70, Math.min(96, Math.floor((w - sticky - 20)/7))); rowH = 65 // Réduit
   }
   
   dayWidthRef.value = day
@@ -2561,7 +2575,7 @@ const filteredCollaborateurs = computed(() => {
       if (searchCache.value.has(searchKey)) {
         searchMatch = searchCache.value.get(searchKey)!
       } else {
-        const searchText = `${collab.prenom} ${collab.nom} ${collab.email} ${collab.phone} ${collab.ville}`.toLowerCase()
+        const searchText = `${collab.prenom} ${collab.nom} ${collab.email} ${collab.phone} ${collab.note}`.toLowerCase()
         searchMatch = searchText.includes(searchTerm.value.toLowerCase())
         
         // Cache avec limitation intelligente
@@ -3506,12 +3520,7 @@ function analyzeOvernightMissions() {
 }
 
 function formatPhone(phone: string) {
-  const digits = (phone || '').replace(/\D/g, '')
-  if (digits.length === 10) {
-    // regroupe en paires: 06 12 34 56 78
-    return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim()
-  }
-  return phone
+  return formatPhoneUtil(phone)
 }
 
 // Ancien calcul par durée — non utilisé depuis le layout vertical
@@ -3763,7 +3772,7 @@ function addNewDispo() {
     metier: collab.metier,
     phone: collab.phone || '',
     email: collab.email || '',
-    ville: collab.ville || '',
+    note: collab.note || '',
     date: selectedCell.value.date,
     tenantId: 'keydispo',
     collaborateurId: selectedCell.value.collaborateurId,
@@ -3813,7 +3822,7 @@ function addInlineRow() {
     date: selectedCell.value.date,
     tenantId: 'keydispo',
     collaborateurId: selectedCell.value.collaborateurId,
-    nom: collab?.nom || '', prenom: collab?.prenom || '', metier: collab?.metier || '', phone: collab?.phone || '', email: collab?.email || '', ville: collab?.ville || '',
+    nom: collab?.nom || '', prenom: collab?.prenom || '', metier: collab?.metier || '', phone: collab?.phone || '', email: collab?.email || '', note: collab?.note || '',
   })
 }
 
@@ -4426,7 +4435,7 @@ async function loadCollaborateursFromFirebase() {
         metier: collab.metier || '',
         phone: collab.phone || '',
         email: collab.email || '',
-        ville: collab.ville || '',
+        note: collab.note || '',
         color: collab.color || '#666',
         tenantId: collab.tenantId,
         createdAt: collab.createdAt,
@@ -4528,7 +4537,7 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
         metier: dispo.metier || '',
         phone: dispo.phone || '',
         email: dispo.email || '',
-        ville: dispo.ville || '',
+        note: dispo.note || '',
         tenantId: dispo.tenantId,
         // Champs requis par l'interface Disponibilite
         version: dispo.version || 1,
@@ -4543,86 +4552,13 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
     
   } catch (error) {
     console.error('❌ Erreur chargement disponibilités RTDB:', error)
-    // Fallback vers Firestore pendant debug - TEMPORAIREMENT DÉSACTIVÉ POUR ÉVITER ERREURS PERMISSIONS
-    // console.log('🔄 Fallback vers Firestore temporairement désactivé')
-    // return await loadDisponibilitesFromFirebaseBackup(dateDebut, dateFin)
+    // Plus de fallback Firestore - RTDB uniquement
     return [] // Retourner un tableau vide en cas d'erreur
   } finally {
     loadingDisponibilites.value = false
     
     // Vérifier si le planning est prêt
     checkPlanningReadiness()
-  }
-}
-
-// Fonction de backup Firestore (temporaire pendant la migration)
-async function loadDisponibilitesFromFirebaseBackup(dateDebut: string, dateFin: string) {
-  try {
-    // console.log('⚠️ FALLBACK FIRESTORE: Chargement disponibilités...')
-    
-    const tenantId = AuthService.currentTenantId || 'keydispo'
-    
-    if (!auth.currentUser) {
-      console.error('❌ Utilisateur non connecté! Impossible de charger les disponibilités.')
-      return []
-    }
-    
-    const disposRef = collection(db, 'dispos')
-    const q = query(
-      disposRef,
-      where('tenantId', '==', tenantId),
-      where('date', '>=', dateDebut),
-      where('date', '<=', dateFin),
-      orderBy('date'),
-      limit(200) // LIMITATION: max 200 docs par requête
-    )
-    
-    const snapshot = await getDocs(q)
-    // console.log(`📊 FALLBACK FIRESTORE: ${snapshot.size} disponibilités lues`)
-    
-    // Alerte si trop de lectures
-    if (snapshot.size > 150) {
-      console.warn(`🚨 FALLBACK FIRESTORE: ${snapshot.size} disponibilités lues! Risque de dépassement quota.`)
-    }
-    
-    const disponibilites: any[] = []
-    
-    snapshot.forEach((doc) => {
-      const data = doc.data()
-      const canonLieu = canonicalizeLieu(data.lieu || '')
-      
-      // Générer collaborateurId s'il n'existe pas (compatibilité anciennes données)
-      const collaborateurId = data.collaborateurId || 
-        generateCollaborateurId(data.nom || '', data.prenom || '', data.email || '')
-      
-      disponibilites.push({
-        id: doc.id,
-        collaborateurId,
-        date: data.date,
-        lieu: canonLieu,
-        heure_debut: data.heure_debut || '',
-        heure_fin: data.heure_fin || '',
-        type: data.type || undefined,
-        timeKind: data.timeKind || undefined,
-        slots: Array.isArray(data.slots) ? data.slots : undefined,
-        isFullDay: data.isFullDay ?? undefined,
-        nom: data.nom || '',
-        prenom: data.prenom || '',
-        metier: data.metier || '',
-        phone: data.phone || '',
-        email: data.email || '',
-        ville: data.ville || '',
-        tenantId: data.tenantId
-      })
-    })
-    
-    // Cache supprimé: utilisation directe des données Firestore
-    
-    return disponibilites
-    
-  } catch (error) {
-    console.error('❌ Erreur fallback Firestore:', error)
-    return []
   }
 }
 
@@ -4758,7 +4694,7 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
             metier: dispo.metier || '',
             phone: dispo.phone || '',
             email: dispo.email || '',
-            ville: dispo.ville || '',
+            note: dispo.note || '',
             tenantId: dispo.tenantId,
             version: dispo.version || 1,
             updatedAt: dispo.updatedAt,
@@ -4840,7 +4776,7 @@ function startRealtimeSync() {
           metier: dispo.metier,
           phone: dispo.phone,
           email: dispo.email,
-          ville: dispo.ville,
+          note: dispo.note,
           date: dispo.date,
           lieu: dispo.lieu,
           heure_debut: dispo.heure_debut,
@@ -4911,10 +4847,10 @@ function stopRealtimeSync() {
  * Afficher les statistiques de synchronisation
  */
 function showRealtimeStats() {
-  const stats = realtimeSync.getStats()
+  // Migration RTDB: anciennes stats Firestore désactivées
   const collaborationStats = collaborationService.getStats()
-  // console.log('📊 Statistiques de synchronisation temps réel:', stats)
-  // console.log('👥 Statistiques de collaboration:', collaborationStats)
+  console.log('� Statistiques de collaboration:', collaborationStats)
+  console.log('� Listeners RTDB actifs:', realtimeListeners.value.length)
   
   // notify({
   //   message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
@@ -5020,15 +4956,34 @@ function handleUserPreferencesUpdate(event: Event) {
 
 /**
  * Configurer la synchronisation temps réel des préférences utilisateur
+ * ⚠️ OPTIMISÉ : Mode urgence avec cache local
  */
 function setupRealtimePreferences() {
   if (!auth.currentUser || !AuthService.currentTenantId) return
+  
+  // ⚠️ CONTRÔLE D'URGENCE : Désactiver en mode urgence
+  if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
+    console.log('🚨 [EMERGENCY] Sync préférences désactivée - Mode cache local')
+    // Charger une seule fois les préférences puis utiliser le cache
+    if (loadPreferences && auth.currentUser) {
+      loadPreferences(auth.currentUser.uid).then(() => {
+        updateUserColorVariables()
+      })
+    }
+    return
+  }
   
   const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${auth.currentUser.uid}`)
   
   // Nettoyer l'ancien listener s'il existe
   if (preferencesUnsubscribe) {
     preferencesUnsubscribe()
+  }
+  
+  // ⚠️ LIMITE : Créer un listener seulement si on peut
+  if (!emergencyOptimization?.canCreateListener?.()) {
+    console.warn('🚨 [EMERGENCY] Limite listeners atteinte - Préférences en mode cache')
+    return
   }
   
   // Créer un nouveau listener temps réel
@@ -5073,6 +5028,24 @@ function setupRealtimePreferences() {
   }, (error) => {
     console.error('❌ Erreur dans le listener préférences temps réel:', error)
   })
+}
+
+/**
+ * Configurer la synchronisation des couleurs utilisateurs
+ */
+function setupUserColorsSync() {
+  if (!auth.currentUser) return
+
+  // Écouter la couleur de l'utilisateur actuel
+  UserColorsService.listenToUserColor(auth.currentUser.uid)
+  
+  // Watch pour ajouter des listeners pour les nouveaux utilisateurs connectés
+  watch(connectedUsers, (newUsers) => {
+    const userIds = newUsers.map(user => user.uid).filter(uid => uid)
+    UserColorsService.listenToMultipleUsers(userIds)
+  }, { immediate: true })
+  
+  console.log('🎨 Configuration synchronisation couleurs utilisateurs terminée')
 }
 
 /**
@@ -5223,13 +5196,9 @@ function updatePresenceView() {
 // La fonction getUserColor est maintenant importée depuis avatarUtils
 // Wrapper pour maintenir la compatibilité avec les préférences utilisateur
 function getUserColorWrapper(uid: string): string {
-  // Si c'est l'utilisateur actuel, vérifier les préférences personnalisées
-  if (auth.currentUser && uid === auth.currentUser.uid) {
-    const customColor = preferences.value.presenceColor
-    return getUserColor(uid, customColor)
-  }
-  
-  return getUserColor(uid)
+  // Utiliser le service unifié de couleurs qui gère automatiquement 
+  // les couleurs personnalisées et le cache temps réel
+  return UserColorsService.getUserColor(uid)
 }
 
 /**
@@ -6068,8 +6037,15 @@ function getCurrentSelectedCollaborateur(): string | null {
   
   // Prendre la première cellule sélectionnée pour déterminer le collaborateur
   const firstCellId = Array.from(selectedCells.value)[0]
-  // L'ID du collaborateur est tout sauf les 11 derniers caractères (date: -YYYY-MM-DD)
-  return firstCellId.slice(0, -11)
+  // L'ID est au format "collaborateurId-YYYY-MM-DD", on cherche le dernier tiret
+  const lastDashIndex = firstCellId.lastIndexOf('-')
+  if (lastDashIndex === -1) return null
+  
+  // Vérifier que ce qui suit le dernier tiret ressemble à une date (10 caractères)
+  const datePart = firstCellId.substring(lastDashIndex + 1)
+  if (datePart.length !== 10) return null
+  
+  return firstCellId.substring(0, lastDashIndex)
 }
 
 // Gestion du clic-glisser pour la sélection multiple
@@ -6429,6 +6405,9 @@ const handleSaveCollaborateurNotes = async (collaborateur: Collaborateur, notes:
 }
 
 onMounted(async () => {
+  // Initialiser les filtres depuis les paramètres de query
+  initFiltersFromQuery()
+  
   generateInitialDays()
   await loadCollaborateursFromFirebase()
   
@@ -6470,6 +6449,9 @@ onMounted(async () => {
   // Configurer la synchronisation temps réel des préférences
   setupRealtimePreferences()
   
+  // Configurer la synchronisation des couleurs utilisateurs
+  setupUserColorsSync()
+  
   // Ajouter un listener pour les changements de préférences depuis d'autres composants
   document.addEventListener('userPreferencesUpdated', handleUserPreferencesUpdate)
   
@@ -6499,7 +6481,7 @@ onMounted(async () => {
   // Exposer globalement pour le debug
   if (typeof window !== 'undefined') {
     ;(window as any).collaborationService = collaborationService
-    ;(window as any).realtimeSync = realtimeSync
+    // Migration RTDB: realtimeSync obsolète
     
     // Exposer les fonctions de debug du cache DOM
     ;(window as any).testDOMCache = function() {
@@ -6766,6 +6748,14 @@ const updateSetsDebounced = (() => {
 
 watch([visibleDays, paginatedCollaborateurs], updateSetsDebounced, { immediate: true })
 
+// Watcher pour les paramètres de query (navigation depuis détail collaborateur)
+watch(() => route.query, (newQuery) => {
+  if (newQuery.collaborateur && newQuery.collaborateur !== searchTerm.value) {
+    searchTerm.value = newQuery.collaborateur as string
+    console.log(`🔍 Filtre collaborateur mis à jour: "${searchTerm.value}"`)
+  }
+}, { immediate: true })
+
 // Watchers pour optimisation des filtres
 watch(allCollaborateurs, () => {
   // Nettoyer le cache de recherche quand les collaborateurs changent
@@ -6985,6 +6975,9 @@ onUnmounted(() => {
     preferencesUnsubscribe()
     preferencesUnsubscribe = null
   }
+  
+  // Nettoyer les listeners de couleurs utilisateurs
+  UserColorsService.cleanup()
   
   // Nettoyer l'event listener pour les changements de préférences
   document.removeEventListener('userPreferencesUpdated', handleUserPreferencesUpdate)
@@ -7278,13 +7271,31 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-/* En-tête détaillé (style batch) */
+/* En-tête détaillé avec thème couleur collaborateur */
 .dispo-header-detailed {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 5%, #f8fafc) 0%, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 8%, #e2e8f0) 100%);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid color-mix(in srgb, var(--collaborateur-color, #3b82f6) 20%, #e2e8f0);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fallback pour navigateurs sans color-mix */
+.dispo-header-detailed {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.color-indicator-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 0 8px 8px 0;
 }
 
 .collaborateur-section {
@@ -7360,6 +7371,28 @@ onUnmounted(() => {
   color: var(--va-color-text-primary);
   padding-bottom: 8px;
   border-bottom: 1px solid var(--va-primary);
+}
+
+.section-number {
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.section-number.edit-mode {
+  animation: pulse-edit 2s infinite;
+}
+
+@keyframes pulse-edit {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* Vue d'ensemble des disponibilités */
@@ -8687,13 +8720,54 @@ onUnmounted(() => {
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  gap: 6px;
   position: sticky;
   left: 0;
   top: 0;
   z-index: 153; /* au-dessus des éléments du header */
+}
+
+.excel-corner .today-btn {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  width: 100%;
+  justify-content: center;
+}
+
+.excel-corner .today-btn:hover {
+  background: #2563EB;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.excel-corner .today-btn .material-icons {
+  font-size: 16px;
+}
+
+.excel-corner .corner-separator {
+  width: 80%;
+  height: 1px;
+  background: #ddd;
+  margin: 4px 0;
+}
+
+.excel-corner .corner-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 /* Ancien système overlay supprimé - remplacé par CSS pur */
@@ -9047,8 +9121,18 @@ onUnmounted(() => {
 .collaborateur-content {
   padding: 8px 10px; /* compact pour loger plus d'infos */
   width: 100%;
+  height: 100%; /* Utilise toute la hauteur disponible */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centre le contenu verticalement */
   position: relative; /* pour ancrer le badge métier à droite */
-  background: #ffffff; /* fond blanc pour contraste */
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 8%, white) 0%, 
+    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 12%, white) 100%
+  ); /* fond coloré avec la couleur du collaborateur */
+  border-radius: 6px; /* coins arrondis pour un look plus moderne */
+  margin: 2px; /* Marge réduite pour plus d'espace */
+  box-sizing: border-box; /* Inclut padding et border dans la taille */
 }
 
 .collaborateur-name {

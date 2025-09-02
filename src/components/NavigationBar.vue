@@ -18,6 +18,13 @@
         </va-navbar-item>
         
         <va-navbar-item>
+          <va-button color="success" preset="solid" @click="router.push('/collaborateurs')" class="nav-button">
+            <va-icon name="people" class="mr-2" color="white" />
+            Collaborateurs
+          </va-button>
+        </va-navbar-item>
+        
+        <va-navbar-item>
           <va-button color="info" preset="solid" @click="router.push('/import')" class="nav-button">
             <va-icon name="va-upload" class="mr-2" color="white" />
             Import Excel

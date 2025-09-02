@@ -184,44 +184,14 @@
           Lieu de mission
         </h3>
         
-        <div class="lieu-autocomplete-wrapper" ref="lieuInputWrapperRef">
-          <va-input
-            v-model="formData.lieu"
-            label="Lieu de mission"
-            placeholder="Saisir ou rechercher un lieu"
-            clearable
-            class="lieu-input-full"
-            @focus="openLieuDropdown()"
-            @input="onLieuInput()"
-            @keydown.down.prevent="moveHighlight(1)"
-            @keydown.up.prevent="moveHighlight(-1)"
-            @keydown.enter.prevent="confirmHighlight()"
-            @keydown.esc.stop.prevent="closeLieuDropdown()"
-            @blur="onLieuBlur"
-          >
-            <template #prepend>
-              <va-icon name="place" size="16px" />
-            </template>
-            <template #appendInner>
-              <va-icon 
-                :name="showLieuDropdown ? 'expand_less' : 'expand_more'" 
-                size="16px" 
-                style="cursor:pointer" 
-                @mousedown.prevent="toggleLieuDropdown()" />
-            </template>
-          </va-input>
-          <div class="suggestions-inline-chips" v-if="!formData.lieu && lieuxExistants.length">
-            <va-chip
-              v-for="lieu in lieuxExistants.slice(0,5)"
-              :key="lieu"
-              size="small"
-              outline
-              color="primary"
-              clickable
-              @mousedown.prevent="selectLieu(lieu)"
-            >{{ lieu }}</va-chip>
-          </div>
-        </div>
+        <LieuCombobox
+          :model-value="formData.lieu"
+          @update:model-value="(v: string) => formData.lieu = v"
+          :options="lieuxExistants"
+          label="Lieu de mission"
+          placeholder="Saisir ou rechercher un lieu"
+          @create="onCreateLieu"
+        />
       </div>
 
       <!-- Actions -->
@@ -269,11 +239,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '@/services/firebase'
 import { AuthService } from '@/services/auth'
 import { useToast } from 'vuestic-ui'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
+import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
+import LieuCombobox from './LieuCombobox.vue'
 
 // Interface plus permissive pour le collaborateur
 interface CollaborateurBatch {
@@ -510,6 +480,14 @@ function selectLieu(lieu: string) {
   closeLieuDropdown()
 }
 
+// Méthode pour gérer la création de nouveaux lieux
+function onCreateLieu(nouveauLieu: string) {
+  if (nouveauLieu && !lieuxExistants.value.includes(nouveauLieu)) {
+    lieuxExistants.value.unshift(nouveauLieu)
+    console.log('🏢 Nouveau lieu ajouté:', nouveauLieu)
+  }
+}
+
 function onLieuBlur() {
   setTimeout(() => {
     // si le focus n'est pas sur une suggestion on ferme
@@ -632,12 +610,8 @@ const handleSave = async () => {
   saving.value = true
   
   try {
-    const { writeBatch, doc, collection, serverTimestamp } = await import('firebase/firestore')
+    console.log(`🔄 RTDB: Création de ${props.selectedDates.length} disponibilité(s) pour ${collaborateurName.value}`)
     
-    console.log(`Création de ${props.selectedDates.length} disponibilité(s) pour ${collaborateurName.value}`)
-    
-    // Créer un batch pour toutes les disponibilités
-    const batch = writeBatch(db)
     const tenantId = AuthService.currentTenantId || 'keydispo'
     
     // Fonction pour vérifier si les horaires débordent (overnight)
@@ -655,15 +629,12 @@ const handleSave = async () => {
       return date.toISOString().split('T')[0]
     }
     
-    // Créer une disponibilité pour chaque date sélectionnée
+    // Préparer les disponibilités pour le service RTDB
+    const disponibilitesToCreate: any[] = []
     const allCreatedDates: string[] = []
     
     for (const date of props.selectedDates) {
-      const dispoRef = doc(collection(db, 'dispos'))
-      
       const baseDispoData = {
-        id: dispoRef.id,
-        tenantId,
         collaborateurId: props.selectedCollaborateur.id,
         nom: props.selectedCollaborateur.nom,
         prenom: props.selectedCollaborateur.prenom,
@@ -675,17 +646,16 @@ const handleSave = async () => {
         lieu: formData.value.lieu || '',
         heure_debut: formData.value.heureDebut || '',
         heure_fin: formData.value.heureFin || '',
-        type: formData.value.type,
-        timeKind: formData.value.timeKind,
+        type: formData.value.type === 'disponible' ? 'standard' : formData.value.type,
+        timeKind: formData.value.timeKind === 'custom' ? 'fixed' : 
+                 formData.value.timeKind === 'full_day' ? 'flexible' : 'fixed',
         isFullDay: formData.value.timeKind === 'full_day',
         slots: formData.value.timeKind === 'predefined' ? [getSelectedSlotValue()] : [],
-        version: 1,
-        updatedAt: serverTimestamp(),
         updatedBy: 'batch-modal'
       }
       
-      console.log(`🔥 Création dispo Firebase pour ${date}:`, baseDispoData)
-      batch.set(dispoRef, baseDispoData)
+      console.log(`🔥 Préparation dispo RTDB pour ${date}:`, baseDispoData)
+      disponibilitesToCreate.push(baseDispoData)
       allCreatedDates.push(date)
       
       // Si c'est une plage horaire qui déborde sur le lendemain (overnight)
@@ -697,25 +667,23 @@ const handleSave = async () => {
         // Vérifier si le jour suivant n'est pas déjà dans la sélection
         // pour éviter les doublons
         if (!props.selectedDates.includes(nextDay)) {
-          const nextDayRef = doc(collection(db, 'dispos'))
           const nextDayData = {
             ...baseDispoData,
-            id: nextDayRef.id,
             date: nextDay,
-            // Garder les mêmes horaires - la logique d'affichage gère l'overnight
+            _cont: 'end' as const // Marquer comme continuation overnight
           }
           
-          console.log(`🌙 Création dispo overnight pour ${nextDay}:`, nextDayData)
-          batch.set(nextDayRef, nextDayData)
+          console.log(`🌙 Préparation dispo overnight pour ${nextDay}:`, nextDayData)
+          disponibilitesToCreate.push(nextDayData)
           allCreatedDates.push(nextDay)
         }
       }
     }
     
-    // Exécuter le batch
-    await batch.commit()
+    // Créer toutes les disponibilités via le service RTDB
+    const createdIds = await disponibilitesRTDBService.createMultipleDisponibilites(disponibilitesToCreate)
     
-    console.log(`✅ ${allCreatedDates.length} disponibilité(s) créée(s) avec succès (dont ${allCreatedDates.length - props.selectedDates.length} overnight)`)
+    console.log(`✅ RTDB: ${createdIds.length} disponibilité(s) créée(s) avec succès (dont ${allCreatedDates.length - props.selectedDates.length} overnight)`)
     
     // Émettre l'événement avec toutes les dates créées
     emit('batch-created', {
@@ -732,7 +700,7 @@ const handleSave = async () => {
     emit('success')
     handleClose()
   } catch (error) {
-    console.error('Erreur lors de la création des disponibilités:', error)
+    console.error('❌ Erreur lors de la création des disponibilités RTDB:', error)
     notify({
       message: 'Erreur lors de la création des disponibilités',
       color: 'danger'
@@ -742,22 +710,18 @@ const handleSave = async () => {
   }
 }
 
-// Fonction pour récupérer les lieux existants
+// Fonction pour récupérer les lieux existants depuis RTDB
 async function fetchLieuxExistants() {
   try {
     const tenantId = AuthService.currentTenantId || 'keydispo'
-    const q = query(
-      collection(db, 'dispos'),
-      where('tenantId', '==', tenantId)
-    )
     
-    const querySnapshot = await getDocs(q)
+    // Récupérer les lieux depuis RTDB via le service
+    const allDispos = await disponibilitesRTDBService.getAllDisponibilites(tenantId)
     const lieuxSet = new Set<string>()
     
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      if (data.lieu && typeof data.lieu === 'string' && data.lieu.trim()) {
-        lieuxSet.add(data.lieu.trim())
+    allDispos.forEach((dispo) => {
+      if (dispo.lieu && typeof dispo.lieu === 'string' && dispo.lieu.trim()) {
+        lieuxSet.add(dispo.lieu.trim())
       }
     })
     

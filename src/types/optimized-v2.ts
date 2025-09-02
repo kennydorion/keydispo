@@ -13,7 +13,8 @@ export interface CollaborateurV2 {
   metier: string
   phone: string | null
   email: string | null
-  ville: string | null
+  note: string | null
+  color?: string // Couleur pour identification visuelle
   
   // Métadonnées
   actif: boolean

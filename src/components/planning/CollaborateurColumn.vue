@@ -24,10 +24,10 @@
         <span class="location" v-if="collaborateur.ville">{{ collaborateur.ville }}</span>
       </div>
       <div class="collaborateur-extra">
-        <span class="contact" v-if="collaborateur.phone">
+        <a class="contact phone-link" v-if="collaborateur.phone" :href="`tel:${phoneToHref(collaborateur.phone)}`">
           <va-icon name="phone" size="12px" />
           <span class="text">{{ formatPhone(collaborateur.phone) }}</span>
-        </span>
+        </a>
         <span class="contact" v-if="collaborateur.email">
           <va-icon name="email" size="12px" />
           <span class="text">{{ collaborateur.email }}</span>
@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatPhone as formatPhoneUtil, phoneToHref } from '../../utils/phoneFormatter'
 
 interface Collaborateur {
   id: string
@@ -71,14 +72,7 @@ const collaborateurColor = computed(() => {
 
 // Formatage du numéro de téléphone
 function formatPhone(phone: string): string {
-  if (!phone) return ''
-  
-  // Format simple pour l'affichage
-  const cleaned = phone.replace(/\D/g, '')
-  if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1.$2.$3.$4.$5')
-  }
-  return phone
+  return formatPhoneUtil(phone)
 }
 </script>
 
@@ -232,6 +226,20 @@ function formatPhone(phone: string): string {
   
   .contact {
     font-size: 9px;
+  }
+  
+  .contact.phone-link {
+    text-decoration: none;
+    color: var(--va-primary);
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .contact.phone-link:hover {
+    background-color: var(--va-primary-light);
+    color: var(--va-primary-dark);
+    transform: translateY(-1px);
   }
   
   .contact .text {

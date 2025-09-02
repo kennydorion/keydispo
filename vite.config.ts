@@ -46,7 +46,10 @@ export default defineConfig(() => {
             vue: ['vue', 'vue-router', 'pinia']
           }
         }
-      }
+      },
+      // Options pour la production
+      emptyOutDir: true,
+      reportCompressedSize: false
     }
   }
 })

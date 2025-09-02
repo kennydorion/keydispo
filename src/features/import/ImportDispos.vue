@@ -229,7 +229,7 @@
 import { ref, computed } from 'vue'
 // PlanningLayout retiré : TopNav globale dans App.vue
 import { parseWorkbook } from './parseWorkbook'
-import { importToRTDB, validateImportData } from './importToRTDB'
+import { importToRTDB, validateImportDataRTDB } from './importToRTDBDirect'
 import { disponibilitesRTDBService } from '../../services/disponibilitesRTDBService'
 import type { ParseResult, ImportStats, ImportProgress } from './types'
 
@@ -406,7 +406,7 @@ async function parseFile() {
     parseResult.value = result
     
     // Validation des données
-    validationResult.value = validateImportData(result.data)
+    validationResult.value = validateImportDataRTDB(result.data)
     
     step.value = 'preview'
     console.log('✅ Parsing terminé:', result.stats)
@@ -445,7 +445,7 @@ async function startImport() {
     const stats = await importToRTDB(
       parseResult.value.data,
       tenantId,
-      (progress) => {
+      (progress: ImportProgress) => {
         currentProgress.value = progress
       }
     )

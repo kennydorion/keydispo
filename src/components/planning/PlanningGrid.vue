@@ -39,7 +39,8 @@
         class="planning-row"
         :style="{ 
           height: rowHeight + 'px',
-          transform: `translateY(${(startIndex + index) * rowHeight}px)`
+          transform: `translateY(${(startIndex + index) * rowHeight}px)`,
+          '--collaborateur-bg-color': getCollaborateurBackgroundColor(collaborateur.color)
         }"
       >
         <!-- Colonne collaborateur (sticky) -->
@@ -301,6 +302,19 @@ function getCellLockInfo(collaborateurId: string, date: string): CellLockInfo | 
   return props.cellLocks.get(`${collaborateurId}-${date}`) || null
 }
 
+// Générer une couleur de fond subtile à partir de la couleur du collaborateur
+function getCollaborateurBackgroundColor(color?: string): string {
+  if (!color) return 'rgba(97, 118, 132, 0.02)' // Couleur par défaut très subtile
+  
+  // Convertir hex en rgba avec opacité faible
+  const hex = color.replace('#', '')
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+  
+  return `rgba(${r}, ${g}, ${b}, 0.05)` // Opacité très faible pour subtilité
+}
+
 // Gestionnaires d'événements
 function handleCellClick(collaborateurId: string, date: string, event: MouseEvent) {
   emit('cellClick', collaborateurId, date, event)
@@ -338,8 +352,6 @@ onMounted(() => {
   })
 })
 </script>
-</script>
-</script>
 
 <style scoped>
 .planning-grid-container {
@@ -372,7 +384,13 @@ onMounted(() => {
   width: 100%;
   display: flex;
   border-bottom: 1px solid #e0e0e0;
-  background: white;
+  background: var(--collaborateur-bg-color, white);
+  transition: background-color 0.2s ease;
+}
+
+.planning-row:hover {
+  background: var(--collaborateur-bg-color, rgba(0, 0, 0, 0.02));
+  filter: brightness(0.98);
 }
 
 .planning-cells {

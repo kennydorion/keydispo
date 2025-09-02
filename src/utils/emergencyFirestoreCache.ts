@@ -12,7 +12,8 @@ interface CacheEntry<T> {
 export class EmergencyFirestoreCache {
   private static instance: EmergencyFirestoreCache
   private cache = new Map<string, CacheEntry<any>>()
-  private readonly DEFAULT_TTL = 5 * 60 * 1000 // 5 minutes
+  private readonly DEFAULT_TTL = 30 * 1000 // OPTIMISATION: 30 secondes au lieu de 5 minutes
+  private readonly MAX_CACHE_SIZE = 20 // OPTIMISATION: Limite le nombre d'entrées
 
   static getInstance(): EmergencyFirestoreCache {
     if (!this.instance) {
@@ -42,6 +43,17 @@ export class EmergencyFirestoreCache {
    */
   set<T>(collection: string, filters: any, data: T, ttl?: number): void {
     const key = this.generateCacheKey(collection, filters)
+    
+    // OPTIMISATION: Limiter la taille du cache
+    if (this.cache.size >= this.MAX_CACHE_SIZE) {
+      // Supprimer l'entrée la plus ancienne
+      const oldestKey = Array.from(this.cache.keys())[0]
+      if (oldestKey) {
+        this.cache.delete(oldestKey)
+        console.log(`🗑️ Cache plein, suppression: ${oldestKey}`)
+      }
+    }
+    
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -50,7 +62,7 @@ export class EmergencyFirestoreCache {
     
     console.log(`💾 Cache Firestore: ${key} (${Array.isArray(data) ? data.length : 1} items)`)
     
-    // Auto-nettoyage après TTL
+    // Auto-nettoyage après TTL (réduit à 30s)
     setTimeout(() => {
       this.cache.delete(key)
     }, ttl || this.DEFAULT_TTL)

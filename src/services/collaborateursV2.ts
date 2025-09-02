@@ -12,9 +12,10 @@ import {
   runTransaction,
   writeBatch,
   serverTimestamp,
+  limit,
   type Unsubscribe
 } from 'firebase/firestore'
-import { ref as rtdbRef, get as rtdbGet } from 'firebase/database'
+import { ref as rtdbRef, get as rtdbGet, update as rtdbUpdate } from 'firebase/database'
 import { db, rtdb } from './firebase'
 import type { 
   CollaborateurV2, 
@@ -58,9 +59,10 @@ export class CollaborateursServiceV2 {
           nom: collabData.nom,
           prenom: collabData.prenom,
           metier: collabData.metier,
-          ville: collabData.ville || '',
+          note: collabData.note || '',
           email: collabData.email || '',
           phone: collabData.phone || '',
+          color: collabData.color || null,
           tenantId: collabData.tenantId,
           actif: collabData.actif !== false,
           createdAt: new Date(collabData.createdAt || Date.now()),
@@ -112,9 +114,10 @@ export class CollaborateursServiceV2 {
           nom: data.nom,
           prenom: data.prenom,
           metier: data.metier,
-          ville: data.ville || '',
+          note: data.note || '',
           email: data.email || '',
           phone: data.phone || '',
+          color: data.color || null,
           tenantId: data.tenantId,
           actif: data.actif !== false, // true par défaut
           createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -159,6 +162,83 @@ export class CollaborateursServiceV2 {
       
     } catch (error) {
       console.error('❌ Erreur chargement collaborateurs:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Récupérer un collaborateur par son ID
+   */
+  /**
+   * Récupérer un collaborateur par ID depuis RTDB
+   */
+  static async getCollaborateurFromRTDB(tenantId: string, collaborateurId: string): Promise<CollaborateurV2 | null> {
+    try {
+      console.log('🔄 Recherche collaborateur RTDB:', collaborateurId)
+      
+      const collaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
+      const snapshot = await rtdbGet(collaborateurRef)
+      
+      if (!snapshot.exists()) {
+        console.log('❌ Collaborateur introuvable dans RTDB:', collaborateurId)
+        return null
+      }
+      
+      const data = snapshot.val()
+      
+      return {
+        id: collaborateurId,
+        nom: data.nom,
+        prenom: data.prenom,
+        metier: data.metier,
+        note: data.note || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        color: data.color || null,
+        tenantId: data.tenantId,
+        actif: data.actif !== false,
+        createdAt: new Date(data.createdAt || Date.now()),
+        updatedAt: new Date(data.updatedAt || Date.now())
+      } as CollaborateurV2
+      
+    } catch (error) {
+      console.error('❌ Erreur récupération collaborateur RTDB:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Récupérer un collaborateur par ID (Firestore)
+   */
+  static async getCollaborateur(tenantId: string, collaborateurId: string): Promise<CollaborateurV2 | null> {
+    try {
+      // Essayer RTDB d'abord
+      const rtdbCollaborateur = await this.getCollaborateurFromRTDB(tenantId, collaborateurId)
+      if (rtdbCollaborateur) {
+        return rtdbCollaborateur
+      }
+      
+      // Fallback vers Firestore
+      console.log('🔄 Fallback Firestore pour collaborateur:', collaborateurId)
+      const collaborateurRef = doc(db, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
+      const collaborateurDoc = await getDoc(collaborateurRef)
+      
+      if (!collaborateurDoc.exists()) {
+        console.log('❌ Collaborateur introuvable:', collaborateurId)
+        return null
+      }
+      
+      const data = collaborateurDoc.data()
+      
+      return {
+        id: collaborateurDoc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date()
+      } as CollaborateurV2
+      
+    } catch (error) {
+      console.error('❌ Erreur récupération collaborateur:', error)
       throw error
     }
   }
@@ -209,6 +289,27 @@ export class CollaborateursServiceV2 {
     userId: string
   ): Promise<void> {
     try {
+      // Essayer de mettre à jour dans RTDB d'abord
+      const rtdbCollaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
+      const rtdbSnapshot = await rtdbGet(rtdbCollaborateurRef)
+      
+      if (rtdbSnapshot.exists()) {
+        console.log('🔄 Mise à jour collaborateur RTDB:', collaborateurId)
+        console.log('📋 Données à mettre à jour:', data)
+        // Mettre à jour dans RTDB
+        const updateData = {
+          ...data,
+          updatedAt: Date.now(),
+          updatedBy: userId
+        }
+        console.log('📋 Données finales envoyées:', updateData)
+        await rtdbUpdate(rtdbCollaborateurRef, updateData)
+        console.log('✅ Collaborateur mis à jour dans RTDB:', collaborateurId)
+        return
+      }
+      
+      // Fallback vers Firestore si pas trouvé dans RTDB
+      console.log('🔄 Fallback Firestore pour mise à jour collaborateur:', collaborateurId)
       const collaborateurRef = doc(db, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
       
       await runTransaction(db, async (transaction) => {
@@ -229,7 +330,7 @@ export class CollaborateursServiceV2 {
         })
       })
       
-      console.log('✅ Collaborateur mis à jour:', collaborateurId)
+      console.log('✅ Collaborateur mis à jour dans Firestore:', collaborateurId)
       
     } catch (error) {
       console.error('❌ Erreur mise à jour collaborateur:', error)
@@ -246,6 +347,24 @@ export class CollaborateursServiceV2 {
     userId: string
   ): Promise<void> {
     try {
+      // Essayer de supprimer dans RTDB d'abord
+      const rtdbCollaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
+      const rtdbSnapshot = await rtdbGet(rtdbCollaborateurRef)
+      
+      if (rtdbSnapshot.exists()) {
+        console.log('🔄 Suppression collaborateur RTDB:', collaborateurId)
+        // Soft delete dans RTDB
+        await rtdbUpdate(rtdbCollaborateurRef, {
+          actif: false,
+          updatedAt: Date.now(),
+          updatedBy: userId
+        })
+        console.log('✅ Collaborateur supprimé (soft) dans RTDB:', collaborateurId)
+        return
+      }
+      
+      // Fallback vers Firestore si pas trouvé dans RTDB
+      console.log('🔄 Fallback Firestore pour suppression collaborateur:', collaborateurId)
       const collaborateurRef = doc(db, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
       
       await updateDoc(collaborateurRef, {
@@ -255,7 +374,7 @@ export class CollaborateursServiceV2 {
         version: (await getDoc(collaborateurRef)).data()?.version + 1 || 1
       })
       
-      console.log('✅ Collaborateur supprimé (soft):', collaborateurId)
+      console.log('✅ Collaborateur supprimé (soft) dans Firestore:', collaborateurId)
       
     } catch (error) {
       console.error('❌ Erreur suppression collaborateur:', error)
@@ -678,7 +797,11 @@ export class CollaborateursServiceV2 {
       console.log(`🗑️ Suppression de toutes les données du tenant: ${tenantId}`)
       
       const collaborateursRef = collection(db, `tenants/${tenantId}/collaborateurs`)
-      const collaborateursQuery = query(collaborateursRef)
+      const collaborateursQuery = query(
+        collaborateursRef, 
+        orderBy('nom'),
+        limit(30) // OPTIMISATION URGENTE: Limiter à 30 collaborateurs
+      )
       const collaborateursSnapshot = await getDocs(collaborateursQuery)
       
       let deletedCollaborateurs = 0

@@ -42,16 +42,16 @@ onMounted(() => {
 .app-main {
   box-sizing: border-box;
   min-height: calc(100vh - 64px);
-  padding: 24px;
+  padding: 0;
 }
 
 @media (max-width: 768px) {
-  .app-main { min-height: calc(100vh - 56px); padding: 12px 10px; }
+  .app-main { min-height: calc(100vh - 56px); padding: 0; }
   .app-main.no-nav { min-height: 100vh; }
 }
 
 .app-main.no-nav {
   min-height: 100vh;
-  padding: 32px 24px;
+  padding: 0;
 }
 </style>

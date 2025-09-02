@@ -765,7 +765,10 @@ class MultiUserService {
   }
 
   private async cleanupExpiredSessions() {
-    const sessionsQuery = query(collection(db, `tenants/${this.tenantId}/sessions`))
+    const sessionsQuery = query(
+      collection(db, `tenants/${this.tenantId}/sessions`),
+      limit(20) // OPTIMISATION URGENTE: Limiter le nettoyage à 20 sessions max
+    )
     const snapshot = await getDocs(sessionsQuery)
     const batch = writeBatch(db)
     const now = Date.now()
@@ -788,7 +791,10 @@ class MultiUserService {
   }
 
   private async cleanupExpiredActivities() {
-    const activitiesQuery = query(collection(db, `tenants/${this.tenantId}/cellActivities`))
+    const activitiesQuery = query(
+      collection(db, `tenants/${this.tenantId}/cellActivities`),
+      limit(20) // OPTIMISATION URGENTE: Limiter le nettoyage à 20 activités max
+    )
     const snapshot = await getDocs(activitiesQuery)
     const batch = writeBatch(db)
     const now = Date.now()

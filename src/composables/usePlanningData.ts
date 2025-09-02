@@ -3,11 +3,9 @@
  * Extrait de SemaineVirtualClean.vue pour améliorer la maintenabilité
  */
 import { ref, computed, nextTick } from 'vue'
-import { useToast } from 'vuestic-ui'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
-import { db, auth } from '../services/firebase'
-import { collection, query, where, orderBy, getDocs, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import { auth } from '../services/firebase'
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
 import type { Collaborateur } from '../types/planning'
 
@@ -19,7 +17,7 @@ interface Disponibilite {
   metier: string
   phone: string
   email: string
-  ville: string
+  note: string
   date: string
   lieu: string
   heure_debut: string
@@ -36,8 +34,6 @@ interface Disponibilite {
 }
 
 export function usePlanningData() {
-  const toast = useToast()
-  
   // État des données
   const allCollaborateurs = ref<Collaborateur[]>([])
   const loadingCollaborateurs = ref(true)
@@ -197,7 +193,7 @@ export function usePlanningData() {
             metier: dispo.metier,
             phone: dispo.phone,
             email: dispo.email,
-            ville: dispo.ville,
+            note: dispo.note,
             date: dispo.date,
             lieu: dispo.lieu,
             heure_debut: dispo.heure_debut,
@@ -213,27 +209,7 @@ export function usePlanningData() {
         console.warn('⚠️ [usePlanningData] RTDB indisponible, fallback Firestore:', rtdbError)
       }
 
-      // Fallback Firestore si RTDB vide
-      if (disponibilites.length === 0) {
-        console.log('🔄 [usePlanningData] Chargement Firestore...')
-        
-        const q = query(
-          collection(db, 'dispos'),
-          where('tenantId', '==', tenantId),
-          where('date', '>=', startDate),
-          where('date', '<=', endDate),
-          orderBy('date'),
-          orderBy('heure_debut')
-        )
-
-        const snapshot = await getDocs(q)
-        disponibilites = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Disponibilite[]
-        
-        console.log(`✅ [usePlanningData] Firestore: ${disponibilites.length} disponibilités chargées`)
-      }
+      console.log(`✅ [usePlanningData] RTDB: ${disponibilites.length} disponibilités chargées`)
 
       // Mise à jour du cache par cellule
       const cacheUpdates = new Map<string, Disponibilite[]>()
@@ -270,13 +246,13 @@ export function usePlanningData() {
     }
   }
 
-  // Sauvegarde des disponibilités
+  // Sauvegarde des disponibilités (Migration RTDB)
   async function saveDispos(dispos: Disponibilite[]): Promise<boolean> {
     if (saving.value) return false
 
     try {
       saving.value = true
-      console.log(`💾 [usePlanningData] Sauvegarde de ${dispos.length} disponibilités...`)
+      console.log(`💾 [usePlanningData] Sauvegarde RTDB de ${dispos.length} disponibilités...`)
 
       const currentUser = auth.currentUser
       if (!currentUser) {
@@ -288,27 +264,45 @@ export function usePlanningData() {
         throw new Error('Tenant ID introuvable')
       }
 
-      // Préparer les données pour la sauvegarde
-      const batch = writeBatch(db)
+      // Préparer les données pour la sauvegarde RTDB
       const updatedDispos: Disponibilite[] = []
+      const disposToCreate: any[] = []
 
       for (const dispo of dispos) {
+        const collaborateurId = dispo.collaborateurId || generateCollaborateurId(dispo.nom, dispo.prenom, dispo.email)
+        
         const dispoData = {
-          ...dispo,
+          id: dispo.id || `${collaborateurId}_${dispo.date}_${Date.now()}`,
+          collaborateurId,
+          nom: dispo.nom,
+          prenom: dispo.prenom,
+          metier: dispo.metier,
+          phone: dispo.phone,
+          email: dispo.email,
+          note: dispo.note,
+          date: dispo.date,
+          lieu: dispo.lieu,
+          heure_debut: dispo.heure_debut,
+          heure_fin: dispo.heure_fin,
+          type: (dispo.type as 'mission' | 'disponible' | 'indisponible') || 'disponible',
+          timeKind: dispo.timeKind || 'range',
+          slots: dispo.slots || [],
+          isFullDay: dispo.isFullDay || false,
           tenantId,
           version: (dispo.version || 0) + 1,
-          updatedAt: serverTimestamp(),
-          updatedBy: currentUser.uid
+          updatedBy: currentUser.uid,
+          tags: [],
+          isArchived: false,
+          hasConflict: false
         }
 
-        const docRef = doc(db, 'dispos', dispo.id || `${dispo.collaborateurId || 'unknown'}_${dispo.date}_${Date.now()}`)
-        batch.set(docRef, dispoData)
-        updatedDispos.push({ ...dispoData, id: docRef.id })
+        disposToCreate.push(dispoData)
+        updatedDispos.push({ ...dispoData, id: dispoData.id })
       }
 
-      // Exécuter la transaction
-      await batch.commit()
-      console.log('✅ [usePlanningData] Sauvegarde Firestore réussie')
+      // Utiliser le service RTDB pour la sauvegarde batch
+      await disponibilitesRTDBService.createMultipleDisponibilites(disposToCreate)
+      console.log('✅ [usePlanningData] Sauvegarde RTDB réussie')
 
       // Mettre à jour le cache immédiatement
       const cacheUpdates = new Map<string, Disponibilite[]>()
@@ -337,21 +331,21 @@ export function usePlanningData() {
         disponibilitesCache.value.set(cacheKey, dispos)
       })
 
-      console.log(`🎯 [usePlanningData] Cache mis à jour après sauvegarde: ${cacheUpdates.size} cellules`)
+      console.log(`🎯 [usePlanningData] Cache mis à jour après sauvegarde RTDB: ${cacheUpdates.size} cellules`)
 
       // Forcer la réactivité
       await nextTick()
 
       // toast.init({
-      //   message: `${dispos.length} disponibilité(s) sauvegardée(s)`,
+      //   message: `${dispos.length} disponibilité(s) sauvegardée(s) en RTDB`,
       //   color: 'success'
       // })
 
       return true
     } catch (error) {
-      console.error('❌ [usePlanningData] Erreur lors de la sauvegarde:', error)
+      console.error('❌ [usePlanningData] Erreur lors de la sauvegarde RTDB:', error)
       // toast.init({
-      //   message: 'Erreur lors de la sauvegarde',
+      //   message: 'Erreur lors de la sauvegarde RTDB',
       //   color: 'danger'
       // })
       return false
@@ -421,7 +415,7 @@ export function usePlanningData() {
             metier: dispo.metier,
             phone: dispo.phone,
             email: dispo.email,
-            ville: dispo.ville,
+            note: dispo.note,
             date: dispo.date,
             lieu: dispo.lieu,
             heure_debut: dispo.heure_debut,

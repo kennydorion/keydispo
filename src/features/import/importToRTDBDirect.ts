@@ -13,7 +13,7 @@ export interface CollaborateurRTDB {
   metier: string
   phone: string | null
   email: string | null
-  ville: string | null
+  note: string | null
   slug: string
   createdAt: any
   updatedAt: any
@@ -114,7 +114,7 @@ function prepareDataForImportRTDB(data: NormalizedRow[], tenantId: string) {
         metier: row.metier || '',
         phone: row.phone || null,
         email: row.email || null,
-        ville: row.ville || null,
+        note: row.note || null,
         slug,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -125,7 +125,7 @@ function prepareDataForImportRTDB(data: NormalizedRow[], tenantId: string) {
       const existing = collaborateursMap.get(slug)!
       if (row.phone && !existing.phone) existing.phone = row.phone
       if (row.email && !existing.email) existing.email = row.email
-      if (row.ville && !existing.ville) existing.ville = row.ville
+      if (row.note && !existing.note) existing.note = row.note
       if (row.metier && existing.metier !== row.metier) {
         // Prendre le métier le plus récent/complet
         existing.metier = row.metier

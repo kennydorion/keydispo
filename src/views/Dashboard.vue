@@ -16,6 +16,49 @@
         </div>
       </header>
       
+      <!-- Navigation rapide -->
+      <div class="quick-nav">
+        <div class="nav-card" @click="$router.push('/semaine')">
+          <div class="nav-icon" style="background: #f59e0b22; color: #f59e0b;">
+            <span class="material-icons">calendar_month</span>
+          </div>
+          <div class="nav-content">
+            <h3>Planning</h3>
+            <p>Gérer les disponibilités</p>
+          </div>
+        </div>
+        
+        <div class="nav-card" @click="$router.push('/collaborateurs')">
+          <div class="nav-icon" style="background: #10b98122; color: #10B981;">
+            <span class="material-icons">people</span>
+          </div>
+          <div class="nav-content">
+            <h3>Collaborateurs</h3>
+            <p>Gérer l'équipe</p>
+          </div>
+        </div>
+        
+        <div class="nav-card" @click="$router.push('/import')">
+          <div class="nav-icon" style="background: #2563eb22; color: #2563EB;">
+            <span class="material-icons">upload</span>
+          </div>
+          <div class="nav-content">
+            <h3>Import</h3>
+            <p>Importer des données</p>
+          </div>
+        </div>
+        
+        <div class="nav-card" @click="$router.push('/parametres')">
+          <div class="nav-icon" style="background: #ef444422; color: #ef4444;">
+            <span class="material-icons">settings</span>
+          </div>
+          <div class="nav-content">
+            <h3>Paramètres</h3>
+            <p>Configuration</p>
+          </div>
+        </div>
+      </div>
+      
       <div class="dashboard-grid">
         <!-- KPIs Cards -->
         <div class="kpi-card">
@@ -156,6 +199,55 @@
   font-size: 1.1rem;
   color: var(--dark-text-secondary);
   margin: 0;
+}
+
+.quick-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.nav-card {
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-card:hover {
+  background: var(--dark-surface-hover);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.nav-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--dark-text-primary);
+}
+
+.nav-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--dark-text-secondary);
 }
 
 .action-btn {

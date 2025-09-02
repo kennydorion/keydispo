@@ -46,7 +46,7 @@ export interface NormalizedRow {
   heure_fin?: string // HH:MM
   phone?: string
   email?: string
-  ville?: string
+  note?: string
 }
 
 export interface CollaborateurData {
@@ -56,7 +56,7 @@ export interface CollaborateurData {
   metier: string
   phone?: string
   email?: string
-  ville?: string
+  note?: string
   tenantId: string
   actif?: boolean
   createdAt: any // Timestamp

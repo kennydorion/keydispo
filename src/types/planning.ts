@@ -5,7 +5,7 @@ export interface Collaborateur {
   email?: string
   phone?: string
   metier?: string
-  ville?: string
+  note?: string
   notes?: string
   color: string
   tenantId: string
@@ -20,7 +20,7 @@ export interface DisponibiliteExtended {
   metier: string
   phone: string
   email: string
-  ville: string
+  note: string
   date: string
   lieu: string
   heure_debut: string
