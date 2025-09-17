@@ -14,8 +14,7 @@
 
     <!-- Logo -->
     <div class="navbar-brand">
-      <img src="/keyplacementlogo.svg" alt="Key Placement" class="navbar-logo" />
-      <span class="navbar-title">{{ isCollaborateurInterface ? 'Mon Espace' : 'Key Placement' }}</span>
+      <img src="/keyplacement_logo_blanc.svg" alt="Key Placement" class="navbar-logo" />
     </div>
 
     <!-- Desktop Navigation -->
@@ -389,10 +388,9 @@ onBeforeUnmount(() => {
 }
 
 .navbar-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
 .navbar-title {
