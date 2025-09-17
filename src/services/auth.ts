@@ -124,4 +124,48 @@ export class AuthService {
       throw error
     }
   }
+
+  /**
+   * Récupère tous les utilisateurs avec le rôle admin pour le tenant actuel
+   * Accessible uniquement par kdorion@thecompagnie.eu
+   */
+  static async getAllAdmins(requestingUserEmail: string): Promise<TenantUser[]> {
+    // Restriction : seul kdorion@thecompagnie.eu peut accéder à cette fonction
+    if (requestingUserEmail.toLowerCase() !== 'kdorion@thecompagnie.eu') {
+      throw new Error('Accès non autorisé - Cette fonctionnalité est réservée au super administrateur')
+    }
+
+    try {
+      const tenantUsersRef = ref(rtdb, `tenants/${this.currentTenantId}/users`)
+      const snapshot = await get(tenantUsersRef)
+      
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const allUsers = snapshot.val()
+      const adminUsers: TenantUser[] = []
+
+      // Filtrer uniquement les admins
+      Object.keys(allUsers).forEach(userId => {
+        const userData = allUsers[userId]
+        if (userData.role === 'admin') {
+          adminUsers.push({
+            uid: userId,
+            role: userData.role,
+            email: userData.email,
+            displayName: userData.displayName,
+            createdAt: new Date(userData.createdAt),
+            lastAccess: new Date(userData.lastAccess)
+          })
+        }
+      })
+
+      // Trier par date de création (plus récent en premier)
+      return adminUsers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    } catch (error) {
+      console.error('Error fetching admin users:', error)
+      throw error
+    }
+  }
 }

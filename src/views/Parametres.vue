@@ -108,6 +108,89 @@
           </va-card-content>
         </va-card>
 
+        <!-- Liste des admins (visible uniquement pour kdorion@thecompagnie.eu) -->
+        <va-card v-if="isSuperAdmin" class="parametre-card" elevation="2">
+          <va-card-title class="parametre-title">
+            <va-icon name="supervisor_account" class="parametre-icon" />
+            Super Administration
+          </va-card-title>
+          <va-card-content class="parametre-content">
+            <div class="super-admin-section">
+              <div class="super-admin-info">
+                <h4>Tous les comptes administrateurs</h4>
+                <p class="super-admin-description">
+                  Liste de tous les comptes avec privilèges administrateur sur l'application.
+                </p>
+              </div>
+              
+              <div class="admins-list">
+                <div v-if="loadingAdmins" class="loading-state">
+                  <va-progress-circle indeterminate />
+                  <span>Chargement des administrateurs...</span>
+                </div>
+                
+                <div v-else-if="adminsList.length === 0" class="empty-admins">
+                  <va-icon name="admin_panel_settings" size="48px" color="secondary" />
+                  <p>Aucun administrateur trouvé</p>
+                </div>
+                
+                <div v-else class="admins-grid">
+                  <div 
+                    v-for="admin in adminsList" 
+                    :key="admin.uid"
+                    class="admin-item"
+                  >
+                    <div class="admin-avatar">
+                      <div class="avatar-circle">
+                        {{ getInitials(admin.displayName || admin.email) }}
+                      </div>
+                      <div class="admin-status" :class="getStatusClass(admin.lastAccess)">
+                        <va-icon :name="getStatusIcon(admin.lastAccess)" size="12px" />
+                      </div>
+                    </div>
+                    
+                    <div class="admin-details">
+                      <div class="admin-name">
+                        {{ admin.displayName || 'Nom non défini' }}
+                      </div>
+                      <div class="admin-email">
+                        {{ admin.email }}
+                      </div>
+                      <div class="admin-meta">
+                        <span class="admin-role-badge">
+                          <va-icon name="admin_panel_settings" size="12px" />
+                          Administrateur
+                        </span>
+                        <span class="admin-dates">
+                          Créé le {{ formatDateShort(admin.createdAt) }}
+                        </span>
+                      </div>
+                      <div class="admin-last-access">
+                        Dernière connexion : {{ formatRelativeTime(admin.lastAccess) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="admins-actions">
+                  <va-button
+                    preset="outline"
+                    icon="refresh"
+                    @click="refreshAdminsList"
+                    :loading="loadingAdmins"
+                    size="small"
+                  >
+                    Actualiser
+                  </va-button>
+                  <div class="admins-count">
+                    Total : {{ adminsList.length }} administrateur{{ adminsList.length > 1 ? 's' : '' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </va-card-content>
+        </va-card>
+
         <!-- Collaboration en temps réel -->
         <va-card class="parametre-card" elevation="2">
           <va-card-title class="parametre-title">
@@ -248,6 +331,7 @@ import { auth } from '../services/firebase'
 import { AuthService } from '../services/auth'
 import UserPreferencesService, { useUserPreferences } from '../services/userPreferences'
 import { useToast } from 'vuestic-ui'
+import type { TenantUser } from '../types'
 
 // State des preferences
 const { preferences, loadPreferences, savePreferences, updatePresenceColor } = useUserPreferences()
@@ -265,6 +349,10 @@ const lastSaved = ref<Date | null>(null)
 const ADMIN_SECRET_CODE = 'KPADMIN2025'
 const codeCopied = ref(false)
 
+// État pour la super administration
+const adminsList = ref<TenantUser[]>([])
+const loadingAdmins = ref(false)
+
 // Toast pour les notifications
 const { init: toast } = useToast()
 
@@ -280,6 +368,11 @@ const userDisplayName = computed(() => {
 const userEmail = computed(() => user.value?.email || '—')
 
 const currentTenantId = computed(() => AuthService.currentTenantId)
+
+// Vérifier si l'utilisateur actuel est le super admin
+const isSuperAdmin = computed(() => {
+  return user.value?.email?.toLowerCase() === 'kdorion@thecompagnie.eu'
+})
 
 const userInitials = computed(() => {
   if (!user.value) return '??'
@@ -493,6 +586,120 @@ function openRegisterPage() {
 }
 
 /**
+ * Charger la liste des administrateurs (super admin uniquement)
+ */
+async function loadAdminsList() {
+  if (!isSuperAdmin.value || !user.value) return
+  
+  try {
+    loadingAdmins.value = true
+    adminsList.value = await AuthService.getAllAdmins(user.value.email!)
+    console.log('📊 Admins chargés:', adminsList.value)
+  } catch (error) {
+    console.error('Erreur lors du chargement des admins:', error)
+    toast({
+      message: 'Erreur lors du chargement de la liste des administrateurs',
+      color: 'danger',
+      duration: 5000
+    })
+  } finally {
+    loadingAdmins.value = false
+  }
+}
+
+/**
+ * Actualiser la liste des administrateurs
+ */
+async function refreshAdminsList() {
+  await loadAdminsList()
+  toast({
+    message: 'Liste des administrateurs actualisée',
+    color: 'info',
+    duration: 2000
+  })
+}
+
+/**
+ * Obtenir les initiales d'un nom ou email
+ */
+function getInitials(nameOrEmail: string): string {
+  if (!nameOrEmail) return '??'
+  
+  // Si c'est un nom complet
+  if (nameOrEmail.includes(' ')) {
+    const parts = nameOrEmail.split(' ').filter(p => p.length > 0)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return parts[0].substring(0, 2).toUpperCase()
+  }
+  
+  // Si c'est un email
+  if (nameOrEmail.includes('@')) {
+    const localPart = nameOrEmail.split('@')[0]
+    return localPart.substring(0, 2).toUpperCase()
+  }
+  
+  // Autres cas
+  return nameOrEmail.substring(0, 2).toUpperCase()
+}
+
+/**
+ * Obtenir la classe CSS pour le statut de connexion
+ */
+function getStatusClass(lastAccess: Date): string {
+  const now = new Date()
+  const diffHours = (now.getTime() - lastAccess.getTime()) / (1000 * 60 * 60)
+  
+  if (diffHours < 1) return 'status-online'
+  if (diffHours < 24) return 'status-recent'
+  if (diffHours < 168) return 'status-week'
+  return 'status-old'
+}
+
+/**
+ * Obtenir l'icône pour le statut de connexion
+ */
+function getStatusIcon(lastAccess: Date): string {
+  const now = new Date()
+  const diffHours = (now.getTime() - lastAccess.getTime()) / (1000 * 60 * 60)
+  
+  if (diffHours < 1) return 'circle'
+  if (diffHours < 24) return 'schedule'
+  return 'history'
+}
+
+/**
+ * Formater une date en format court
+ */
+function formatDateShort(date: Date): string {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).format(date)
+}
+
+/**
+ * Formater un temps relatif
+ */
+function formatRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (diffMinutes < 1) return 'À l\'instant'
+  if (diffMinutes < 60) return `Il y a ${diffMinutes} min`
+  if (diffHours < 24) return `Il y a ${diffHours}h`
+  if (diffDays < 7) return `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`
+  if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} semaine${Math.floor(diffDays / 7) > 1 ? 's' : ''}`
+  
+  return formatDateShort(date)
+}
+
+/**
  * Charger les données utilisateur et préférences
  */
 async function loadUserData() {
@@ -512,6 +719,11 @@ async function loadUserData() {
     // Synchroniser la couleur sélectionnée avec les préférences
     selectedColor.value = preferences.value.presenceColor || ''
     console.log('🎨 Couleur synchronisée:', selectedColor.value)
+    
+    // Charger la liste des admins si super admin
+    if (isSuperAdmin.value) {
+      await loadAdminsList()
+    }
     
   } catch (error) {
     console.error('Erreur lors du chargement des données utilisateur:', error)
@@ -1312,5 +1524,249 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+}
+
+/* ===============================
+   SUPER ADMINISTRATION STYLES
+   =============================== */
+.super-admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.super-admin-info h4 {
+  margin: 0 0 8px 0;
+  color: #dc2626;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.super-admin-info h4::before {
+  content: "🔒";
+  font-size: 1rem;
+}
+
+.super-admin-description {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.admins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.empty-admins {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.empty-admins p {
+  margin: 12px 0;
+  font-size: 1rem;
+}
+
+.admins-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.admin-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-light);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.admin-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+  border-color: #667eea;
+}
+
+.admin-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+
+.admin-status {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-online {
+  background: #10b981;
+  color: white;
+}
+
+.status-recent {
+  background: #f59e0b;
+  color: white;
+}
+
+.status-week {
+  background: #6b7280;
+  color: white;
+}
+
+.status-old {
+  background: #ef4444;
+  color: white;
+}
+
+.admin-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-light);
+  line-height: 1.3;
+}
+
+.admin-email {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-family: 'Monaco', 'Menlo', monospace;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  max-width: fit-content;
+}
+
+.admin-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-role-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.admin-dates {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.admin-last-access {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.admins-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--border-light);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admins-count {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+/* Responsive pour la section super admin */
+@media (max-width: 768px) {
+  .admin-item {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .admin-details {
+    align-items: center;
+  }
+  
+  .admin-email {
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+  
+  .admins-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .admins-count {
+    text-align: center;
+  }
 }
 </style>
