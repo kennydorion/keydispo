@@ -55,6 +55,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Parametres.vue'),
     meta: { title: 'Paramètres', icon: 'settings', requiresAuth: true, roles: ['admin'], interface: 'admin' }
   },
+  {
+    path: '/guide',
+    name: 'Guide',
+    component: () => import('../views/GuideUtilisateur.vue'),
+    meta: { title: 'Guide', icon: 'menu_book', requiresAuth: true, interface: 'admin' }
+  },
 
   // Routes COLLABORATEUR (avec préfixe /collaborateur/)
   {

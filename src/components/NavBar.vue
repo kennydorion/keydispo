@@ -184,7 +184,8 @@ const navigationItems = computed(() => {
       { path: '/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
       { path: '/semaine', label: 'Planning', icon: 'calendar_month' },
       { path: '/collaborateurs', label: 'Collaborateurs', icon: 'people' },
-      { path: '/import', label: 'Import', icon: 'upload' }
+  { path: '/import', label: 'Import', icon: 'upload' },
+  { path: '/guide', label: 'Guide', icon: 'menu_book' }
     ]
   }
 })

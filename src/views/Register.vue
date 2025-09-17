@@ -4,15 +4,16 @@
       <header class="auth-header">
         <div class="brand-section">
           <img src="/keyplacement_logo_blanc.svg" alt="Logo Key Placement" class="brand-logo" />
-          <p class="brand-sub">Gestion des disponibilités</p>
+          <h1 class="brand-title">Gestion des disponibilités</h1>
+          <p class="brand-sub">{{ isCollaborateurRegister ? 'Activation compte collaborateur' : 'Accès administrateur' }}</p>
         </div>
       </header>
 
       <div class="auth-card">
         <div class="auth-form">
-          <h2 v-if="!isCollaborateurRegister">Créer un compte</h2>
+          <h2 v-if="!isCollaborateurRegister">Créer un compte administrateur</h2>
           <h2 v-else>Inscription collaborateur</h2>
-          <p v-if="!isCollaborateurRegister" class="form-subtitle">Les comptes créés ont le rôle "viewer" par défaut</p>
+          <p v-if="!isCollaborateurRegister" class="form-subtitle">Création d'un compte avec privilèges d'administration</p>
           <p v-else class="form-subtitle">Saisissez le code fourni par votre administrateur</p>
 
           <!-- Formulaire admin - Étape 1 : Code secret -->
@@ -331,7 +332,8 @@ async function handleCreatePassword() {
 .auth-container { width:100%; max-width:420px; display:flex; flex-direction:column; gap:32px; }
 .brand-section { display:flex; flex-direction:column; align-items:center; gap:16px; }
 .brand-logo { width:220px; height:auto; }
-.brand-sub { color:#d8dee9; margin:0; font-weight:500; }
+.brand-title { color:#ffffff; margin:0; font-size:1.5rem; font-weight:600; text-align:center; }
+.brand-sub { color:#d8dee9; margin:0; font-weight:500; font-size:1rem; }
 .auth-card { background:rgba(255,255,255,0.95); border-radius:20px; padding:32px; box-shadow:0 25px 50px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,0.1); }
 .auth-form h2 { margin:0 0 8px; text-align:center; color:#1e293b; }
 .form-subtitle { text-align:center; color:#6B7280; margin:0 0 24px; font-size:.95rem; }
