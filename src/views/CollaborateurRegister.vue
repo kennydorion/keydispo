@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { registrationCodesService } from '@/services/registrationCodes'
 import { CollaborateursServiceV2 } from '@/services/collaborateursV2'

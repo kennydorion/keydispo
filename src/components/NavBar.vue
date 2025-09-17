@@ -136,13 +136,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/services/firebase'
 import { signOut as firebaseSignOut, onAuthStateChanged, type User } from 'firebase/auth'
 import { useUserPreferences } from '@/services/userPreferences'
 import { AuthService } from '@/services/auth'
+import { CollaborateurSelfService } from '@/services/collaborateurSelf'
+import type { CollaborateurProfilLight } from '@/services/collaborateurSelf'
 
 const route = useRoute()
 const router = useRouter()
@@ -152,6 +154,7 @@ const showUserMenu = ref(false)
 const userEmail = ref<string>('')
 const userUid = ref<string>('')
 const userRole = ref<string>('')
+const collaborateurProfil = ref<CollaborateurProfilLight | null>(null)
 
 // User preferences for avatar color
 const { preferences, loadPreferences } = useUserPreferences()
@@ -188,12 +191,26 @@ const navigationItems = computed(() => {
 
 // Computed properties
 const userName = computed(() => {
+  // Si on est en interface collaborateur et qu'on a le profil, utiliser nom/prénom
+  if (isCollaborateurInterface.value && collaborateurProfil.value) {
+    return `${collaborateurProfil.value.prenom} ${collaborateurProfil.value.nom}`
+  }
+  
+  // Sinon utiliser l'email comme avant
   if (!userEmail.value) return 'Utilisateur'
   return userEmail.value.split('@')[0]
 })
 
 const avatarInitials = computed(() => {
-  // Utiliser getUserInitials pour une logique cohérente
+  // Si on est en interface collaborateur et qu'on a le profil, utiliser nom/prénom
+  if (isCollaborateurInterface.value && collaborateurProfil.value) {
+    return getUserInitials({
+      nom: collaborateurProfil.value.nom,
+      prenom: collaborateurProfil.value.prenom
+    })
+  }
+  
+  // Sinon utiliser l'email comme avant
   return getUserInitials({
     email: userEmail.value
   })
@@ -302,10 +319,35 @@ onMounted(() => {
         console.error('Error loading user role:', error)
         userRole.value = ''
       }
+      
+      // Charger le profil collaborateur si on est en interface collaborateur
+      if (isCollaborateurInterface.value) {
+        await loadCollaborateurProfil()
+      }
     } else {
       userRole.value = ''
+      collaborateurProfil.value = null
     }
   })
+})
+
+// Fonction pour charger le profil collaborateur
+const loadCollaborateurProfil = async () => {
+  try {
+    collaborateurProfil.value = await CollaborateurSelfService.getMonProfil()
+  } catch (error) {
+    console.log('Pas de profil collaborateur trouvé:', error)
+    collaborateurProfil.value = null
+  }
+}
+
+// Watcher pour recharger le profil quand on change d'interface
+watch(isCollaborateurInterface, async (newValue) => {
+  if (newValue && auth.currentUser) {
+    await loadCollaborateurProfil()
+  } else {
+    collaborateurProfil.value = null
+  }
 })
 
 onBeforeUnmount(() => {

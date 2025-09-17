@@ -54,6 +54,60 @@
           </va-card-content>
         </va-card>
 
+        <!-- Code secret admin (visible uniquement pour les admins) -->
+        <va-card v-if="userRole === 'admin'" class="parametre-card" elevation="2">
+          <va-card-title class="parametre-title">
+            <va-icon name="admin_panel_settings" class="parametre-icon" />
+            Administration
+          </va-card-title>
+          <va-card-content class="parametre-content">
+            <div class="admin-section">
+              <div class="admin-info">
+                <h4>Code secret pour création de compte admin</h4>
+                <p class="admin-description">
+                  Partagez ce code avec les nouveaux administrateurs pour qu'ils puissent créer leur compte.
+                </p>
+              </div>
+              
+              <div class="secret-code-display">
+                <div class="code-container">
+                  <va-input
+                    :model-value="ADMIN_SECRET_CODE"
+                    label="Code secret"
+                    readonly
+                    class="code-input"
+                  >
+                    <template #appendInner>
+                      <va-button
+                        preset="plain"
+                        icon="content_copy"
+                        @click="copyCodeToClipboard"
+                        size="small"
+                        :color="codeCopied ? 'success' : 'primary'"
+                      />
+                    </template>
+                  </va-input>
+                </div>
+                <div v-if="codeCopied" class="copy-success">
+                  <va-icon name="check_circle" color="success" size="small" />
+                  Code copié dans le presse-papiers
+                </div>
+              </div>
+              
+              <div class="admin-actions">
+                <va-button
+                  preset="outline"
+                  icon="person_add"
+                  @click="openRegisterPage"
+                  color="primary"
+                >
+                  Créer un nouveau compte admin
+                </va-button>
+              </div>
+            </div>
+          </va-card-content>
+        </va-card>
+
         <!-- Collaboration en temps réel -->
         <va-card class="parametre-card" elevation="2">
           <va-card-title class="parametre-title">
@@ -206,6 +260,10 @@ const userRole = ref('—')
 const selectedColor = ref('')
 const saving = ref(false)
 const lastSaved = ref<Date | null>(null)
+
+// État pour le code admin
+const ADMIN_SECRET_CODE = 'KPADMIN2025'
+const codeCopied = ref(false)
 
 // Toast pour les notifications
 const { init: toast } = useToast()
@@ -399,6 +457,38 @@ function formatDate(date: Date): string {
     dateStyle: 'short',
     timeStyle: 'short'
   }).format(date)
+}
+
+/**
+ * Copier le code secret dans le presse-papiers
+ */
+async function copyCodeToClipboard() {
+  try {
+    await navigator.clipboard.writeText(ADMIN_SECRET_CODE)
+    codeCopied.value = true
+    toast({
+      message: 'Code secret copié dans le presse-papiers',
+      color: 'success'
+    })
+    
+    // Réinitialiser l'indicateur après 3 secondes
+    setTimeout(() => {
+      codeCopied.value = false
+    }, 3000)
+  } catch (error) {
+    console.error('Erreur lors de la copie:', error)
+    toast({
+      message: 'Erreur lors de la copie du code',
+      color: 'danger'
+    })
+  }
+}
+
+/**
+ * Ouvrir la page d'inscription admin dans un nouvel onglet
+ */
+function openRegisterPage() {
+  window.open('/register', '_blank')
 }
 
 /**
@@ -1030,5 +1120,56 @@ onUnmounted(() => {
     padding: 16px 20px 12px 20px !important;
     font-size: 1.1rem !important;
   }
+}
+
+/* Styles pour la section admin */
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-info h4 {
+  margin: 0 0 8px 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.admin-description {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.secret-code-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.code-container {
+  max-width: 300px;
+}
+
+.code-input :deep(.va-input__container) {
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+}
+
+.copy-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #16a34a;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

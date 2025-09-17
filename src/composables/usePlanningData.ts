@@ -69,27 +69,16 @@ export function usePlanningData() {
       return baseCollaborateurs.value
     }
 
-    // Pendant le chargement des disponibilités (ou des plages), éviter un écran vide:
-    // afficher la base des collaborateurs jusqu'à ce que les données soient prêtes.
-  // En environnement de test, on ignore fetchingRanges pour éviter un état collant entre assertions
-  if (loadingDisponibilites.value || (!isTestEnv && fetchingRanges.value.length > 0)) {
-      return baseCollaborateurs.value
-    }
+    // Pendant le chargement des disponibilités (ou des plages), maintenir le filtrage correct
+    // Plutôt que d'afficher tous les collaborateurs (ce qui est trompeur), on applique le filtrage
+    // même si les données sont en cours de chargement
+    // En environnement de test, on ignore fetchingRanges pour éviter un état collant entre assertions
+    // CORRECTION: Ne plus retourner baseCollaborateurs pendant le chargement pour éviter l'affichage incorrect
+    // if (loadingDisponibilites.value || (!isTestEnv && fetchingRanges.value.length > 0)) {
+    //   return baseCollaborateurs.value
+    // }
 
-    // Garde-fou: si la plage demandée n'est pas encore couverte par les données chargées,
-    // garder la base collaborateurs pour éviter un écran vide transitoire.
-    const { startDate: reqStart, endDate: reqEnd } = computeRequestedRange(
-      planningFilters.filterState.dateFrom,
-      planningFilters.filterState.dateTo
-    )
-    if (reqStart && reqEnd && !isRangeCoveredByLoadedRanges(reqStart, reqEnd)) {
-      // Si on n'a pas encore de données pour cette plage ET qu'aucune dispo filtrée n'est présente,
-      // ne pas restreindre pour éviter un écran vide transitoire.
-      if (filteredDisponibilites.value.length === 0) {
-        return baseCollaborateurs.value
-      }
-      // Sinon, on a suffisamment de données pour restreindre correctement la liste.
-    }
+    // Procéder directement au filtrage des collaborateurs basé sur les disponibilités
 
   // Restreindre aux collaborateurs qui ont des disponibilités correspondant aux filtres actifs
     const normalize = (s: string) => (s || '')

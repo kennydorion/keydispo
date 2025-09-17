@@ -1331,9 +1331,20 @@ onMounted(() => {
       console.log(`🔧 [INIT] AuthService.currentTenantId: ${AuthService.currentTenantId}`)
       console.log(`🔧 [INIT] VITE_TENANT_ID: ${import.meta.env.VITE_TENANT_ID}`)
       
+      // Essayer de récupérer le profil collaborateur pour utiliser le vrai nom
+      let userName = user.displayName || user.email || 'Collaborateur'
+      try {
+        const profil = await CollaborateurSelfService.getMonProfil()
+        if (profil) {
+          userName = `${profil.prenom} ${profil.nom}`
+        }
+      } catch (error) {
+        console.log('🔧 [INIT] Pas de profil collaborateur trouvé, utilisation du nom Firebase')
+      }
+      
       const initOptions = {
         userId: user.uid,
-        userName: user.displayName || user.email || 'Collaborateur',
+        userName: userName,
         userEmail: user.email || 'collaborateur@keydispo.com'
       }
       console.log(`🔧 [INIT] Options d'initialisation:`, initOptions)

@@ -16,7 +16,7 @@
       <!-- Carte de connexion -->
       <div class="login-card">
         <div class="login-form">
-          <h2>{{ isCollaborateurContext ? 'Connexion Collaborateur' : 'Connexion' }}</h2>
+          <h2>{{ isCollaborateurContext ? 'Connexion Collaborateur' : 'Connexion Administrateur' }}</h2>
           <p class="form-subtitle">{{ isCollaborateurContext ? 'Accédez à votre planning' : 'Accédez à votre tableau de bord' }}</p>
           
           <form @submit.prevent="handleLogin" novalidate>
@@ -52,26 +52,19 @@
             </button>
           </form>
           
-          <div class="divider">
-            <span>ou</span>
-          </div>
-          
-          <button @click="signInWithGoogle" class="google-button" :disabled="isLoading || !firebaseStatus.configValid">
-            <svg class="google-icon" width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continuer avec Google
-          </button>
+
           
           <div v-if="error" class="error-message">
             {{ error }}
           </div>
           <div v-if="!firebaseStatus.configValid" class="error-message" style="margin-top:8px;">Configuration Firebase invalide: {{ firebaseStatus.missing.join(', ') || (firebaseStatus.fakeKey ? 'apiKey factice' : '') }}.</div>
 
-          <p class="switch-link">Pas encore de compte ? <router-link to="/register">Créer un compte</router-link></p>
+          <p class="switch-link">
+            Pas encore de compte ? 
+            <router-link :to="isCollaborateurContext ? '/collaborateur/register' : '/register'">
+              {{ isCollaborateurContext ? 'Activer mon compte' : 'Créer un compte' }}
+            </router-link>
+          </p>
           <p v-if="!isCollaborateurContext" class="switch-link">Vous êtes collaborateur ? <router-link to="/collaborateur/login" style="color: var(--va-info);">Connexion collaborateur</router-link></p>
         </div>
         
@@ -203,46 +196,7 @@ const handleLogin = async () => {
   }
 }
 
-const signInWithGoogle = async () => {
-  isLoading.value = true
-  error.value = ''
 
-  try {
-    const user = await AuthService.signInWithGoogle()
-    console.log('🔐 Connexion Google réussie')
-    
-    // Récupérer le rôle de l'utilisateur avec petite tolérance
-    let role: any = null
-    for (let i = 0; i < 3; i++) {
-      const tenantUser = await AuthService.getUserRole(user.uid)
-      role = tenantUser?.role
-      if (role) break
-      await new Promise(r => setTimeout(r, 200))
-    }
-    
-    if (isCollaborateurContext.value) {
-      // Contexte collaborateur - tous les rôles sont acceptés
-      console.log('✅ Connexion Google collaborateur réussie, redirection vers interface collaborateur')
-      InterfaceManager.forceCollaborateurInterface()
-      await router.push('/collaborateur/planning')
-    } else {
-      // Contexte admin - vérifier les permissions
-      if (!role || !['admin', 'editor', 'viewer'].includes(role)) {
-        error.value = 'Accès non autorisé. Ce formulaire est réservé aux administrateurs.'
-      }
-      
-      InterfaceManager.forceAdminInterface()
-      console.log('✅ Utilisateur admin Google vérifié, accès à l\'interface admin autorisé')
-      await router.push('/dashboard')
-    }
-    
-  } catch (err: any) {
-    console.error('Google Sign-In error:', err)
-    error.value = 'Erreur de connexion avec Google'
-  } finally {
-    isLoading.value = false
-  }
-}
 
 const createAdminAccount = async () => {
   if (!isEmulator.value) return
@@ -455,53 +409,13 @@ const loginAsTestUser = async () => {
   cursor: not-allowed;
 }
 
-.google-button {
-  width: 100%;
-  padding: 12px 16px;
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 48px;
-}
 
-.google-button:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 24px 0;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #e5e7eb;
-}
 
 .switch-link { margin-top:18px; font-size:.85rem; text-align:center; color:#374151; }
 .switch-link a { color:#2563eb; font-weight:600; text-decoration:none; }
 .switch-link a:hover { text-decoration:underline; }
 
-.divider span {
-  padding: 0 16px;
-  color: #6b7280;
-  font-size: 0.875rem;
-  font-weight: 400;
-}
+
 
 .error-message {
   padding: 12px 16px;
