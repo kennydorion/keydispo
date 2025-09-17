@@ -13,7 +13,8 @@ import {
   remove,
   get,
   onValue,
-  off
+  off,
+  serverTimestamp
 } from 'firebase/database'
 import { rtdb } from './firebase'
 
@@ -71,7 +72,8 @@ class MultiUserServiceRTDB {
   private currentTenant: string = ''
   private currentSession: UserSession | null = null
   private sessionRef: any = null
-  private cleanupTimer: number | null = null
+  private listeners: Map<string, any> = new Map()
+  private cleanupTimer: NodeJS.Timeout | null = null
   
   // Configuration
   private readonly SESSION_DURATION = 30 * 60 * 1000 // 30 minutes
@@ -148,7 +150,7 @@ class MultiUserServiceRTDB {
       
       // Arrêter les timers
       if (this.cleanupTimer) {
-        window.clearInterval(this.cleanupTimer)
+        clearInterval(this.cleanupTimer)
         this.cleanupTimer = null
       }
       
@@ -252,9 +254,9 @@ class MultiUserServiceRTDB {
   }
   
   private startCleanupTimer() {
-    this.cleanupTimer = window.setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       this.cleanupExpiredData()
-    }, this.CLEANUP_INTERVAL) as any
+    }, this.CLEANUP_INTERVAL)
   }
   
   private async cleanupExpiredData() {

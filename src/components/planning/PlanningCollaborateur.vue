@@ -22,6 +22,21 @@
 
     <!-- Conteneur principal avec thème blanc -->
     <div class="planning-container-collaborateur">
+      
+      <!-- Indicateur mode sélection mobile -->
+      <div v-if="isMobile && isSelectionMode" class="selection-mode-indicator">
+        <va-icon name="checklist" color="warning" size="18px" />
+        <span>Mode sélection actif - Tapez sur les dates à sélectionner</span>
+        <va-button
+          @click="toggleSelectionMode"
+          color="warning"
+          size="small"
+          icon="close"
+          round
+          style="margin-left: auto;"
+        />
+      </div>
+
       <!-- Bandeau statut et actions retiré pour interface épurée côté collaborateur -->
 
   <!-- Bandeau présence multi‑utilisateurs (masqué pour interface épurée) -->
@@ -59,31 +74,53 @@
           @cell-mouse-down="handleDragStart"
           @cell-mouse-enter="handleDragEnter"
           @cell-mouse-up="handleDragEnd"
+          @cell-touch-start="onCellTouchStart"
+          @cell-touch-end="onCellTouchEnd"
         />
       </div>
     </div>
 
+  <!-- FAB sélection multiple mobile -->
+  <div 
+    v-if="isMobile && !showDisponibiliteModal && !showBatchModal"
+    class="selection-mode-fab"
+    :class="{ 'active': isSelectionMode }"
+  >
+    <va-button
+      @click="toggleSelectionMode"
+      :color="isSelectionMode ? 'warning' : 'info'"
+      :icon="isSelectionMode ? 'check_circle' : 'checklist'"
+      size="medium"
+      round
+      class="selection-toggle-btn"
+    >
+      {{ isSelectionMode ? 'Terminer' : 'Sélectionner' }}
+    </va-button>
+  </div>
+
   <!-- Bouton d'action flottant pour les sélections multiples -->
   <!-- Astuce Cmd/Ctrl pour multi-sélection -->
   <div
-    v-if="!showDisponibiliteModal && !showBatchModal && selectedCells.size === 0"
+    v-if="!isMobile && !showDisponibiliteModal && !showBatchModal && selectedCells.size === 0"
     class="selection-help-tooltip fixed-help"
   >
     <va-icon name="info" color="primary" size="small" />
     <span>Maintenez Cmd/Ctrl pour sélectionner plusieurs dates</span>
   </div>
-  <!-- Action flottante batch (masquée) -->
+  <!-- Action flottante batch (apparaît avec sélections) -->
   <div
     v-if="selectedCells.size > 0 && currentCollaborateur"
     class="batch-action-fab"
+    :class="{ 'mobile': isMobile }"
   >
     <div class="fab-content">
       <va-button
         color="primary"
         icon="bolt"
         @click="openBatchModal"
+        :size="isMobile ? 'small' : 'medium'"
       >
-        Ajouter en batch ({{ selectedDates.length }})
+        {{ isMobile ? `Ajouter des dispos (${selectedDates.length})` : `Ajouter des dispos (${selectedDates.length})` }}
       </va-button>
       <va-button
         preset="secondary"
@@ -100,9 +137,14 @@
     <va-modal
       v-model="showDisponibiliteModal"
       :hide-default-actions="true"
-      :mobile-fullscreen="isMobile"
-      max-width="620px"
+      :fullscreen="isMobile"
+      :mobile-fullscreen="true"
+      :max-width="isMobile ? '100vw' : '720px'"
+      :max-height="isMobile ? '100vh' : '95vh'"
+      :size="isMobile ? 'large' : 'medium'"
       no-padding
+      class="collab-modal"
+      :class="{ 'collab-modal--mobile': isMobile, 'collab-modal--fullscreen': isMobile }"
       @before-open="modalA11y.onBeforeOpen"
       @open="modalA11y.onOpen"
       @close="() => { modalA11y.onClose(); cancelCollaborateurModal() }"
@@ -154,8 +196,9 @@
     <va-modal
       v-model="showMyInfoModal"
       title="Mes Informations"
-      size="medium"
+      :size="isMobile ? 'large' : 'medium'"
       :mobile-fullscreen="isMobile"
+      :max-width="isMobile ? '100%' : '500px'"
       @before-open="modalA11y.onBeforeOpen"
       @open="modalA11y.onOpen"
       @close="modalA11y.onClose"
@@ -223,7 +266,6 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/services/firebase'
 import { AuthService } from '@/services/auth'
 // import type { CollaborateurV2 } from '@/types/optimized-v2'
-import normalizeDispo from '@/services/normalization'
 import DispoEditContent from '@/components/DispoEditContent.vue'
 import * as planningDisplayService from '@/services/planningDisplayService'
 import { getUserInitials } from '@/services/avatarUtils'
@@ -242,6 +284,11 @@ const showMyInfoModal = ref(false)
 const isRefreshing = ref(false)
 const isSaving = ref(false)
 const showBatchModal = ref(false)
+
+// Variables pour la gestion du long press mobile
+const longPressTimer = ref<number | null>(null)
+const isLongPressing = ref(false)
+const LONG_PRESS_DURATION = 500 // 500ms
 
 // Référence au composant calendrier pour forcer les mises à jour
 const calendarRef = ref<any>(null)
@@ -854,6 +901,11 @@ function openCollaborateurDispoModal(dateStr?: string, _existingDispo?: Collabor
 
 // Hooks calendrier
 function onCalendarAdd(dateStr: string) {
+  // Si c'était un long press, ne pas traiter le clic
+  if (isLongPressing.value) {
+    return
+  }
+  
   // Si on est en mode sélection, on ajoute à la sélection
   if (isSelectionMode.value) {
     const collaborateurId = currentCollaborateur.value?.id
@@ -893,6 +945,67 @@ function onCellClick(dateStr: string, disponibilites: CollaborateurDisponibilite
   openCollaborateurDispoModal(dateStr)
   
   console.log('🔍 Clic sur cellule avec disponibilités:', dateStr, disponibilites)
+}
+
+// Fonction pour toggler le mode sélection sur mobile
+function toggleSelectionMode() {
+  isSelectionMode.value = !isSelectionMode.value
+  
+  // Si on sort du mode sélection MANUELLEMENT, vider les sélections
+  if (!isSelectionMode.value) {
+    selectedCells.value.clear()
+    selectedCells.value = new Set(selectedCells.value)
+  }
+  
+  console.log('📱 Mode sélection mobile:', isSelectionMode.value ? 'ACTIVÉ' : 'DÉSACTIVÉ')
+}
+
+// Gestion du long press pour activer le mode sélection sur mobile
+function handleTouchStart(dateStr: string, _event: TouchEvent) {
+  if (!isMobile.value) return
+  
+  isLongPressing.value = false
+  
+  longPressTimer.value = window.setTimeout(() => {
+    isLongPressing.value = true
+    
+    // Vibration si disponible
+    if (navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+    
+    // Activer le mode sélection et sélectionner cette date
+    if (!isSelectionMode.value) {
+      isSelectionMode.value = true
+      const collaborateurId = currentCollaborateur.value?.id
+      if (collaborateurId) {
+        const cellId = `${collaborateurId}-${dateStr}`
+        selectedCells.value.add(cellId)
+        selectedCells.value = new Set(selectedCells.value)
+      }
+      console.log('📱 Long press détecté - Mode sélection activé:', dateStr)
+    }
+  }, LONG_PRESS_DURATION)
+}
+
+function handleTouchEnd() {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+  
+  // Réinitialiser après un délai pour permettre la sélection
+  setTimeout(() => {
+    isLongPressing.value = false
+  }, 100)
+}
+
+// Relay des événements tactiles depuis le calendrier
+function onCellTouchStart(_cellId: string, dateStr: string, event: TouchEvent) {
+  handleTouchStart(dateStr, event)
+}
+function onCellTouchEnd(_cellId: string, _dateStr: string, _event: TouchEvent) {
+  handleTouchEnd()
 }
 
 // (supprimé) utilitaire getDisponibilitesForDate non utilisé
@@ -951,12 +1064,18 @@ function handleDragStart(cellId: string, event: MouseEvent) {
     }
     selectedCells.value = new Set(selectedCells.value)
 
-    // Si après toggle il n'y a plus de sélection et qu'on ne maintient pas Cmd/Ctrl, sortir du mode sélection
-    if (selectedCells.value.size === 0 && !(event.ctrlKey || event.metaKey)) {
-      isSelectionMode.value = false
-    } else {
-      // Sinon rester en mode sélection visuel
+    // Activer le mode sélection si pas déjà actif et qu'on fait une sélection
+    if (!isSelectionMode.value && (event.ctrlKey || event.metaKey || selectedCells.value.size > 0)) {
       isSelectionMode.value = true
+    }
+
+    // Sur mobile, GARDER le mode sélection actif même si on vide toutes les sélections
+    // Le mode ne se désactive que manuellement via le FAB
+    if (!isMobile.value) {
+      // Sur desktop, désactiver automatiquement si plus de sélections et pas de Cmd/Ctrl
+      if (selectedCells.value.size === 0 && !(event.ctrlKey || event.metaKey)) {
+        isSelectionMode.value = false
+      }
     }
   }
 }
@@ -971,8 +1090,9 @@ function handleDragEnter(cellId: string) {
 function handleDragEnd(_cellId?: string) {
   isDraggingSelection.value = false
   dragStartCell.value = null
-  // Sortir du mode sélection si aucune cellule n'est sélectionnée
-  if (selectedCells.value.size === 0) {
+  // Sur mobile, ne JAMAIS sortir automatiquement du mode sélection
+  // Sur desktop, sortir du mode sélection si aucune cellule n'est sélectionnée
+  if (!isMobile.value && selectedCells.value.size === 0) {
     isSelectionMode.value = false
   }
 }
@@ -992,7 +1112,8 @@ function setupSelectionListeners() {
   document.addEventListener('keyup', (e) => {
     const shortcutActive = e.ctrlKey || e.metaKey
     isShortcutDown.value = shortcutActive
-    if (!shortcutActive && !selectedCells.value.size) {
+    // Ne pas désactiver le mode sélection sur mobile quand on relâche les touches
+    if (!shortcutActive && !selectedCells.value.size && !isMobile.value) {
       isSelectionMode.value = false
     }
   })
@@ -1348,13 +1469,26 @@ onBeforeUnmount(() => {
 /* Mobile - ajuster pour la hauteur de navbar mobile et en-tête */
 @media (max-width: 768px) {
   .planning-collaborateur {
-    min-height: calc(100vh - 56px - 70px); /* navbar mobile (56px) + en-tête mobile (70px) */
-    height: calc(100vh - 56px - 70px);
+    min-height: calc(100vh - 56px - 60px); /* navbar mobile (56px) + en-tête mobile compact (60px) */
+    height: calc(100vh - 56px - 60px);
   }
   
   .collaborateur-header {
-    height: 70px; /* Hauteur réduite sur mobile */
-    min-height: 70px;
+    height: 60px; /* Hauteur encore plus réduite sur mobile */
+    min-height: 60px;
+  }
+}
+
+/* Ultra small mobile - moins de 480px */
+@media (max-width: 480px) {
+  .planning-collaborateur {
+    min-height: calc(100vh - 56px - 55px); /* navbar mobile (56px) + en-tête ultra compact (55px) */
+    height: calc(100vh - 56px - 55px);
+  }
+  
+  .collaborateur-header {
+    height: 55px; /* Hauteur ultra compacte */
+    min-height: 55px;
   }
 }
 
@@ -1378,7 +1512,7 @@ onBeforeUnmount(() => {
   min-height: 80px;
 }
 
-/* Bandeau haut calqué sur l'admin */
+/* Bandeau haut calqué sur l'admin - responsive amélioré */
 .collaborateur-header .header-top {
   display: flex;
   justify-content: space-between;
@@ -1387,6 +1521,57 @@ onBeforeUnmount(() => {
   padding: 16px 24px;
   background: var(--primary-gradient);
   color: white;
+}
+
+/* Mobile responsive pour l'en-tête */
+@media (max-width: 768px) {
+  .collaborateur-header .header-top {
+    padding: 12px 16px; /* Padding réduit sur mobile */
+  }
+  
+  .collaborateur-header .brand-icon {
+    width: 38px;
+    height: 38px; /* Icône plus petite sur mobile */
+  }
+  
+  .collaborateur-header .brand-icon .material-icons {
+    font-size: 20px; /* Icône plus petite */
+  }
+  
+  .collaborateur-header .brand-title {
+    font-size: 1.125rem; /* Titre plus petit sur mobile */
+    font-weight: 600;
+  }
+  
+  .collaborateur-header .brand-subtitle {
+    font-size: 0.8rem; /* Sous-titre plus petit */
+  }
+}
+
+@media (max-width: 480px) {
+  .collaborateur-header .header-top {
+    padding: 10px 12px; /* Padding encore plus réduit */
+    gap: 8px;
+  }
+  
+  .collaborateur-header .brand-icon {
+    width: 34px;
+    height: 34px;
+  }
+  
+  .collaborateur-header .brand-icon .material-icons {
+    font-size: 18px;
+  }
+  
+  .collaborateur-header .brand-title {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  
+  .collaborateur-header .brand-subtitle {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
 }
 .collaborateur-header .header-brand { display: flex; align-items: center; gap: 12px; }
 .collaborateur-header .brand-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3) }
@@ -1444,6 +1629,69 @@ onBeforeUnmount(() => {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+}
+
+/* Responsive mobile pour le calendrier */
+@media (max-width: 768px) {
+  .planning-grid-wrapper-collaborateur {
+    padding: 0; /* Pas de padding sur mobile */
+  }
+  
+  /* Améliorer l'affichage FullCalendar sur mobile */
+  .planning-grid-wrapper-collaborateur :deep(.fc) {
+    font-size: 13px; /* Police plus petite sur mobile */
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-header-toolbar) {
+    padding: 8px 12px; /* Padding réduit pour la toolbar */
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-button) {
+    padding: 6px 12px; /* Boutons plus compacts */
+    font-size: 12px;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-toolbar-title) {
+    font-size: 1.1rem; /* Titre plus petit */
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-daygrid-day) {
+    min-height: 40px; /* Hauteur minimum des cellules */
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-daygrid-day-number) {
+    font-size: 14px; /* Numéros de jour plus gros */
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 480px) {
+  .planning-grid-wrapper-collaborateur :deep(.fc) {
+    font-size: 12px; /* Police encore plus petite */
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-header-toolbar) {
+    padding: 6px 8px;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-button) {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-toolbar-title) {
+    font-size: 1rem;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-daygrid-day) {
+    min-height: 35px;
+  }
+  
+  .planning-grid-wrapper-collaborateur :deep(.fc-daygrid-day-number) {
+    font-size: 13px;
+  }
 }
 
 /* Présence multi‑utilisateurs */
@@ -1592,6 +1840,88 @@ onBeforeUnmount(() => {
 
 .mobile .actions-toolbar {
   justify-content: center;
+}
+
+/* Modal d'informations personnelles responsive */
+@media (max-width: 768px) {
+  .my-info-modal {
+    padding: 0.75rem 0;
+  }
+  
+  .info-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .info-section h4 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background: var(--collaborateur-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--collaborateur-border);
+  }
+  
+  .label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--collaborateur-primary);
+  }
+  
+  .value {
+    font-size: 0.9rem;
+    color: var(--collaborateur-text);
+  }
+  
+  .stats-section h4 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .stat-card {
+    padding: 0.75rem;
+    border-radius: 6px;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-info-modal {
+    padding: 0.5rem 0;
+  }
+  
+  .info-section h4 {
+    font-size: 1rem;
+  }
+  
+  .stats-section h4 {
+    font-size: 1rem;
+  }
+  
+  .stat-number {
+    font-size: 1.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+  }
 }
 
 /* === STYLES POUR DispoEditContent === */
@@ -2210,22 +2540,238 @@ onBeforeUnmount(() => {
   cursor: crosshair;
 }
 
-/* Mobile responsive pour la sélection */
-@media (max-width: 640px) {
+/* Mobile responsive pour la sélection et FAB */
+@media (max-width: 768px) {
   .batch-action-fab {
-    bottom: 16px;
+    bottom: 20px;
     right: 16px;
+    border-radius: 24px; /* Moins arrondi sur mobile */
+  }
+
+  .batch-action-fab.mobile {
+    bottom: 90px; /* Plus haut quand le FAB sélection est présent */
+    right: 16px;
+  }
+  
+  .batch-action-fab .fab-content {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .batch-action-fab .va-button {
+    font-size: 12px;
+    padding: 8px 16px;
+    min-width: auto;
   }
   
   .selection-status-bar {
     flex-direction: column;
     gap: 8px;
     text-align: center;
+    padding: 10px 12px;
   }
   
   .status-content {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
+  
+  .fixed-help {
+    bottom: 76px; /* Plus haut pour éviter les FAB */
+    right: 12px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .selection-help-tooltip {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* FAB Mode Sélection Mobile */
+.selection-mode-fab {
+  position: fixed;
+  bottom: 20px; /* En bas, comme référence */
+  left: 16px;
+  z-index: 1000;
+  animation: fabSlideIn 0.3s ease-out;
+}
+
+.selection-mode-fab.active {
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 50px;
+  padding: 4px;
+}
+
+.selection-toggle-btn {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap !important;
+  min-width: 120px !important;
+}
+
+.selection-toggle-btn:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+
+@keyframes fabSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Indicateur Mode Sélection */
+.selection-mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  margin: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #92400e;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+.selection-mode-indicator span {
+  flex: 1;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .batch-action-fab {
+    bottom: 12px;
+    right: 12px;
+  }
+  
+  .batch-action-fab .fab-content {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .batch-action-fab .va-button {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  
+  .selection-status-bar {
+    margin-bottom: 0.75rem;
+    padding: 8px 10px;
+  }
+  
+  .fixed-help {
+    bottom: 68px;
+    right: 8px;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  /* Adapter les cellules sélectionnées pour mobile */
+  :deep(.fc-daygrid-day.selected::after) {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+    top: 2px;
+    right: 2px;
+  }
+}
+
+/* Force la modale à prendre toute la hauteur en mode mobile */
+:deep(.collab-modal--fullscreen) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  z-index: 1001 !important;
+}
+
+:deep(.collab-modal--fullscreen .va-modal__container) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  transform: none !important;
+}
+
+:deep(.collab-modal--fullscreen .va-modal__dialog) {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: none !important;
+}
+
+:deep(.collab-modal--fullscreen .va-modal__content) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+}
+
+/* S'assurer que DispoEditContent prend toute la hauteur */
+:deep(.collab-modal--fullscreen .dispo-modal-redesigned) {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Garantir que le footer reste en bas */
+:deep(.collab-modal--fullscreen .footer-actions) {
+  position: sticky !important;
+  bottom: 0 !important;
+  margin-top: auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Assurer que la zone de contenu scrollable prend tout l'espace disponible */
+:deep(.collab-modal--fullscreen .scrollable-content) {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 </style>

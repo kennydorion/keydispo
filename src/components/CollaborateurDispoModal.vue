@@ -2,9 +2,13 @@
   <va-modal
     v-model="isVisible"
     :hide-default-actions="true"
-    :fullscreen="false"
-    max-width="800px"
+    :fullscreen="isMobile"
+    :max-width="isMobile ? '100vw' : '800px'"
+    :max-height="isMobile ? '100vh' : '95vh'"
+    :mobile-fullscreen="true"
     no-padding
+    class="collab-dispo-modal"
+    :class="{ 'collab-dispo-modal--mobile': isMobile, 'collab-dispo-modal--fullscreen': isMobile }"
   @before-open="modalA11y.onBeforeOpen"
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
@@ -128,6 +132,9 @@ const saving = ref(false)
 const lieuxExistants = ref<string[]>([])
 const { init: notify } = useToast()
 const modalA11y = useModalA11y()
+
+// Configuration responsive
+const isMobile = ref(false)
 
 // Form data pour DispoEditContent
 const editingDispo = ref({
@@ -342,6 +349,21 @@ async function fetchLieuxExistants() {
 // Lifecycle
 onMounted(() => {
   fetchLieuxExistants()
+  
+  // Détecter le mode mobile
+  const checkMobile = () => {
+    isMobile.value = window.innerWidth < 768
+  }
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  
+  // Nettoyer l'event listener à la destruction
+  const cleanup = () => {
+    window.removeEventListener('resize', checkMobile)
+  }
+  
+  // Retourner la fonction de nettoyage pour onBeforeUnmount implicite
+  return cleanup
 })
 
 // Watchers
@@ -354,4 +376,82 @@ watch(() => props.collaborateur, (newCollab) => {
 
 <style scoped>
 /* Minimal styles since we're using DispoEditContent styles */
+
+/* Force la modale à prendre toute la hauteur en mode mobile */
+:deep(.collab-dispo-modal--fullscreen) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  z-index: 1001 !important;
+}
+
+:deep(.collab-dispo-modal--fullscreen .va-modal__container) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  transform: none !important;
+}
+
+:deep(.collab-dispo-modal--fullscreen .va-modal__dialog) {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: none !important;
+}
+
+:deep(.collab-dispo-modal--fullscreen .va-modal__content) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+}
+
+/* S'assurer que DispoEditContent prend toute la hauteur */
+:deep(.collab-dispo-modal--fullscreen .dispo-modal-redesigned) {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Garantir que le footer reste en bas */
+:deep(.collab-dispo-modal--fullscreen .footer-actions) {
+  position: sticky !important;
+  bottom: 0 !important;
+  margin-top: auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Assurer que la zone de contenu scrollable prend tout l'espace disponible */
+:deep(.collab-dispo-modal--fullscreen .scrollable-content) {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
 </style>

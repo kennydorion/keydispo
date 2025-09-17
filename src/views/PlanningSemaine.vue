@@ -601,7 +601,7 @@ import { getUserInitials } from '../services/avatarUtils'
 import { UserColorsService } from '../services/userColorsService'
 import { formatPhone as formatPhoneUtil, phoneToHref } from '../utils/phoneFormatter'
 // firestoreCounter et firestoreCache supprimés: migration RTDB terminée
-import { db, auth } from '../services/firebase'
+import { auth, rtdb } from '../services/firebase'
 import { canonicalizeLieu as canonicalizeLieuShared, detectSlotsFromText as detectSlotsShared, normalizeDispo as normalizeDispoShared } from '../services/normalization'
 import { 
   slotLabel as sharedSlotLabel, 
@@ -610,7 +610,7 @@ import {
   getDispoBarsLayoutClass as sharedGetDispoBarsLayoutClass
 } from '../services/planningDisplayService'
 import { toDateStr, addDaysStr, diffDays, calcMinPastDate } from '@/utils/dateHelpers'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { ref as rtdbRef, onValue, off } from 'firebase/database'
 import { deriveTimeKindFromData } from '@/utils/timeKindDerivation'
 
 // NOUVEAU: Service RTDB pour les disponibilités (migration complète)
@@ -619,7 +619,6 @@ import type { DisponibiliteRTDB } from '../services/disponibilitesRTDBService'
 
 // Service de collaboration - nouveau système unifié multi-utilisateur (Phase 2)
 import { hybridMultiUserService as collaborationService } from '../services/hybridMultiUserService'
-import { multiUserService } from '../services/multiUserService'
 import type { DisplayUser } from '../services/sessionDisplayService'
 
 // NOUVEAU: Moteur WASM ultra-performant pour highlights
@@ -4279,7 +4278,7 @@ function setupRealtimePreferences() {
     return
   }
   
-  const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${auth.currentUser.uid}`)
+  const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${auth.currentUser.uid}`)
   
   // Nettoyer l'ancien listener s'il existe
   if (preferencesUnsubscribe) {
@@ -4293,9 +4292,9 @@ function setupRealtimePreferences() {
   }
   
   // Créer un nouveau listener temps réel
-  preferencesUnsubscribe = onSnapshot(userRef, (snapshot) => {
+  const unsubscribeFn = onValue(userRef, (snapshot) => {
     if (snapshot.exists()) {
-      const userData = snapshot.data()
+      const userData = snapshot.val()
       const newPreferences = userData.preferences || {}
       
       // Préférences mises à jour en temps réel
@@ -4332,8 +4331,10 @@ function setupRealtimePreferences() {
       }
     }
   }, (error) => {
-    console.error('❌ Erreur dans le listener préférences temps réel:', error)
+    console.error('❌ Erreur listener préférences:', error)
   })
+  
+  preferencesUnsubscribe = () => off(userRef, 'value', unsubscribeFn)
 }
 
 /**
@@ -4347,7 +4348,7 @@ function setupUserColorsSync() {
   
   // Watch pour ajouter des listeners pour les nouveaux utilisateurs connectés
   watch(connectedUsers, (newUsers) => {
-    const userIds = newUsers.map(user => user.uid).filter(uid => uid)
+    const userIds = newUsers.map((user: any) => user.uid).filter((uid: string) => uid)
     UserColorsService.listenToMultipleUsers(userIds)
   }, { immediate: true })
   
@@ -4412,15 +4413,15 @@ async function initializePresence() {
   try {
     // Début initialisation collaboration
     
-    // Utiliser le multiUserService qui est déjà initialisé
-    const user = multiUserService.getCurrentUser()
+    // Utiliser les informations auth directement
+    const user = auth.currentUser
     
     if (!user) {
-      // console.log('❌ Aucun utilisateur connecté dans multiUserService pour la collaboration')
+      // console.log('❌ Aucun utilisateur connecté pour la collaboration')
       return
     }
     
-    // console.log('👤 Utilisateur trouvé:', user.displayName)
+    // console.log('👤 Utilisateur trouvé:', user.displayName || user.email)
     
     if (USE_NEW_COLLABORATION) {
       // Initialisation simplifiée similaire au collaborateur
@@ -6208,7 +6209,7 @@ watch(filteredCollaborateurs, () => {
   })
 }, { deep: false })
 
-watch(() => searchTerm.value, (newValue, oldValue) => {
+watch(() => searchTerm.value, () => {
   // Le cache de recherche est maintenant géré par le composable usePlanningFilters
   // (log supprimé)
 

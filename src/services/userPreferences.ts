@@ -1,6 +1,6 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { ref as rtdbRef, get, set, update } from 'firebase/database'
 import { ref, computed } from 'vue'
-import { db } from './firebase'
+import { rtdb } from './firebase'
 import { AuthService } from './auth'
 
 export interface UserPreferences {
@@ -62,7 +62,7 @@ function notifyPreferencesChange() {
 export class UserPreferencesService {
   
   /**
-   * Charger les préférences utilisateur depuis Firestore (avec cache)
+   * Charger les préférences utilisateur depuis RTDB (avec cache)
    */
   static async loadUserPreferences(userId: string): Promise<UserPreferences> {
     try {
@@ -85,11 +85,11 @@ export class UserPreferencesService {
         return userPreferences.value
       }
       
-      const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${userId}`)
-      const userDoc = await getDoc(userRef)
+      const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${userId}`)
+      const snapshot = await get(userRef)
       
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
+      if (snapshot.exists()) {
+        const userData = snapshot.val()
         const preferences = userData.preferences || {}
         
         // Merger avec les préférences par défaut
@@ -151,13 +151,13 @@ export class UserPreferencesService {
     if (!AuthService.currentTenantId) return
     
     try {
-      const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${userId}`)
-      await setDoc(userRef, {
+      const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${userId}`)
+      await set(userRef, {
         preferences: defaultPreferences,
         role: 'viewer', // Rôle par défaut
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }, { merge: true })
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
       
       console.log('✅ Document utilisateur initialisé')
     } catch (error) {
@@ -167,11 +167,11 @@ export class UserPreferencesService {
   }
 
   /**
-   * Sauvegarder les préférences utilisateur dans Firestore
+   * Sauvegarder les préférences utilisateur dans RTDB
    */
   static async saveUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<void> {
     try {
-      const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${userId}`)
+      const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${userId}`)
       
       // Merger avec les préférences existantes
       const updatedPreferences = {
@@ -193,10 +193,10 @@ export class UserPreferencesService {
       // Notifier les changements
       notifyPreferencesChange()
       
-      await setDoc(userRef, { 
+      await update(userRef, { 
         preferences: updatedPreferences,
-        updatedAt: new Date()
-      }, { merge: true })
+        updatedAt: new Date().toISOString()
+      })
       
       console.log('✅ Préférences sauvegardées')
       
@@ -230,9 +230,9 @@ export class UserPreferencesService {
       
       // 3. Sauvegarder en arrière-plan avec la structure complète
       if (AuthService.currentTenantId) {
-        const userRef = doc(db, `tenants/${AuthService.currentTenantId}/users/${userId}`)
+        const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${userId}`)
         
-        console.log(`🔥 [Firestore] Tentative de sauvegarde vers:`, userRef.path)
+        console.log(`🔥 [RTDB] Tentative de sauvegarde vers:`, userRef.toString())
         
         // Récupérer les préférences actuelles et les mettre à jour
         const updatedPreferences = {
@@ -240,17 +240,17 @@ export class UserPreferencesService {
           presenceColor: color
         }
         
-        console.log(`📝 [Firestore] Données à sauvegarder:`, {
+        console.log(`📝 [RTDB] Données à sauvegarder:`, {
           preferences: updatedPreferences,
-          updatedAt: new Date()
+          updatedAt: new Date().toISOString()
         })
         
-        await setDoc(userRef, {
+        await update(userRef, {
           preferences: updatedPreferences,
-          updatedAt: new Date()
-        }, { merge: true })
+          updatedAt: new Date().toISOString()
+        })
         
-        console.log(`✅ [Firestore] Couleur sauvegardée avec succès:`, color)
+        console.log(`✅ [RTDB] Couleur sauvegardée avec succès:`, color)
       } else {
         console.warn(`⚠️ [UserPreferencesService] Pas de tenantId disponible pour sauvegarder`)
       }

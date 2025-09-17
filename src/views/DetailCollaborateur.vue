@@ -398,8 +398,8 @@ const loadCollaborateur = async () => {
       collab = await CollaborateursServiceV2.getCollaborateurFromRTDB(tenantId, collaborateurId.value)
       console.log('✅ Collaborateur RTDB trouvé:', collab)
     } catch (rtdbError) {
-      console.warn('⚠️ Erreur RTDB, tentative Firestore:', rtdbError)
-      // Fallback sur Firestore
+      console.warn('⚠️ Erreur RTDB, tentative fallback:', rtdbError)
+      // Fallback sur méthode alternative
       collab = await CollaborateursServiceV2.getCollaborateur(tenantId, collaborateurId.value)
     }
     

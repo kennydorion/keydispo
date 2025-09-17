@@ -1,6 +1,5 @@
 import { ref as rtdbRef, get as rtdbGet, set as rtdbSet, update as rtdbUpdate, runTransaction } from 'firebase/database'
-import { doc, updateDoc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { rtdb, db } from './firebase'
+import { rtdb } from './firebase'
 
 export type RegistrationCodeStatus = 'active' | 'used' | 'revoked' | 'expired'
 
@@ -140,13 +139,13 @@ export class RegistrationCodesService {
       updatedAt: now
     })
 
-    // Optionnel: mettre à jour le user du tenant avec l'ID collaborateur
-    const userRef = doc(db, `tenants/${tenantId}/users/${usedByUid}`)
-    const userSnap = await getDoc(userRef)
+    // Mettre à jour le user du tenant avec l'ID collaborateur en RTDB
+    const userRef = rtdbRef(rtdb, `tenants/${tenantId}/users/${usedByUid}`)
+    const userSnap = await rtdbGet(userRef)
     if (userSnap.exists()) {
-      await updateDoc(userRef, { collaborateurId, updatedAt: serverTimestamp() })
+      await rtdbUpdate(userRef, { collaborateurId, updatedAt: now })
     } else {
-      await setDoc(userRef, { collaborateurId, updatedAt: serverTimestamp() }, { merge: true })
+      await rtdbSet(userRef, { collaborateurId, updatedAt: now, role: 'viewer' })
     }
 
     return { collaborateurId }

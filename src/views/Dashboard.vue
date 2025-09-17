@@ -22,25 +22,41 @@
           </div>
         </div>
         
-        <div class="nav-card" @click="$router.push('/collaborateurs')">
-          <div class="nav-icon" style="background: #10b98122; color: #10B981;">
-            <span class="material-icons">people</span>
+        <!-- Affichage conditionnel selon l'interface -->
+        <template v-if="isCollaborateurInterface">
+          <div class="nav-card" @click="navigateToProfile">
+            <div class="nav-icon" style="background: #8b5cf622; color: #8b5cf6;">
+              <span class="material-icons">person</span>
+            </div>
+            <div class="nav-content">
+              <h3>Mon profil</h3>
+              <p>Modifier mes informations</p>
+            </div>
           </div>
-          <div class="nav-content">
-            <h3>Collaborateurs</h3>
-            <p>Gérer l'équipe</p>
-          </div>
-        </div>
+        </template>
         
-        <div class="nav-card" @click="$router.push('/import')">
-          <div class="nav-icon" style="background: #2563eb22; color: #2563EB;">
-            <span class="material-icons">upload</span>
+        <!-- Interface admin/editor/viewer -->
+        <template v-else>
+          <div class="nav-card" @click="$router.push('/collaborateurs')">
+            <div class="nav-icon" style="background: #10b98122; color: #10B981;">
+              <span class="material-icons">people</span>
+            </div>
+            <div class="nav-content">
+              <h3>Collaborateurs</h3>
+              <p>Gérer l'équipe</p>
+            </div>
           </div>
-          <div class="nav-content">
-            <h3>Import</h3>
-            <p>Importer des données</p>
+          
+          <div class="nav-card" @click="$router.push('/import')">
+            <div class="nav-icon" style="background: #2563eb22; color: #2563EB;">
+              <span class="material-icons">upload</span>
+            </div>
+            <div class="nav-content">
+              <h3>Import</h3>
+              <p>Importer des données</p>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
       
       <!-- Message informatif pour les fonctionnalités à venir -->
@@ -60,9 +76,13 @@
 
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
+import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
+
+// Détecter si on est dans l'interface collaborateur
+const isCollaborateurInterface = computed(() => route.path.startsWith('/collaborateur/'))
 
 // Navigation intelligente vers le planning en fonction de l'interface
 const navigateToPlanning = () => {
@@ -70,6 +90,15 @@ const navigateToPlanning = () => {
     router.push('/collaborateur/planning')
   } else {
     router.push('/semaine')
+  }
+}
+
+// Navigation vers le profil
+const navigateToProfile = () => {
+  if (isCollaborateurInterface.value) {
+    router.push('/collaborateur/profil')
+  } else {
+    router.push('/parametres')
   }
 }
 </script>
@@ -80,6 +109,9 @@ const navigateToPlanning = () => {
   font-family: 'Inter', 'Roboto', system-ui, sans-serif;
   max-width: 1200px;
   margin: 0 auto;
+  min-height: 100vh;
+  background: var(--dark-background, #2e3440);
+  color: var(--dark-text-primary, #eceff4);
 }
 
 .dashboard-header {
@@ -93,14 +125,14 @@ const navigateToPlanning = () => {
 .header-title h1 {
   font-size: 2.5rem;
   font-weight: 800;
-  color: var(--dark-text-primary, #1f2937);
+  color: var(--dark-text-primary, #eceff4);
   margin: 0 0 8px 0;
   line-height: 1.2;
 }
 
 .header-subtitle {
   font-size: 1.1rem;
-  color: var(--dark-text-secondary, #6b7280);
+  color: var(--dark-text-secondary, #d8dee9);
   margin: 0;
 }
 
@@ -112,8 +144,8 @@ const navigateToPlanning = () => {
 }
 
 .nav-card {
-  background: var(--dark-surface, #ffffff);
-  border: 1px solid var(--dark-border, #e5e7eb);
+  background: var(--dark-surface, #3b4252);
+  border: 1px solid var(--dark-border, #4c566a);
   border-radius: 16px;
   padding: 24px;
   cursor: pointer;
@@ -121,14 +153,14 @@ const navigateToPlanning = () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .nav-card:hover {
-  background: var(--dark-surface-hover, #f9fafb);
-  border-color: var(--primary-color, #6366f1);
+  background: var(--dark-surface-secondary, #434c5e);
+  border-color: var(--primary-color, #5e81ac);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .nav-icon {
@@ -149,13 +181,13 @@ const navigateToPlanning = () => {
   margin: 0 0 6px 0;
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--dark-text-primary, #1f2937);
+  color: var(--dark-text-primary, #eceff4);
 }
 
 .nav-content p {
   margin: 0;
   font-size: 0.95rem;
-  color: var(--dark-text-secondary, #6b7280);
+  color: var(--dark-text-secondary, #d8dee9);
   line-height: 1.4;
 }
 

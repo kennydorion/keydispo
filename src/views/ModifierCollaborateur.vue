@@ -293,10 +293,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vuestic-ui'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
-import { auth, db } from '../services/firebase'
+import { auth, rtdb } from '../services/firebase'
 import { validatePhone, normalizePhone } from '../utils/phoneFormatter'
 import { COLLABORATEUR_COLORS, DEFAULT_COLOR } from '../utils/collaborateurColors'
-import { doc, getDoc } from 'firebase/firestore'
+import { ref as rtdbRef, get } from 'firebase/database'
 
 // Types
 interface Collaborateur {
@@ -697,16 +697,16 @@ const verifierPermissions = async () => {
   })
   
   try {
-    const userRef = doc(db, `tenants/${currentTenantId.value}/users/${auth.currentUser.uid}`)
-    const userDoc = await getDoc(userRef)
+    const userRef = rtdbRef(rtdb, `tenants/${currentTenantId.value}/users/${auth.currentUser.uid}`)
+    const userSnapshot = await get(userRef)
     
-    if (!userDoc.exists()) {
+    if (!userSnapshot.exists()) {
       console.log('❌ Utilisateur non trouvé dans le tenant')
       console.log('👉 L\'utilisateur doit être ajouté au tenant par un administrateur')
       return
     }
     
-    const userData = userDoc.data()
+    const userData = userSnapshot.val()
     console.log('✅ Permissions utilisateur:', userData)
     
     if (userData.role === 'admin' || userData.role === 'editor') {

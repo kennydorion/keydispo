@@ -73,7 +73,6 @@
 
           <p class="switch-link">Pas encore de compte ? <router-link to="/register">Créer un compte</router-link></p>
           <p v-if="!isCollaborateurContext" class="switch-link">Vous êtes collaborateur ? <router-link to="/collaborateur/login" style="color: var(--va-info);">Connexion collaborateur</router-link></p>
-          <p v-else class="switch-link">Vous êtes administrateur ? <router-link to="/login" style="color: var(--va-info);">Connexion administrateur</router-link></p>
         </div>
         
         <!-- Section administrateur (uniquement sur émulateur) -->

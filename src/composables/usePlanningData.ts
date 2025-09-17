@@ -182,19 +182,19 @@ namesWithMatchingDispo: namesWithMatchingDispo.size,
     
     isLoading.value = true
     try {
-      // 1) Tentative via structure d'import (essaie RTDB puis Firestore import)
+      // 1) Tentative via structure d'import (essaie RTDB puis RTDB import)
       let loadedCollaborateurs = await CollaborateursServiceV2.loadCollaborateursFromImport(AuthService.currentTenantId)
 
-      // 2) Fallback: si vide, tenter la collection Firestore standard (actif == true)
+      // 2) Fallback: si vide, tenter la méthode RTDB standard (actif == true)
       if (!loadedCollaborateurs || loadedCollaborateurs.length === 0) {
-        console.warn('⚠️ Aucun collaborateur via Import/RTDB. Fallback vers Firestore standard (actif==true)')
+        console.warn('⚠️ Aucun collaborateur via Import/RTDB. Fallback vers RTDB standard (actif==true)')
         try {
-          const fsActive = await CollaborateursServiceV2.loadCollaborateurs(AuthService.currentTenantId)
-          if (fsActive && fsActive.length > 0) {
-            loadedCollaborateurs = fsActive
+          const rtdbActive = await CollaborateursServiceV2.loadCollaborateurs(AuthService.currentTenantId)
+          if (rtdbActive && rtdbActive.length > 0) {
+            loadedCollaborateurs = rtdbActive
           }
         } catch (e) {
-          console.warn('⚠️ Fallback Firestore standard a échoué:', e)
+          console.warn('⚠️ Fallback RTDB standard a échoué:', e)
         }
       }
 

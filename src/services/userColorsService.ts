@@ -1,6 +1,6 @@
-import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { ref as rtdbRef, get, onValue, off } from 'firebase/database'
 import { ref, computed } from 'vue'
-import { db } from './firebase'
+import { rtdb } from './firebase'
 import { getUserColor } from './avatarUtils'
 import { AuthService } from './auth'
 import { emergencyOptimization } from './emergencyOptimization'
@@ -63,12 +63,12 @@ class UserColorsService {
     }
 
     try {
-      // Utiliser la même collection que useUserPreferences pour cohérence
-      const userDoc = doc(db, `tenants/${AuthService.currentTenantId}/users/${uid}`)
+      // Utiliser RTDB pour récupérer les préférences utilisateur
+      const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${uid}`)
       
-      const unsubscribe = onSnapshot(userDoc, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data()
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val()
           // Les préférences sont stockées dans le champ 'preferences'
           const preferences = data.preferences || {}
           const presenceColor = preferences.presenceColor
@@ -94,7 +94,7 @@ class UserColorsService {
       })
 
       // Stocker la fonction de désabonnement
-      activeListeners.set(uid, unsubscribe)
+      activeListeners.set(uid, () => off(userRef, 'value', unsubscribe))
       
     } catch (error) {
       console.error(`❌ Erreur création écouteur pour ${uid}:`, error)
@@ -163,12 +163,12 @@ class UserColorsService {
         return defaultColor
       }
 
-      // Récupérer depuis Firestore (même collection que useUserPreferences)
-      const userDoc = doc(db, `tenants/${AuthService.currentTenantId}/users/${uid}`)
-      const docSnap = await getDoc(userDoc)
+      // Récupérer depuis RTDB (même collection que useUserPreferences)
+      const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${uid}`)
+      const snapshot = await get(userRef)
       
-      if (docSnap.exists()) {
-        const data = docSnap.data()
+      if (snapshot.exists()) {
+        const data = snapshot.val()
         const preferences = data.preferences || {}
         const presenceColor = preferences.presenceColor
         

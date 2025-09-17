@@ -40,15 +40,6 @@
                 </div>
               </div>
             </div>
-
-            <div class="row">
-              <div class="flex md12">
-                <div class="info-field">
-                  <label>Métier</label>
-                  <div class="info-value">{{ collaborateur.metier }}</div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Message informatif -->

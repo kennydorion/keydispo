@@ -254,7 +254,6 @@ class SessionDisplayServiceRTDB {
     const users = this.displayUsers.value
     return {
       totalUsers: users.length,
-      uniqueUsers: users.length, // Alias pour compatibilité
       onlineUsers: users.filter(u => u.status === 'online').length,
       idleUsers: users.filter(u => u.status === 'idle').length,
       multiSessionUsers: users.filter(u => u.isMultiSession).length,
@@ -264,27 +263,7 @@ class SessionDisplayServiceRTDB {
 }
 
 // ==========================================
-// EXPORT SINGLETON ET COMPOSABLE
+// EXPORT SINGLETON
 // ==========================================
 
 export const sessionDisplayService = new SessionDisplayServiceRTDB()
-
-// Composable pour compatibilité Vue
-export function useSessionDisplay() {
-  return {
-    users: sessionDisplayService.users,
-    activeUserCount: sessionDisplayService.activeUserCount,
-    cellPresence: sessionDisplayService.cellPresence,
-    stats: computed(() => sessionDisplayService.getPresenceStats()),
-    updateState: sessionDisplayService.updateState.bind(sessionDisplayService),
-    getCellPresence: sessionDisplayService.getCellPresence.bind(sessionDisplayService),
-    getUserColor: sessionDisplayService.getUserColor.bind(sessionDisplayService),
-    reset: sessionDisplayService.reset.bind(sessionDisplayService),
-    getPresenceStats: sessionDisplayService.getPresenceStats.bind(sessionDisplayService),
-    
-    // Méthodes de compatibilité (stubs pour l'ancien service)
-    addRealtimeListener: (_listenerId?: any) => { /* Stub pour compatibilité */ },
-    removeRealtimeListener: (_listenerId?: any) => { /* Stub pour compatibilité */ },
-    clearRealtimeListeners: () => { /* Stub pour compatibilité */ }
-  }
-}

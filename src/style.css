@@ -159,14 +159,48 @@ input[type="time"]::-webkit-clear-button {
   z-index: 2147483647 !important; /* top absolu */
 }
 
-/* Auto-size du contenu des modales Vuestic */
-.va-modal__dialog,
-.va-modal__container,
-.va-modal__content,
-.va-modal__inner,
-.va-modal__body {
-  max-height: 85vh !important;
+/* Auto-size du contenu des modales Vuestic (uniquement quand NON fullscreen)
+   Remarque: on scelle la règle au parent .va-modal qui n'a PAS de classe --fullscreen
+   pour éviter d'écraser les modales plein écran sur mobile. */
+:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__dialog,
+:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__container,
+:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__content,
+:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__inner,
+:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__body {
+  max-height: 95vh !important;
   overflow: auto !important;
+}
+
+/* Suppression des limites de hauteur pour les modales fullscreen */
+.batch-modal--fullscreen .va-modal__dialog,
+.batch-modal--fullscreen .va-modal__container,
+.batch-modal--fullscreen .va-modal__content,
+.batch-modal--fullscreen .va-modal__inner,
+.batch-modal--fullscreen .va-modal__body,
+.collab-modal--fullscreen .va-modal__dialog,
+.collab-modal--fullscreen .va-modal__container,
+.collab-modal--fullscreen .va-modal__content,
+.collab-modal--fullscreen .va-modal__inner,
+.collab-modal--fullscreen .va-modal__body,
+.collab-dispo-modal--fullscreen .va-modal__dialog,
+.collab-dispo-modal--fullscreen .va-modal__container,
+.collab-dispo-modal--fullscreen .va-modal__content,
+.collab-dispo-modal--fullscreen .va-modal__inner,
+.collab-dispo-modal--fullscreen .va-modal__body {
+  max-height: 100vh !important;
+  height: 100vh !important;
+  overflow: hidden !important; /* le scroll se fait à l'intérieur du contenu (DispoEditContent) */
+}
+
+/* Fallback générique pour le mode fullscreen mobile natif de Vuestic */
+.va-modal--mobile-fullscreen .va-modal__dialog,
+.va-modal--mobile-fullscreen .va-modal__container,
+.va-modal--mobile-fullscreen .va-modal__content,
+.va-modal--mobile-fullscreen .va-modal__inner,
+.va-modal--mobile-fullscreen .va-modal__body {
+  max-height: 100vh !important;
+  height: 100vh !important;
+  overflow: hidden !important;
 }
 
 /* S'assurer que les dropdowns/menus Vuestic sont visibles (z-index élevé) */

@@ -5,12 +5,8 @@
       <div class="navbar-content">
         <!-- Brand section -->
         <div class="navbar-brand">
-          <div class="brand-icon">
-            <span class="material-icons">calendar_today</span>
-          </div>
-          <div class="brand-content">
-            <h1 class="brand-title">KeyDispo</h1>
-            <p class="brand-subtitle">{{ isCollaborateurInterface ? 'Espace collaborateur' : 'Gestion des disponibilités' }}</p>
+          <div class="brand-logo">
+            <img src="/keyplacement_logo_blanc.svg" alt="KeyPlacement" class="logo-image" />
           </div>
         </div>
         
@@ -146,47 +142,18 @@ onMounted(() => {
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
 }
 
-.brand-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+.brand-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.brand-icon .material-icons {
-  font-size: 24px;
-  color: white;
-}
-
-.brand-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.brand-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: -0.025em;
-  background: linear-gradient(45deg, white, #ffd700);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.brand-subtitle {
-  font-size: 0.8rem;
-  margin: 2px 0 0;
-  opacity: 0.9;
-  font-weight: 400;
+.logo-image {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
 /* Navigation items */
@@ -324,10 +291,6 @@ onMounted(() => {
     padding: 12px 20px;
   }
   
-  .brand-subtitle {
-    display: none;
-  }
-  
   .nav-label {
     display: none;
   }
@@ -351,17 +314,8 @@ onMounted(() => {
     min-height: 56px;
   }
   
-  .brand-content {
-    display: none;
-  }
-  
-  .brand-icon {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .brand-icon .material-icons {
-    font-size: 20px;
+  .logo-image {
+    height: 45px;
   }
   
   .navbar-nav {

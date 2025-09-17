@@ -36,25 +36,27 @@
       </div>
     </div>
 
-    <!-- Section des disponibilités existantes -->
-    <div class="content-section">
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-title">
-            <va-icon name="event_available" color="primary" />
-            <span>Mes disponibilités</span>
+    <!-- Zone de contenu scrollable unique -->
+    <div class="scrollable-content">
+      <!-- Section des disponibilités existantes -->
+      <div class="content-section">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">
+              <va-icon name="event_available" color="primary" />
+              <span>Mes disponibilités</span>
+            </div>
           </div>
-        </div>
 
-  <div v-if="selectedCellDispos.length === 0" class="empty-state">
-          <div class="empty-illustration">
-            <va-icon name="event_busy" size="48px" color="secondary" />
+    <div v-if="selectedCellDispos.length === 0" class="empty-state">
+            <div class="empty-illustration">
+              <va-icon name="event_busy" size="48px" color="secondary" />
+            </div>
+            <h3 class="empty-title">Aucune disponibilité</h3>
+            <p class="empty-subtitle">Commencez par ajouter votre première disponibilité pour ce jour</p>
           </div>
-          <h3 class="empty-title">Aucune disponibilité</h3>
-          <p class="empty-subtitle">Commencez par ajouter votre première disponibilité pour ce jour</p>
-        </div>
 
-    <div v-else class="dispos-grid">
+      <div v-else class="dispos-grid">
       <div
     v-for="(dispo, index) in sortedSelectedCellDispos"
             :key="index"
@@ -288,21 +290,23 @@
       </div>
     </Transition>
 
-    <!-- Bouton d'ajout flottant -->
-    <div v-if="!isAddingNewDispo" class="add-section">
-      <va-button
-        @click="$emit('add-new-dispo-line')"
-        color="success"
-        icon="add"
-        size="large"
-        :disabled="editingDispoIndex !== null"
-        class="add-button"
-      >
-        Ajouter une disponibilité
-      </va-button>
+      <!-- Bouton d'ajout dans la zone scrollable -->
+      <div v-if="!isAddingNewDispo" class="add-section">
+        <va-button
+          @click="$emit('add-new-dispo-line')"
+          color="success"
+          icon="add"
+          size="large"
+          :disabled="editingDispoIndex !== null"
+          class="add-button"
+        >
+          Ajouter une disponibilité
+        </va-button>
+      </div>
+      </div>
     </div>
 
-    <!-- Actions principales -->
+    <!-- Actions principales fixées en bas -->
     <div class="footer-actions">
       <va-button 
         color="secondary" 
@@ -322,7 +326,6 @@
         Enregistrer tout
       </va-button>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -496,6 +499,20 @@ const sortedSelectedCellDispos = computed(() => {
   overflow: hidden;
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+}
+
+/* Spécifique pour les modales fullscreen - forcer la hauteur complète */
+:global(.batch-modal--fullscreen) .dispo-modal-redesigned,
+:global(.collab-modal--fullscreen) .dispo-modal-redesigned,
+:global(.collab-dispo-modal--fullscreen) .dispo-modal-redesigned {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  border-radius: 0 !important;
 }
 
 /* === HEADER SECTION === */
@@ -505,6 +522,7 @@ const sortedSelectedCellDispos = computed(() => {
   padding: 1.25rem 1.5rem;
   color: white;
   overflow: hidden;
+  flex-shrink: 0; /* Header fixe */
 }
 
 .header-background {
@@ -636,8 +654,20 @@ const sortedSelectedCellDispos = computed(() => {
 }
 
 /* === CONTENT SECTIONS === */
+.scrollable-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 0 1rem 0; /* Padding bottom minimal, le footer gère son espacement */
+}
+
 .content-section {
   padding: 1rem 1.25rem;
+  /* Supprimer les propriétés de scroll individuel */
+}
+
+.content-section:last-child {
+  margin-bottom: 1rem; /* Espacement supplémentaire avant le footer */
 }
 
 .section-card {
@@ -1017,6 +1047,8 @@ const sortedSelectedCellDispos = computed(() => {
   text-align: center;
   border-top: 1px solid var(--gray-200);
   background: var(--gray-50);
+  margin-top: auto; /* Pousser vers le bas dans la zone scrollable */
+  margin-bottom: 1rem; /* Espacement supplémentaire avant le footer */
 }
 
 .add-button {
@@ -1027,9 +1059,14 @@ const sortedSelectedCellDispos = computed(() => {
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
-  background: var(--gray-50);
+  padding: 1rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom)) 1.25rem; /* Padding bottom réduit */
+  background: white; /* Fond blanc plus visible */
   border-top: 1px solid var(--gray-200);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); /* Ombre plus marquée */
+  flex-shrink: 0; /* Footer toujours fixe */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .cancel-button,
@@ -1058,11 +1095,12 @@ const sortedSelectedCellDispos = computed(() => {
   .dispo-modal-redesigned {
     border-radius: 0;
     height: 100vh;
-    overflow-y: auto;
+    max-height: 100vh;
   }
   
   .header-section {
     padding: 1rem 0.75rem;
+    flex-shrink: 0;
   }
   
   .header-content {
@@ -1077,8 +1115,33 @@ const sortedSelectedCellDispos = computed(() => {
     font-size: 1.125rem;
   }
   
+  .scrollable-content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 0 0 1rem 0; /* Padding bottom minimal sur mobile, le footer gère son espacement */
+  }
+  
   .content-section {
     padding: 0.75rem;
+  }
+  
+  .content-section:last-child {
+    margin-bottom: 1rem; /* Espacement supplémentaire avant le footer sur mobile */
+  }
+  
+  .add-section {
+    padding: 0.75rem;
+    margin-top: 1rem; /* Espacement sur mobile */
+    margin-bottom: 1rem; /* Espacement supplémentaire avant le footer sur mobile */
+  }
+  
+  .footer-actions {
+    padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom)) 0.75rem; /* Padding bottom mobile réduit */
+    position: sticky;
+    bottom: 0;
+    background: white; /* Fond blanc sur mobile aussi */
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   }
   
   .button-grid {

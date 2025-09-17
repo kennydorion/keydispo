@@ -259,6 +259,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'vuestic-ui'
 import { useRouter } from 'vue-router'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
+import type { CollaborateurV2 } from '../types/optimized-v2'
 import { AuthService } from '../services/auth'
 import { auth } from '../services/firebase'
 import { getUserInitials } from '../services/avatarUtils'
@@ -419,34 +420,33 @@ const loadCollaborateurs = async () => {
     console.log('� Utilisateur connecté:', auth.currentUser?.email)
     
     // Charger depuis RTDB d'abord (plus de données)
-    let data = []
+    let data: CollaborateurV2[] = []
     try {
       data = await CollaborateursServiceV2.loadCollaborateursFromRTDB(tenantId)
       console.log('✅ Données RTDB chargées:', data.length)
-      // Si RTDB est vide, fallback explicite vers Firestore
+      // Si RTDB est vide, fallback explicite vers import
       if (!data || data.length === 0) {
-        console.log('ℹ️ RTDB vide, fallback vers Firestore')
+        console.log('ℹ️ RTDB vide, fallback vers import')
         try {
           data = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
-          console.log('✅ Données Firestore chargées:', data.length)
-        } catch (firestoreError) {
-          console.warn('⚠️ Erreur Firestore, fallback import:', firestoreError)
+          console.log('✅ Données RTDB chargées:', data.length)
+        } catch (rtdbError) {
+          console.warn('⚠️ Erreur RTDB, fallback import:', rtdbError)
           data = await CollaborateursServiceV2.loadCollaborateursFromImport(tenantId)
         }
       }
     } catch (rtdbError) {
-      console.warn('⚠️ Erreur RTDB, tentative Firestore:', rtdbError)
-      // Fallback sur Firestore
+      console.warn('⚠️ Erreur RTDB:', rtdbError)
+      // Fallback sur la méthode d'import
       try {
-        data = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
-      } catch (firestoreError) {
-        console.warn('⚠️ Erreur Firestore aussi:', firestoreError)
-        // Dernier fallback avec la méthode d'import
         data = await CollaborateursServiceV2.loadCollaborateursFromImport(tenantId)
+      } catch (importError) {
+        console.warn('⚠️ Erreur import aussi:', importError)
+        data = []
       }
     }
     
-    collaborateurs.value = data.map(collab => ({
+    collaborateurs.value = data.map((collab: CollaborateurV2) => ({
       id: collab.id || `${collab.nom}-${collab.prenom}`.toLowerCase().replace(/\s+/g, '-'),
       nom: collab.nom,
       prenom: collab.prenom,

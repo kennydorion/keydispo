@@ -7,8 +7,8 @@ import {
   onAuthStateChanged,
   type User
 } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { ref, get, set, update } from 'firebase/database'
+import { auth, rtdb } from './firebase'
 import { multiUserService } from './multiUserService'
 import type { TenantUser } from '../types'
 
@@ -75,10 +75,10 @@ export class AuthService {
     defaultRole: 'admin' | 'editor' | 'viewer' | 'collaborateur' = 'viewer',
     displayName?: string
   ) {
-    const userRef = doc(db, `tenants/${this.currentTenantId}/users/${user.uid}`)
-    const userDoc = await getDoc(userRef)
+    const userRef = ref(rtdb, `tenants/${this.currentTenantId}/users/${user.uid}`)
+    const userSnapshot = await get(userRef)
 
-    if (!userDoc.exists()) {
+    if (!userSnapshot.exists()) {
       // Construire les données utilisateur sans displayName si undefined
       const email = (user.email || '').toLowerCase()
       const elevatedRole = this.adminEmails.includes(email) ? 'admin' : defaultRole
@@ -86,26 +86,26 @@ export class AuthService {
         uid: user.uid,
         role: elevatedRole,
         email: user.email!,
-        createdAt: new Date(),
-        lastAccess: new Date()
+        createdAt: Date.now(),
+        lastAccess: Date.now()
       }
       // Ajouter displayName uniquement si défini
       const name = displayName || user.displayName
       if (name) {
         tenantData.displayName = name
       }
-      await setDoc(userRef, tenantData)
+      await set(userRef, tenantData)
     } else {
       // Update last access
-      await setDoc(userRef, { lastAccess: new Date() }, { merge: true })
+      await update(userRef, { lastAccess: Date.now() })
     }
   }
 
   static async getUserRole(userId: string): Promise<TenantUser | null> {
     try {
-      const userRef = doc(db, `tenants/${this.currentTenantId}/users/${userId}`)
-      const userDoc = await getDoc(userRef)
-      return userDoc.exists() ? userDoc.data() as TenantUser : null
+      const userRef = ref(rtdb, `tenants/${this.currentTenantId}/users/${userId}`)
+      const userSnapshot = await get(userRef)
+      return userSnapshot.exists() ? userSnapshot.val() as TenantUser : null
     } catch (error) {
       console.error('Error getting user role:', error)
       return null
@@ -114,8 +114,8 @@ export class AuthService {
 
   static async updateUserRole(userId: string, role: 'admin' | 'editor' | 'viewer' | 'collaborateur') {
     try {
-      const userRef = doc(db, `tenants/${this.currentTenantId}/users/${userId}`)
-      await setDoc(userRef, { role }, { merge: true })
+      const userRef = ref(rtdb, `tenants/${this.currentTenantId}/users/${userId}`)
+      await update(userRef, { role })
     } catch (error) {
       console.error('Error updating user role:', error)
       throw error

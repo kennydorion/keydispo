@@ -66,12 +66,13 @@ export function installMultiUserSystem(app: App) {
         // Obtenir le tenantId depuis la configuration
         const tenantId = AuthService.currentTenantId || 'keydispo'
         
-        // Démarrer le service principal
-        await multiUserService.init(tenantId, {
-          uid: user.uid,
-          displayName: user.displayName || user.email || 'Utilisateur',
-          email: user.email || ''
-        })
+        // Démarrer le service principal RTDB
+        await multiUserService.startSession(
+          user.uid,
+          user.displayName || user.email || 'Utilisateur',
+          user.email || '',
+          tenantId
+        )
         
         // Démarrer AUSSI le service hybride pour la compatibilité
         try {
@@ -98,7 +99,7 @@ export function installMultiUserSystem(app: App) {
         // Indiquer une raison de signout pour éviter des écritures pendant teardown
         multiUserService.setShutdownReason('signout')
       } catch {}
-      await multiUserService.destroy()
+      await multiUserService.endSession()
       
       // Arrêter aussi le service hybride
       try {

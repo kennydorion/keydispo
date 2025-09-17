@@ -67,6 +67,9 @@ const emit = defineEmits<{
   cellMouseDown: [cellId: string, event: MouseEvent]
   cellMouseEnter: [cellId: string, event: MouseEvent]  
   cellMouseUp: [cellId: string, event: MouseEvent]
+  // Mobile touch long press
+  cellTouchStart: [cellId: string, dateStr: string, event: TouchEvent]
+  cellTouchEnd: [cellId: string, dateStr: string, event: TouchEvent]
   // Événements pour les survols multi-utilisateurs
   cellHover: [collaborateurId: string, date: string]
   cellLeave: [collaborateurId: string, date: string]
@@ -530,6 +533,20 @@ function updateCellContent(dayEl: HTMLElement, dateStr: string) {
         emit('cellMouseUp', cellId, e)
       }
     })
+
+    // Gestion tactile mobile: long press pour activer la sélection
+    dayEl.addEventListener('touchstart', (e: TouchEvent) => {
+      // Ignorer les interactions internes
+      const t = (e.target as HTMLElement)
+      if (t.closest('.dispo-add-card, .dispo-add-more, .dispo-card')) return
+      emit('cellTouchStart', cellId, dateStr, e)
+    }, { passive: true })
+
+    dayEl.addEventListener('touchend', (e: TouchEvent) => {
+      const t = (e.target as HTMLElement)
+      if (t.closest('.dispo-add-card, .dispo-add-more, .dispo-card')) return
+      emit('cellTouchEnd', cellId, dateStr, e)
+    }, { passive: true })
   }
   
   // Insérer les barres dans la cellule
@@ -1425,5 +1442,153 @@ function onWheelNavigate(e: WheelEvent) {
 /* Couleur du titre du mois en noir (FullCalendar toolbar) */
 :deep(.fc .fc-toolbar-title) {
   color: #000 !important;
+}
+
+/* ============ RESPONSIVE DESIGN AMÉLIORÉ ============ */
+
+/* Mobile moyen (768px et moins) */
+@media (max-width: 768px) {
+  /* Adapter la taille des barres de disponibilité */
+  :deep(.dispo-card) {
+    min-height: 22px; /* Plus compact sur mobile */
+    font-size: 9px;
+  }
+  
+  :deep(.dispo-bars.single .dispo-card) {
+    min-height: 36px; /* Single légèrement plus grand */
+    font-size: 10px;
+  }
+  
+  :deep(.dispo-bars.double .dispo-card) {
+    min-height: 18px;
+    font-size: 8px;
+  }
+  
+  :deep(.dispo-bars.many .dispo-card) {
+    min-height: 14px;
+    font-size: 7px;
+  }
+  
+  /* Adapter les éléments textuels */
+  :deep(.dispo-type-icon) {
+    font-size: 0.9em !important;
+  }
+  
+  :deep(.dispo-time-range) {
+    font-size: 8px;
+  }
+  
+  :deep(.dispo-lieu) {
+    font-size: 6px;
+  }
+  
+  :deep(.slot-tag) {
+    font-size: 6px;
+    padding: 0 2px;
+  }
+  
+  /* Adapter les indicateurs de présence */
+  :deep(.user-presence-indicator) {
+    width: 6px;
+    height: 6px;
+    border-width: 1px;
+  }
+  
+  :deep(.locked-indicator) {
+    padding: 2px 4px;
+    font-size: 8px;
+  }
+  
+  /* Adapter les cellules sélectionnées */
+  :deep(.fc-daygrid-day.selected::after) {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+    top: 2px;
+    right: 2px;
+  }
+}
+
+/* Mobile petit (480px et moins) */
+@media (max-width: 480px) {
+  /* Barres encore plus compactes */
+  :deep(.dispo-card) {
+    min-height: 20px;
+    font-size: 8px;
+    border-radius: 3px;
+  }
+  
+  :deep(.dispo-bars.single .dispo-card) {
+    min-height: 32px;
+    font-size: 9px;
+  }
+  
+  :deep(.dispo-bars.double .dispo-card) {
+    min-height: 16px;
+    font-size: 7px;
+  }
+  
+  :deep(.dispo-bars.many .dispo-card) {
+    min-height: 12px;
+    font-size: 6px;
+  }
+  
+  /* Texte ultra compact */
+  :deep(.dispo-type-icon) {
+    font-size: 0.8em !important;
+  }
+  
+  :deep(.dispo-time-range) {
+    font-size: 7px;
+  }
+  
+  :deep(.dispo-lieu) {
+    font-size: 5px;
+  }
+  
+  :deep(.slot-tag) {
+    font-size: 5px;
+    padding: 0 1px;
+  }
+  
+  /* Indicateurs de présence plus petits */
+  :deep(.user-presence-indicator) {
+    width: 5px;
+    height: 5px;
+    border-width: 0.5px;
+  }
+  
+  :deep(.locked-indicator) {
+    padding: 1px 3px;
+    font-size: 7px;
+  }
+  
+  /* Cellules sélectionnées plus petites */
+  :deep(.fc-daygrid-day.selected::after) {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+    top: 1px;
+    right: 1px;
+  }
+  
+  /* Simplifier les indicateurs de continuation */
+  :deep(.dispo-continuation.cont-from-prev::before),
+  :deep(.dispo-continuation.cont-to-next::after) {
+    width: 3px; /* Plus fin sur mobile */
+  }
+}
+
+/* Mode paysage mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  :deep(.dispo-card) {
+    min-height: 18px; /* Plus compact en paysage */
+    font-size: 8px;
+  }
+  
+  :deep(.dispo-bars.single .dispo-card) {
+    min-height: 28px;
+    font-size: 9px;
+  }
 }
 </style>
