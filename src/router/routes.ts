@@ -100,10 +100,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Inscription', public: true }
   },
   {
-    path: '/collaborateur/register',
-    name: 'CollaborateurRegister',
-    component: () => import('../views/Register.vue'),
-    meta: { title: 'Inscription Collaborateur', public: true }
+  path: '/collaborateur/register',
+  name: 'CollaborateurRegister',
+  component: () => import('../views/CollaborateurRegister.vue'),
+  meta: { title: 'Inscription Collaborateur', public: true }
   },
 
   // Routes de test et autres
