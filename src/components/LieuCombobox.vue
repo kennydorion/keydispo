@@ -1,5 +1,5 @@
 <template>
-  <div class="lieu-combobox" :class="[size]">
+  <div class="lieu-combobox" :class="[size, theme]">
     <va-input
       v-model="inputValue"
       :label="label"
@@ -52,6 +52,7 @@ interface Props {
   placeholder?: string
   disabled?: boolean
   size?: 'small' | 'medium' | 'large'
+  theme?: 'dark' | 'light'
 }
 
 const props = defineProps<Props>()
@@ -219,7 +220,7 @@ function highlightPrev() {
   min-height: 32px;
 }
 
-/* Assurer que l'input utilise le thème sombre */
+/* Thème sombre par défaut */
 :deep(.va-input) {
   --va-background-color: var(--dark-card);
   --va-color: var(--dark-text-primary);
@@ -247,5 +248,41 @@ function highlightPrev() {
 
 :deep(.va-input__label) {
   color: var(--dark-text-secondary) !important;
+}
+
+/* Thème clair optionnel */
+.light :deep(.va-input__container) {
+  background: #ffffff !important;
+  color: #111827 !important; /* Texte noir */
+  border-color: #d1d5db !important;
+}
+.light :deep(.va-input-wrapper__text) {
+  color: #111827 !important;
+}
+.light :deep(.va-input__label) {
+  color: #6b7280 !important;
+}
+.light .cbx-icn {
+  color: #6b7280;
+}
+.light .cbx-list {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+.light .cbx-item {
+  color: #111827;
+  border-bottom-color: #e5e7eb;
+}
+.light .cbx-item.active {
+  background: #f3f4f6;
+}
+.light .cbx-item.create {
+  color: #2563eb;
+  border-top-color: #e5e7eb;
+}
+.light .cbx-item.create.active {
+  background: #eef2ff;
+  color: #1d4ed8;
 }
 </style>

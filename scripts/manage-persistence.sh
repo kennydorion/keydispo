@@ -3,6 +3,10 @@
 # Script utilitaire pour la gestion de la persistance des données Firebase
 
 EMULATOR_DATA_DIR="./emulator-data"
+# Port du Hub des émulateurs (API export/import)
+HUB_PORT=${FIREBASE_EMULATOR_HUB_PORT:-4400}
+# Détection du projectId (priorité: env → fallback local)
+PROJECT_ID=${VITE_FB_PROJECT_ID:-${GCLOUD_PROJECT:-keydispo-ec1ba}}
 
 show_help() {
     echo "🔧 Gestionnaire de persistance Firebase - KeyDispo"
@@ -24,23 +28,28 @@ show_help() {
     echo "  $0 clean    # Supprimer toutes les données"
 }
 
+hub_available() {
+  curl -s http://localhost:${HUB_PORT}/emulators > /dev/null 2>&1
+}
+
 save_data() {
     echo "💾 Sauvegarde des données de l'émulateur..."
     
-    if ! curl -s http://localhost:4001 > /dev/null 2>&1; then
-        echo "❌ L'émulateur Firebase n'est pas en cours d'exécution"
+    if ! hub_available; then
+        echo "❌ Le Hub d'émulateur Firebase n'est pas en cours d'exécution (port ${HUB_PORT})"
         echo "   Impossible de sauvegarder les données"
         exit 1
     fi
     
     mkdir -p "$EMULATOR_DATA_DIR"
     
-    curl -X POST "http://localhost:4001/emulator/v1/projects/demo-keydispo:export" \
+    # Utiliser l'API officielle du Hub: POST /_admin/export
+    curl -sS -X POST "http://localhost:${HUB_PORT}/_admin/export" \
       -H "Content-Type: application/json" \
       -d "{\"path\": \"$EMULATOR_DATA_DIR\", \"initiatedBy\": \"manual\"}" > /dev/null 2>&1
     
     if [ $? -eq 0 ]; then
-        echo "✅ Données sauvegardées dans $EMULATOR_DATA_DIR"
+        echo "✅ Données sauvegardées dans $EMULATOR_DATA_DIR (project: ${PROJECT_ID})"
         show_status
     else
         echo "❌ Erreur lors de la sauvegarde"

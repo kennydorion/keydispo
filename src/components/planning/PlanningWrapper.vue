@@ -4,23 +4,8 @@
 -->
 <template>
   <div class="planning-app">
-    <!-- Header avec filtres -->
-    <FiltersHeader
-      :view-mode="viewMode"
-      :period="formatCurrentPeriod"
-      :metiers="metiersOptions"
-      :lieux="lieuxOptions"
-      :statuts="statutOptions"
-      :model-value="{ search: searchTerm, metier: filterMetier, lieu: filterLieu, statut: filterStatut, dateFrom, dateTo }"
-      :stats-collaborateurs="paginatedCollaborateurs.length"
-      :stats-dispos="totalDisponibilites"
-      @update:viewMode="(m) => viewMode = m"
-      @openMobileFilters="mobileFiltersOpen = true"
-      @prev="goToPreviousWeek"
-      @today="goToToday"
-      @next="goToNextWeek"
-      @update:modelValue="updateFilters"
-    />
+    <!-- Header avec filtres compact -->
+    <FiltersHeaderNew />
 
     <!-- Contenu principal -->
     <div class="main-content">
@@ -94,7 +79,7 @@
 
 <script setup lang="ts">
 // Imports des composants modulaires
-import FiltersHeader from '../components/FiltersHeader.vue'
+import FiltersHeaderNew from '../FiltersHeaderNew.vue'
 import BatchDisponibiliteModal from '../components/BatchDisponibiliteModal.vue'
 import CollaborateurInfoModal from '../components/CollaborateurInfoModal.vue'
 import PlanningStatusPanel from '../components/planning/PlanningStatusPanel.vue'

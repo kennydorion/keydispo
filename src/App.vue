@@ -1,8 +1,27 @@
 <template>
-  <div id="app">
+  <div id="app" :class="{ 
+    'collaborateur-light-theme': isCollaborateurInterface,
+    'admin-interface': isAdminInterface,
+    'unauthorized': !isAuthorized 
+  }">
+    
+    
     <NavBar v-if="showNavBar" />
     <div class="app-main" :class="{ 'no-nav': !showNavBar }">
-      <router-view />
+      <!-- Message d'autorisation si nécessaire -->
+      <div v-if="!isAuthorized && route.meta.requiresAuth" class="unauthorized-message">
+        <div class="unauthorized-content">
+          <i class="material-icons">lock</i>
+          <h2>Accès non autorisé</h2>
+          <p>Vous n'avez pas les permissions nécessaires pour accéder à cette interface.</p>
+          <button @click="goToAuthorizedInterface" class="btn-primary">
+            Aller à l'interface autorisée
+          </button>
+        </div>
+      </div>
+      
+      <!-- Interface normale -->
+      <router-view v-else />
     </div>
   </div>
 </template>
@@ -12,15 +31,41 @@ import { onMounted, computed } from 'vue'
 import { AuthService } from './services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import NavBar from './components/NavBar.vue'
+import { InterfaceManager } from './services/interfaceManager'
+// import { auth } from './services/firebase'
 
 const router = useRouter()
 const route = useRoute()
 
+// Utiliser le nouvel InterfaceManager
+const isAdminInterface = InterfaceManager.isAdminInterface
+const isCollaborateurInterface = InterfaceManager.isCollaborateurInterface
+const isAuthorized = InterfaceManager.isAuthorized
+const userRole = InterfaceManager.userRole
+// Debug helpers supprimés
+
 // Afficher la NavBar sauf sur les routes publiques (login)
-const showNavBar = computed(() => !route.meta.public && route.path !== '/login')
+const showNavBar = computed(() => 
+  !route.meta.public && 
+  route.path !== '/login' && 
+  route.path !== '/collaborateur/login'
+)
+
+// Redirection vers l'interface autorisée
+function goToAuthorizedInterface() {
+  const role = userRole.value
+  if (role) {
+    if (['admin', 'editor', 'viewer'].includes(role)) {
+      InterfaceManager.forceAdminInterface()
+    } else {
+      InterfaceManager.forceCollaborateurInterface()
+    }
+  } else {
+    router.push('/login')
+  }
+}
 
 onMounted(() => {
-  
   // Écouter les changements d'état d'authentification
   AuthService.onAuthStateChanged((user) => {
     if (!user && router.currentRoute.value.meta.requiresAuth) {
@@ -39,6 +84,18 @@ onMounted(() => {
   font-family: var(--kd-font);
 }
 
+/* Interface collaborateur - thème plus clair */
+.collaborateur-light-theme {
+  background: var(--va-background-primary, #f8f9fa);
+  color: var(--va-text-primary, #212529);
+}
+
+/* Interface admin - thème sombre */
+.admin-interface {
+  background: var(--dark-background);
+  color: var(--dark-text-primary);
+}
+
 .app-main {
   box-sizing: border-box;
   min-height: calc(100vh - 64px);
@@ -53,5 +110,51 @@ onMounted(() => {
 .app-main.no-nav {
   min-height: 100vh;
   padding: 0;
+}
+
+/* Message d'autorisation */
+.unauthorized-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: 2rem;
+}
+
+.unauthorized-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.unauthorized-content .material-icons {
+  font-size: 4rem;
+  color: var(--va-warning, #f59e0b);
+  margin-bottom: 1rem;
+}
+
+.unauthorized-content h2 {
+  margin: 0 0 1rem 0;
+  color: var(--va-text-primary, #212529);
+}
+
+.unauthorized-content p {
+  margin: 0 0 2rem 0;
+  color: var(--va-text-secondary, #6c757d);
+  line-height: 1.5;
+}
+
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  background: var(--va-primary, #007bff);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--va-primary-darken1, #0056b3);
 }
 </style>

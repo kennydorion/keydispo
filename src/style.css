@@ -159,6 +159,16 @@ input[type="time"]::-webkit-clear-button {
   z-index: 2147483647 !important; /* top absolu */
 }
 
+/* Auto-size du contenu des modales Vuestic */
+.va-modal__dialog,
+.va-modal__container,
+.va-modal__content,
+.va-modal__inner,
+.va-modal__body {
+  max-height: 85vh !important;
+  overflow: auto !important;
+}
+
 /* S'assurer que les dropdowns/menus Vuestic sont visibles (z-index élevé) */
 /* Élever uniquement les menus des VaSelect (listes d’options) */
 .va-select-dropdown__content,
@@ -210,13 +220,15 @@ input[type="time"]::-webkit-clear-button {
   z-index: 2147483648 !important;
 }
 
-/* Alerte/Alert dialogs génériques */
+/* Alerte/Alert dialogs génériques - auto-size contenu */
 .va-alert,
 .va-alert-dialog,
 [role="alertdialog"],
 [role="alert"] {
   z-index: 2147483648 !important;
   position: relative !important;
+  max-height: 80vh !important; /* s'adapte à l'écran */
+  overflow: auto !important;   /* scroll si nécessaire */
 }
 
 /* S'assurer que les toasts ne sont jamais cachés par transform ou isolation */
@@ -728,5 +740,68 @@ body > [data-va-toast] {
 
 .editing-mode .hover-user-name[style*="--user-color"] {
   background-color: var(--user-color, rgba(239, 68, 68, 0.9)) !important;
+}
+
+/* ===== THÈME CLAIR GLOBAL POUR COLLABORATEURS ===== */
+.collaborateur-light-theme {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Navigation claire pour collaborateurs */
+.collaborateur-light-theme .va-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid #e5e7eb !important;
+}
+
+.collaborateur-light-theme .va-sidebar-item {
+  color: #374151 !important;
+}
+
+.collaborateur-light-theme .va-sidebar-item:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.collaborateur-light-theme .va-sidebar-item.router-link-active,
+.collaborateur-light-theme .va-sidebar-item--active {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+/* Corps principal en mode clair */
+.collaborateur-light-theme .app-main {
+  background: #ffffff !important;
+}
+
+/* Toasts en mode clair */
+.collaborateur-light-theme .va-toast {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Dropdowns en mode clair */
+.collaborateur-light-theme .va-select-dropdown__content,
+.collaborateur-light-theme .va-select-option-list,
+.collaborateur-light-theme .va-dropdown__content {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.collaborateur-light-theme .va-select-option {
+  color: #374151 !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.collaborateur-light-theme .va-select-option:hover {
+  background: #f9fafb !important;
+  color: #111827 !important;
+}
+
+.collaborateur-light-theme .va-select-option--selected {
+  background: #eff6ff !important;
+  color: #2563eb !important;
 }
 

@@ -64,6 +64,9 @@
         v-model="showModal"
         :hide-default-actions="true"
         max-width="500px"
+        @before-open="modalA11y.onBeforeOpen"
+        @open="modalA11y.onOpen"
+        @close="modalA11y.onClose"
       >
         <div class="modal-content">
           <h3>🪟 Modal de Test</h3>
@@ -89,10 +92,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useToast } from 'vuestic-ui'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 const toast = useToast()
 const showHighZElement_ = ref(false)
 const showModal = ref(false)
+const modalA11y = useModalA11y()
 
 // Tests de base
 function testBasicToast() {

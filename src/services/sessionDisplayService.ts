@@ -122,6 +122,11 @@ class SessionDisplayService {
     activities: { total: 0, hover: 0, editing: 0, locked: 0 }
   })
   
+  // État système
+  private readonly _realtimeActive = ref(false)
+  private readonly _realtimeListeners = ref<string[]>([])
+  private readonly _isEmulatorMode = ref(false)
+  
   private readonly userColorMap = new Map<string, string>()
   private currentUserId: string | null = null
 
@@ -132,6 +137,11 @@ class SessionDisplayService {
   readonly users = computed(() => Array.from(this._users.value.values()))
   readonly cellIndicators = computed(() => Array.from(this._cellIndicators.value.values()))
   readonly stats = computed(() => this._stats.value)
+  
+  // État système
+  readonly realtimeActive = computed(() => this._realtimeActive.value)
+  readonly realtimeListeners = computed(() => this._realtimeListeners.value)
+  readonly isEmulatorMode = computed(() => this._isEmulatorMode.value)
   
   // Filtres et tris
   readonly onlineUsers = computed(() => 
@@ -182,16 +192,22 @@ class SessionDisplayService {
     // 🔍 DEBUG: État multiuser reçu
     // console.log(`🔄 SESSION DISPLAY SERVICE - updateFromMultiUserState`)
     // console.log(`📊 État reçu:`, {
-    //   sessions: state.sessions.size,
-    //   usersBySessions: state.usersBySessions.size,
-    //   activities: state.activities.size
+    //   sessions: state?.sessions?.size || 0,
+    //   usersBySessions: state?.usersBySessions?.size || 0,
+    //   activities: state?.activities?.size || 0
     // })
     
+    // Vérifications de sécurité pour éviter les erreurs
+    if (!state) {
+      console.warn('⚠️ sessionDisplayService: État multiuser undefined, ignoré')
+      return
+    }
+    
     // Traiter les sessions pour créer les DisplayUser
-    this.processUsers(state.sessions, state.usersBySessions)
+    this.processUsers(state.sessions || new Map(), state.usersBySessions || new Map())
     
     // Traiter les activités pour créer les indicateurs de cellules
-    this.processCellIndicators(state.activities, state.sessions)
+    this.processCellIndicators(state.activities || new Map(), state.sessions || new Map())
     
     // Calculer les statistiques
     this.calculateStats(state)
@@ -202,6 +218,13 @@ class SessionDisplayService {
 
   private processUsers(_sessions: Map<string, UserSession>, usersBySessions: Map<string, UserSession[]>) {
     const newUsers = new Map<string, DisplayUser>()
+    
+    // Vérification de sécurité
+    if (!usersBySessions || typeof usersBySessions.forEach !== 'function') {
+      console.warn('⚠️ sessionDisplayService.processUsers: usersBySessions invalide', usersBySessions)
+      this._users.value = newUsers
+      return
+    }
     
     usersBySessions.forEach((userSessions, userId) => {
       // Filtrer les sessions actives
@@ -264,11 +287,18 @@ class SessionDisplayService {
   private processCellIndicators(activities: Map<string, CellActivity>, _sessions: Map<string, UserSession>) {
     // 🔍 DEBUG: Traitement des indicateurs de cellules
     // console.log(`🔄 TRAITEMENT INDICATEURS CELLULES:`, {
-    //   activities: activities.size,
-    //   activitiesList: Array.from(activities.values()).map(a => `${a.cellId}: ${a.userName} (${a.activityType})`)
+    //   activities: activities?.size || 0,
+    //   activitiesList: activities ? Array.from(activities.values()).map(a => `${a.cellId}: ${a.userName} (${a.activityType})`) : []
     // })
     
     const newIndicators = new Map<string, CellIndicator>()
+    
+    // Vérification de sécurité
+    if (!activities || typeof activities.forEach !== 'function') {
+      console.warn('⚠️ sessionDisplayService.processCellIndicators: activities invalide', activities)
+      this._cellIndicators.value = newIndicators
+      return
+    }
     
     // Grouper les activités par cellule
     const cellGroups = new Map<string, CellActivity[]>()
@@ -355,8 +385,9 @@ class SessionDisplayService {
   }
 
   private calculateStats(state: MultiUserState) {
-    const sessions = Array.from(state.sessions.values())
-    const activities = Array.from(state.activities.values())
+    // Vérifications de sécurité
+    const sessions = state?.sessions ? Array.from(state.sessions.values()) : []
+    const activities = state?.activities ? Array.from(state.activities.values()) : []
     const users = Array.from(this._users.value.values())
     
     this._stats.value = {
@@ -504,6 +535,49 @@ class SessionDisplayService {
     }
   }
 
+  /**
+   * Mettre à jour l'état de synchronisation temps réel
+   */
+  setRealtimeActive(active: boolean) {
+    this._realtimeActive.value = active
+  }
+
+  /**
+   * Ajouter un listener temps réel
+   */
+  addRealtimeListener(listenerId: string) {
+    if (!this._realtimeListeners.value.includes(listenerId)) {
+      this._realtimeListeners.value.push(listenerId)
+      this._realtimeActive.value = this._realtimeListeners.value.length > 0
+    }
+  }
+
+  /**
+   * Supprimer un listener temps réel
+   */
+  removeRealtimeListener(listenerId: string) {
+    const index = this._realtimeListeners.value.indexOf(listenerId)
+    if (index !== -1) {
+      this._realtimeListeners.value.splice(index, 1)
+      this._realtimeActive.value = this._realtimeListeners.value.length > 0
+    }
+  }
+
+  /**
+   * Réinitialiser tous les listeners
+   */
+  clearRealtimeListeners() {
+    this._realtimeListeners.value = []
+    this._realtimeActive.value = false
+  }
+
+  /**
+   * Définir le mode émulateur
+   */
+  setEmulatorMode(isEmulator: boolean) {
+    this._isEmulatorMode.value = isEmulator
+  }
+
   // ==========================================
   // MÉTHODES DE DEBUG
   // ==========================================
@@ -541,6 +615,9 @@ export function useSessionDisplay() {
     sortedUsers: service.sortedUsers,
     cellIndicators: service.cellIndicators,
     stats: service.stats,
+    realtimeActive: service.realtimeActive,
+    realtimeListeners: service.realtimeListeners,
+    isEmulatorMode: service.isEmulatorMode,
     
     // Méthodes
     updateFromMultiUserState: service.updateFromMultiUserState.bind(service),
@@ -552,6 +629,13 @@ export function useSessionDisplay() {
     getUserTooltip: service.getUserTooltip.bind(service),
     getImportantCellIndicators: service.getImportantCellIndicators.bind(service),
     getCurrentConflicts: service.getCurrentConflicts.bind(service),
+    
+    // Gestion état temps réel
+    setRealtimeActive: service.setRealtimeActive.bind(service),
+    addRealtimeListener: service.addRealtimeListener.bind(service),
+    removeRealtimeListener: service.removeRealtimeListener.bind(service),
+    clearRealtimeListeners: service.clearRealtimeListeners.bind(service),
+    setEmulatorMode: service.setEmulatorMode.bind(service),
     
     // Debug
     debugInfo: service.debugInfo.bind(service),

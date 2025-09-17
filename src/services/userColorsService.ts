@@ -54,7 +54,6 @@ class UserColorsService {
     // Vérifier le cache avec TTL
     const cacheTime = cacheTimestamps.get(uid)
     if (cacheTime && (Date.now() - cacheTime) < CACHE_TTL) {
-      console.log(`📦 [UserColors] Cache valide pour ${uid}`)
       return
     }
 
@@ -153,7 +152,6 @@ class UserColorsService {
       const cacheTime = cacheTimestamps.get(uid)
       
       if (cachedColor && cacheTime && (Date.now() - cacheTime) < CACHE_TTL) {
-        console.log(`📦 [UserColors] Cache hit pour ${uid}`)
         return cachedColor
       }
 

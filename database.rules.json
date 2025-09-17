@@ -1,24 +1,76 @@
 {
   "rules": {
-    "tenants": {
+    ".read": false,
+    ".write": false,
+
+    "presence": {
       "$tenantId": {
-        "collaborateurs": {
-          ".read": true,
-          ".write": true,
-          ".indexOn": ["nom", "prenom", "email"]
-        },
-        "disponibilites": {
-          ".read": true,
-          ".write": true,
-          ".indexOn": ["date", "collaborateurId"]
-        },
-        "users": {
-          ".read": true,
-          ".write": true
+        ".read": "auth != null",
+        "$userId": {
+          ".write": "auth != null && auth.uid == $userId"
         }
       }
     },
-    ".read": true,
-    ".write": true
+    "sessions": {
+      "$tenantId": {
+        ".read": "auth != null",
+        "$sessionId": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.child('userId').val() == auth.uid"
+        }
+      }
+    },
+    "cellActivities": {
+      "$tenantId": {
+        ".read": "auth != null",
+        "$activityId": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.child('userId').val() == auth.uid"
+        }
+      }
+    },
+    "cellLocks": {
+      "$tenantId": {
+        ".read": "auth != null",
+        "$lockId": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.child('userId').val() == auth.uid"
+        }
+      }
+    },
+    "selectedCells": {
+      "$tenantId": {
+        ".read": "auth != null",
+        "$sessionId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "tenants": {
+      "$tenantId": {
+        "collaborateurs": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["nom", "prenom", "email", "userId"]
+        },
+        "disponibilites": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["date", "collaborateurId"]
+        },
+        "activationCodes": {
+          "$code": {
+            ".read": true,
+            ".write": "auth != null"
+          }
+        },
+        "users": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    }
   }
 }

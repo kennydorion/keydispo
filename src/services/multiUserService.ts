@@ -29,7 +29,6 @@ import {
   limit
 } from 'firebase/firestore'
 import { firestoreListenerManager } from './firestoreListenerManager'
-import { hybridDataService } from './hybridDataService'
 import { db } from '../firebase'
 import type { Timestamp } from 'firebase/firestore'
 
@@ -129,6 +128,8 @@ class MultiUserService {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
   private activityTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+  private isUnloading = false
+  private shutdownReason: 'normal' | 'unload' | 'signout' = 'normal'
   
   // Configuration optimisée pour les performances
   private readonly CONFIG = {
@@ -847,6 +848,9 @@ class MultiUserService {
   private setupPageHandlers() {
     // Nettoyage à la fermeture
     window.addEventListener('beforeunload', () => {
+  // Marquer que la page se ferme pour éviter des écritures réseau tardives
+  this.isUnloading = true
+  this.shutdownReason = 'unload'
       this.destroy()
     })
 
@@ -989,18 +993,31 @@ class MultiUserService {
       this.activitiesListener = null
     }
     
-    // Nettoyer toutes les activités de cette session
-    await this.cleanupCurrentSessionActivities()
-    
-    // Supprimer la session
-    if (this.tenantId && this.currentSessionId) {
-      try {
-        const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
-        await deleteDoc(sessionRef)
-        console.log(`🗑️ Session supprimée: ${this.currentSessionId}`)
-      } catch (error) {
-        console.error('❌ Erreur suppression session:', error)
+    // Éviter d'émettre des écritures Firestore pendant la fermeture/déconnexion
+    // On s'appuie sur l'expiration/cleanup périodique côté client/serveur
+    const shouldSkipWrites = this.isUnloading || this.shutdownReason === 'signout'
+    if (!shouldSkipWrites) {
+      // Nettoyer toutes les activités de cette session
+      await this.cleanupCurrentSessionActivities()
+      
+      // Supprimer la session
+      if (this.tenantId && this.currentSessionId) {
+        try {
+          const sessionRef = doc(db, `tenants/${this.tenantId}/sessions/${this.currentSessionId}`)
+          await deleteDoc(sessionRef)
+          console.log(`🗑️ Session supprimée: ${this.currentSessionId}`)
+        } catch (error) {
+          // Erreurs de permissions probablement dues à un utilisateur collaborateur  
+          // qui n'a pas accès aux collections multi-utilisateur - ignorer silencieusement
+          if (error instanceof Error && error.message.includes('permissions')) {
+            console.log('⚠️ Suppression session ignorée (permissions insuffisantes)')
+          } else {
+            console.error('❌ Erreur suppression session:', error)
+          }
+        }
       }
+    } else {
+      console.log('⏭️ Destructions Firestore ignorées (raison:', this.shutdownReason, ')')
     }
     
     // Vider les caches et callbacks
@@ -1014,6 +1031,8 @@ class MultiUserService {
     this.tenantId = null
     this.currentUserId = null
     this.currentSession = null
+  this.isUnloading = false
+  this.shutdownReason = 'normal'
     
     console.log('✅ MultiUserService détruit')
   }
@@ -1039,7 +1058,13 @@ class MultiUserService {
         console.log(`🧹 ${snapshot.size} activité(s) de session nettoyée(s)`)
       }
     } catch (error) {
-      console.error('❌ Erreur nettoyage activités session:', error)
+      // Erreurs de permissions probablement dues à un utilisateur collaborateur
+      // qui n'a pas accès aux collections multi-utilisateur - ignorer silencieusement
+      if (error instanceof Error && error.message.includes('permissions')) {
+        console.log('⚠️ Nettoyage activités session ignoré (permissions insuffisantes)')
+      } else {
+        console.error('❌ Erreur nettoyage activités session:', error)
+      }
     }
   }
 
@@ -1061,6 +1086,13 @@ class MultiUserService {
 
   getCurrentUserId(): string | null {
     return this.currentUserId
+  }
+
+  /**
+   * Indiquer la raison d'arrêt pour ajuster le nettoyage (ex: éviter les écritures réseau en signout/unload)
+   */
+  setShutdownReason(reason: 'normal' | 'unload' | 'signout') {
+    this.shutdownReason = reason
   }
 }
 

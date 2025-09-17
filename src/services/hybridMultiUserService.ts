@@ -11,20 +11,22 @@
  * ✅ Simple : architecture unifiée RTDB
  */
 
-import { 
+import {
   // Realtime Database pour tous les états temps réel
   ref,
   set,
   onValue,
+  onChildAdded,
+  onChildChanged,
+  onChildRemoved,
   onDisconnect,
   serverTimestamp as rtdbServerTimestamp,
   remove,
-  off,
-  child,
-  update
+  off
 } from 'firebase/database'
 
 import { rtdb } from './firebase'
+import { emergencyOptimization } from './emergencyOptimization'
 
 // ==========================================
 // INTERFACES ET TYPES
@@ -103,8 +105,7 @@ class HybridMultiUserService {
   private presenceRef: any = null
   private sessionRef: any = null
   
-  // Configuration
-  private presenceWritesEnabled = false
+  // Configuration (les écritures de présence sont gérées via emergencyOptimization)
   
   // Callbacks pour les changements
   private lockChangeCallbacks: ((locks: Map<string, CellLock>) => void)[] = []
@@ -121,9 +122,15 @@ class HybridMultiUserService {
   private _locks = new Map<string, CellLock>()
   private _remoteSelections = new Map<string, any>() // Sélections des autres utilisateurs
   private _currentHover: { collaborateurId: string; date: string } | null = null
+  private hoverHeartbeatTimer: ReturnType<typeof setInterval> | null = null
+  private lastLockAttemptPerCell = new Map<string, number>()
+  private inFlightLockOps = new Set<string>()
   
   // Listeners pour cleanup
   private rtdbListeners: Function[] = []
+  
+  // Débounces pour éviter les appels excessifs
+  private notifyDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   // ==========================================
   // GETTERS PUBLIC
@@ -136,6 +143,7 @@ class HybridMultiUserService {
   get locks() { return new Map(this._locks) }
   get remoteSelections() { return new Map(this._remoteSelections) }
   get currentHover() { return this._currentHover }
+  getSessionId() { return this.currentSessionId }
 
   // ==========================================
   // CALLBACKS REGISTRATION
@@ -196,57 +204,75 @@ class HybridMultiUserService {
   // ==========================================
 
   private notifyLockChanges() {
-    this.lockChangeCallbacks.forEach(callback => callback(new Map(this._locks)))
+    this.debounceNotify('locks', () => {
+      this.lockChangeCallbacks.forEach(callback => callback(new Map(this._locks)))
+    })
   }
 
   private notifyPresenceChanges() {
-    this.presenceChangeCallbacks.forEach(callback => callback(new Map(this._presence)))
+    this.debounceNotify('presence', () => {
+      this.presenceChangeCallbacks.forEach(callback => callback(new Map(this._presence)))
+    })
   }
 
   private notifyUserChanges() {
-    this.userChangeCallbacks.forEach(callback => callback(new Map(this._users)))
+    this.debounceNotify('users', () => {
+      this.userChangeCallbacks.forEach(callback => callback(new Map(this._users)))
+    })
   }
 
   private notifyActivityChanges() {
-    this.activityChangeCallbacks.forEach(callback => callback(new Map(this._activities)))
+    this.debounceNotify('activities', () => {
+      this.activityChangeCallbacks.forEach(callback => callback(new Map(this._activities)))
+    })
   }
 
   private notifySelectionChanges() {
-    this.selectionChangeCallbacks.forEach(callback => callback(new Map(this._remoteSelections)))
+    this.debounceNotify('selections', () => {
+      this.selectionChangeCallbacks.forEach(callback => callback(new Map(this._remoteSelections)))
+    })
+  }
+
+  /**
+   * Méthode de débounce pour éviter les appels excessifs
+   */
+  private debounceNotify(key: string, callback: () => void, delay = 150) {
+    // Annuler le timer précédent s'il existe
+    const existingTimer = this.notifyDebounceTimers.get(key)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+    }
+    
+    // Programmer le nouveau callback
+    const timer = setTimeout(() => {
+      try {
+        callback()
+      } catch (error) {
+        console.warn(`⚠️ Erreur dans callback ${key}:`, error)
+      } finally {
+        this.notifyDebounceTimers.delete(key)
+      }
+    }, delay)
+    
+    this.notifyDebounceTimers.set(key, timer)
   }
 
   // ==========================================
   // INITIALISATION
   // ==========================================
 
-  async initialize(userId: string, userName: string, userEmail: string, tenantId: string) {
-    if (this._isActive) {
-      console.warn('⚠️ Service déjà initialisé')
-      return
-    }
-
-    this.currentUserId = userId
-    this.currentUserName = userName
-    this.currentUserEmail = userEmail
-    this.currentTenantId = tenantId
-    this.currentSessionId = `${userId}_${Date.now()}`
-
-    console.log('🚀 Initialisation du service multi-utilisateur RTDB-only', {
-      userId,
-      userName,
-      tenantId,
-      sessionId: this.currentSessionId
-    })
-
-    await this.setupRealtimePresence()
-    this.startRealtimeListeners()
-    
-    this._isActive = true
-    console.log('✅ Service multi-utilisateur RTDB initialisé')
-  }
-
   private async setupRealtimePresence() {
     if (!this.currentUserId || !this.currentTenantId || !this.currentSessionId) return
+    if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
+      console.warn('🚨 [EMERGENCY] Presence tracking désactivé - mode lecture seule')
+  // Présence non écrite (mode urgence)
+      return
+    }
+    if (!this.rtdb) {
+      console.warn('⚠️ RTDB non initialisée, annulation de setupRealtimePresence')
+  // Présence non écrite (RTDB absente)
+      return
+    }
 
     // Configuration de la présence RTDB
     this.presenceRef = ref(this.rtdb, `presence/${this.currentTenantId}/${this.currentUserId}`)
@@ -269,7 +295,13 @@ class HybridMultiUserService {
       }
     }
 
-    await set(this.sessionRef, sessionData)
+    try {
+      await set(this.sessionRef, sessionData)
+    } catch (e) {
+      console.warn('⚠️ Échec écriture session RTDB:', (e as any)?.message || e)
+  // Présence non écrite (échec session)
+      return
+    }
 
     // Configurer la présence
     const presenceData = {
@@ -281,16 +313,28 @@ class HybridMultiUserService {
       tenantId: this.currentTenantId
     }
 
-    await set(this.presenceRef, presenceData)
-    await onDisconnect(this.presenceRef).remove()
-    await onDisconnect(this.sessionRef).remove()
+    try {
+      await set(this.presenceRef, presenceData)
+      await onDisconnect(this.presenceRef).remove()
+      await onDisconnect(this.sessionRef).remove()
+    } catch (e) {
+      console.warn('⚠️ onDisconnect indisponible:', (e as any)?.message || e)
+    }
     
     // Marquer comme configuré
-    this.presenceWritesEnabled = true
+  // Présence initialisée
   }
 
   private startRealtimeListeners() {
     if (!this.currentTenantId) return
+    if (!this.rtdb) {
+      console.warn('⚠️ RTDB non initialisée, listeners désactivés')
+      return
+    }
+    if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
+      console.log('🚨 [EMERGENCY] Listeners présence/activités/locks désactivés')
+      return
+    }
 
     // 1. Écouter les sessions en temps réel
     const sessionsRef = ref(this.rtdb, `sessions/${this.currentTenantId}`)
@@ -321,13 +365,14 @@ class HybridMultiUserService {
     this.rtdbListeners.push(() => off(presenceRef, 'value', presenceListener))
 
     // 3. Écouter les activités cellules en temps réel
-    const activitiesRef = ref(this.rtdb, `cellActivities/${this.currentTenantId}`)
-    const activitiesListener = onValue(activitiesRef, (snapshot) => {
+  const activitiesRef = ref(this.rtdb, `cellActivities/${this.currentTenantId}`)
+  const activitiesListener = onValue(activitiesRef, (snapshot) => {
       this._activities.clear()
       if (snapshot.exists()) {
         const activities = snapshot.val()
         const now = Date.now()
-        const ACTIVITY_TIMEOUT = 3000 // 3 secondes max pour une activité hover (réduit pour éviter les reliquats)
+    // Timeout légèrement supérieur au heartbeat pour éviter le clignotement en cas de latence
+    const ACTIVITY_TIMEOUT = 6000 // 6s max pour une activité hover (heartbeat à 1.5s)
         
         Object.entries(activities).forEach(([activityId, activity]: [string, any]) => {
           // Nettoyer les activités trop anciennes
@@ -343,20 +388,36 @@ class HybridMultiUserService {
     })
     this.rtdbListeners.push(() => off(activitiesRef, 'value', activitiesListener))
 
-    // 4. Écouter les locks en temps réel
+    // 4. Écouter les locks en temps réel (incrémental)
     const locksRef = ref(this.rtdb, `cellLocks/${this.currentTenantId}`)
-    const locksListener = onValue(locksRef, (snapshot) => {
-      this._locks.clear()
-      if (snapshot.exists()) {
-        const locks = snapshot.val()
-        Object.entries(locks).forEach(([lockId, lock]: [string, any]) => {
-          // Utiliser l'ID du lock comme clé unique
-          this._locks.set(lockId, lock)
-        })
+    const isLockExpired = (lock: any) => typeof lock?.expiresAt === 'number' && lock.expiresAt < Date.now()
+
+    const childAdded = onChildAdded(locksRef, (snapshot) => {
+      const lockId = snapshot.key as string
+      const lock = snapshot.val()
+      if (!isLockExpired(lock)) {
+        this._locks.set(lockId, lock)
+        this.notifyLockChanges()
+      }
+    })
+    const childChanged = onChildChanged(locksRef, (snapshot) => {
+      const lockId = snapshot.key as string
+      const lock = snapshot.val()
+      if (isLockExpired(lock)) {
+        this._locks.delete(lockId)
+      } else {
+        this._locks.set(lockId, lock)
       }
       this.notifyLockChanges()
     })
-    this.rtdbListeners.push(() => off(locksRef, 'value', locksListener))
+    const childRemoved = onChildRemoved(locksRef, (snapshot) => {
+      const lockId = snapshot.key as string
+      this._locks.delete(lockId)
+      this.notifyLockChanges()
+    })
+    this.rtdbListeners.push(() => off(locksRef, 'child_added', childAdded))
+    this.rtdbListeners.push(() => off(locksRef, 'child_changed', childChanged))
+    this.rtdbListeners.push(() => off(locksRef, 'child_removed', childRemoved))
 
     // 5. Écouter les sélections multiples des autres utilisateurs
     const selectionsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}`)
@@ -389,17 +450,34 @@ class HybridMultiUserService {
       console.warn('⚠️ Service non initialisé pour lock')
       return false
     }
+    if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
+      return false
+    }
+    if (!this.rtdb) return false
 
     const cellId = `${collaborateurId}_${date}`
     const lockId = `${cellId}_${this.currentSessionId}`
+    const now = Date.now()
+    const lastAttempt = this.lastLockAttemptPerCell.get(cellId) || 0
+    if (now - lastAttempt < 200) {
+      // Cooldown pour éviter spam
+      return false
+    }
+    this.lastLockAttemptPerCell.set(cellId, now)
+    if (this.inFlightLockOps.has(lockId)) {
+      return false
+    }
     
     // Vérifier si la cellule est déjà verrouillée par quelqu'un d'autre
     const existingLock = Array.from(this._locks.values()).find(
-      lock => lock.cellId === cellId && lock.sessionId !== this.currentSessionId
+      lock => lock.cellId === cellId && (!lock.expiresAt || lock.expiresAt > now)
     )
     
     if (existingLock) {
-      console.log('🔒 Cellule déjà verrouillée par', existingLock.userName)
+      // Idempotent si déjà verrouillé par nous
+      if (existingLock.sessionId === this.currentSessionId) {
+        return true
+      }
       return false
     }
 
@@ -418,31 +496,37 @@ class HybridMultiUserService {
 
       // Écrire dans RTDB
       const lockRef = ref(this.rtdb, `cellLocks/${this.currentTenantId}/${lockId}`)
+      this.inFlightLockOps.add(lockId)
       await set(lockRef, lock)
-      await onDisconnect(lockRef).remove()
+  try { await onDisconnect(lockRef).remove() } catch {}
 
-      console.log('🔒 Cellule verrouillée:', cellId)
       return true
     } catch (error) {
       console.error('❌ Erreur verrouillage cellule:', error)
       return false
+    } finally {
+      this.inFlightLockOps.delete(lockId)
     }
   }
 
   async unlockCell(collaborateurId: string, date: string): Promise<void> {
     if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+  if (!this.rtdb) return
 
     const cellId = `${collaborateurId}_${date}`
     const lockId = `${cellId}_${this.currentSessionId}`
+    if (this.inFlightLockOps.has(lockId)) return
 
     try {
       // Supprimer de RTDB
       const lockRef = ref(this.rtdb, `cellLocks/${this.currentTenantId}/${lockId}`)
+      this.inFlightLockOps.add(lockId)
       await remove(lockRef)
       
-      console.log('🔓 Cellule déverrouillée:', cellId)
     } catch (error) {
       console.warn('⚠️ Erreur déverrouillage cellule:', error)
+    } finally {
+      this.inFlightLockOps.delete(lockId)
     }
   }
 
@@ -451,10 +535,19 @@ class HybridMultiUserService {
   // ==========================================
 
   async hoverCell(collaborateurId: string, date: string) {
-    if (!this._isActive) return
+    if (emergencyOptimization?.isServiceDisabled?.('DISABLE_HOVER_BROADCAST')) {
+      return
+    }
+    if (!this._isActive) {
+      console.warn('⚠️ Service non actif pour hover')
+      return
+    }
 
-    // Nettoyer le survol précédent
-    await this.clearCurrentHover()
+  // Si nous survolons déjà exactement cette cellule, on fait juste un refresh
+  const sameAsCurrent = this._currentHover && this._currentHover.collaborateurId === collaborateurId && this._currentHover.date === date
+  // IMPORTANT: Ne pas supprimer l'activité existante lors d'un changement de cellule.
+  // On réécrit simplement la même entrée (un seul hover par user) avec la nouvelle cellId
+  // pour éviter toute fenêtre sans activité qui provoquerait du flicker côté clients.
 
     // Mémoriser le nouveau survol
     this._currentHover = { collaborateurId, date }
@@ -473,8 +566,55 @@ class HybridMultiUserService {
       startedAt: rtdbServerTimestamp(),
       tenantId: this.currentTenantId!
     }
+    
+    // Petit throttle: n'écrire que si changement de cellule OU > 120ms depuis dernière écriture
+    const now = Date.now()
+    const lastWriteKey = `${userHoverId}_lastWrite`
+    const lastWrite = (this as any)[lastWriteKey] as number | undefined
+    const THROTTLE_MS = 120
+  if (!sameAsCurrent || !lastWrite || (now - lastWrite) > THROTTLE_MS) {
+      await this.writeActivityToRTDB(userHoverId, activity)
+      ;(this as any)[lastWriteKey] = now
+    }
 
-    await this.writeActivityToRTDB(userHoverId, activity)
+    // Assurer le nettoyage automatique si la connexion se coupe
+    try {
+      const activityRef = ref(this.rtdb, `cellActivities/${this.currentTenantId}/${userHoverId}`)
+      await onDisconnect(activityRef).remove()
+    } catch {}
+
+    // Démarrer/rafraîchir le heartbeat pour maintenir le hover vivant tant que la cellule est survolée
+    if (this.hoverHeartbeatTimer) {
+      clearInterval(this.hoverHeartbeatTimer)
+      this.hoverHeartbeatTimer = null
+    }
+  this.hoverHeartbeatTimer = setInterval(async () => {
+      try {
+        // Si service inactif ou plus de hover courant, arrêter le heartbeat
+        if (!this._isActive || !this._currentHover) {
+          if (this.hoverHeartbeatTimer) {
+            clearInterval(this.hoverHeartbeatTimer)
+            this.hoverHeartbeatTimer = null
+          }
+          return
+        }
+        // Réécrire la même activité avec un nouveau timestamp pour garder l'entrée fraîche
+        const heartbeatActivity: CellActivity = {
+          type: 'hovering',
+          cellId: `${this._currentHover.collaborateurId}_${this._currentHover.date}`,
+          collaborateurId: this._currentHover.collaborateurId,
+          date: this._currentHover.date,
+          userId: this.currentUserId!,
+          userName: this.currentUserName!,
+          userEmail: this.currentUserEmail!,
+          sessionId: this.currentSessionId!,
+          startedAt: rtdbServerTimestamp(),
+          tenantId: this.currentTenantId!
+        }
+        // Heartbeat toutes 1500ms - pas besoin de throttle supplémentaire ici
+        await this.writeActivityToRTDB(userHoverId, heartbeatActivity)
+      } catch {}
+    }, 1500)
   }
 
   private async writeActivityToRTDB(activityId: string, activity: CellActivity) {
@@ -492,7 +632,10 @@ class HybridMultiUserService {
   }
 
   async clearCurrentHover() {
-    if (!this._isActive) return
+    if (!this._isActive) {
+      console.warn('⚠️ Service non actif pour clear hover')
+      return
+    }
     
     // NOUVEAU SYSTÈME : Supprimer le hover unique de cet utilisateur
     const userHoverId = `${this.currentUserId}_hover`
@@ -500,6 +643,10 @@ class HybridMultiUserService {
     await remove(activityRef)
     
     this._currentHover = null
+    if (this.hoverHeartbeatTimer) {
+      clearInterval(this.hoverHeartbeatTimer)
+      this.hoverHeartbeatTimer = null
+    }
   }
 
   // ==========================================
@@ -507,7 +654,9 @@ class HybridMultiUserService {
   // ==========================================
 
   async updateSelectedCells(selectedCells: Set<string>) {
-    if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+  if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+  if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) return
+  if (!this.rtdb) return
 
     try {
       const selectedCellsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}/${this.currentSessionId}`)
@@ -515,7 +664,7 @@ class HybridMultiUserService {
       if (selectedCells.size === 0) {
         // Supprimer toutes les sélections si aucune cellule sélectionnée
         await remove(selectedCellsRef)
-        console.log('🧹 Sélections supprimées de RTDB')
+        // Sélections supprimées
         return
       }
 
@@ -542,21 +691,22 @@ class HybridMultiUserService {
       })
 
       await set(selectedCellsRef, cellsData)
-      await onDisconnect(selectedCellsRef).remove()
+  try { await onDisconnect(selectedCellsRef).remove() } catch {}
       
-      console.log('📋 Sélections transmises à RTDB:', selectedCells.size, 'cellules')
+      // Sélections transmises
     } catch (error) {
       console.warn('⚠️ Erreur transmission sélections:', error)
     }
   }
 
   async clearSelectedCells() {
-    if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+  if (!this._isActive || !this.currentTenantId || !this.currentSessionId) return
+  if (!this.rtdb) return
     
     try {
       const selectedCellsRef = ref(this.rtdb, `selectedCells/${this.currentTenantId}/${this.currentSessionId}`)
       await remove(selectedCellsRef)
-      console.log('🧹 Sélections supprimées de RTDB')
+      // Sélections supprimées
     } catch (error) {
       console.warn('⚠️ Erreur suppression sélections:', error)
     }
@@ -588,19 +738,22 @@ class HybridMultiUserService {
 
   getHoveringUsers(collaborateurId: string, date: string): any[] {
     const cellId = `${collaborateurId}_${date}`
+    
     const users = Array.from(this._activities.values())
-      .filter(activity => 
-        activity.type === 'hovering' && 
-        activity.cellId === cellId &&
-        activity.sessionId !== this.currentSessionId  // Exclure seulement la session actuelle, pas l'utilisateur
-      )
+      .filter(activity => {
+        const isHovering = activity.type === 'hovering'
+        const sameCell = activity.cellId === cellId
+        const differentSession = activity.sessionId !== this.currentSessionId
+
+        return isHovering && sameCell && differentSession
+      })
       .map(activity => ({
         userId: activity.userId,
         userName: activity.userName,
         userEmail: activity.userEmail,
         sessionId: activity.sessionId
       }))
-    
+
     return users
   }
 
@@ -617,12 +770,61 @@ class HybridMultiUserService {
   }
 
   async init(tenantId: string, options?: any) {
-    // Adapter l'ancienne API d'initialisation
+    // Vérifier si déjà initialisé pour éviter les boucles infinies
+    if (this._isActive && this.currentTenantId === tenantId && this.currentUserId === options?.userId) {
+      console.warn('⚠️ HybridMultiUserService déjà initialisé pour ce tenant/utilisateur')
+      return true
+    }
+    
+    // Nettoyer l'ancienne session si elle existe
+    if (this._isActive) {
+      console.log('🔄 Nettoyage de l\'ancienne session avant ré-initialisation')
+      await this.cleanup()
+    }
+    
+    // Initialiser le service avec les données utilisateur
     if (!options || !options.userId || !options.userName || !options.userEmail) {
       console.warn('⚠️ Options d\'initialisation manquantes pour hybridMultiUserService')
-      return
+      return false
     }
-    return this.initialize(options.userId, options.userName, options.userEmail, tenantId)
+    
+    this.currentTenantId = tenantId
+    this.currentUserId = options.userId
+    this.currentUserName = options.userName
+    this.currentUserEmail = options.userEmail
+    this.currentSessionId = this.generateSessionId()
+    
+    console.log('🔑 COLLABORATEUR: Session générée', {
+      sessionId: this.currentSessionId?.slice(0, 12) + '...',
+      userId: this.currentUserId?.slice(0, 8) + '...',
+      userName: this.currentUserName
+    })
+    
+    // Initialiser RTDB si nécessaire
+    if (!this.rtdb) {
+      const { getDatabase } = await import('firebase/database')
+      this.rtdb = getDatabase()
+    }
+    
+    // Activer le service
+    this._isActive = true
+
+    // Démarrer les listeners en lecture (sessions/presence/activities/locks/selections)
+    this.startRealtimeListeners()
+
+    // Écrire la session/presence dans RTDB pour que les autres clients vous voient
+    try {
+      await this.setupRealtimePresence()
+    } catch (e) {
+      console.warn('⚠️ Impossible d’écrire la présence/session RTDB:', (e as any)?.message || e)
+      // On continue: les activités/locks restent fonctionnels même sans présence
+    }
+
+    return true
+  }
+  
+  private generateSessionId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2)
   }
 
   getStats() {
@@ -651,7 +853,7 @@ class HybridMultiUserService {
   async cleanup() {
     if (!this._isActive) return
 
-    console.log('🧹 Nettoyage du service multi-utilisateur...')
+    // Nettoyage du service
     
     // Nettoyer les listeners
     this.rtdbListeners.forEach(unsubscribe => unsubscribe())
@@ -671,10 +873,18 @@ class HybridMultiUserService {
     this._locks.clear()
     this._remoteSelections.clear()
     this._currentHover = null
+    if (this.hoverHeartbeatTimer) {
+      clearInterval(this.hoverHeartbeatTimer)
+      this.hoverHeartbeatTimer = null
+    }
+    
+    // Nettoyer les timers de débounce
+    this.notifyDebounceTimers.forEach(timer => clearTimeout(timer))
+    this.notifyDebounceTimers.clear()
     
     // Marquer comme inactif
     this._isActive = false
-    this.presenceWritesEnabled = false
+  // Présence désactivée au cleanup
     
     // Reset des identifiants
     this.currentUserId = null
@@ -685,16 +895,14 @@ class HybridMultiUserService {
     this.presenceRef = null
     this.sessionRef = null
     
-    console.log('✅ Service multi-utilisateur nettoyé')
+    // Service nettoyé
   }
 
   // ==========================================
   // UTILITAIRES
   // ==========================================
 
-  setPresenceWritesEnabled(enabled: boolean) {
-    this.presenceWritesEnabled = !!enabled
-  }
+  // setPresenceWritesEnabled retiré; utiliser emergencyOptimization
 }
 
 // ==========================================

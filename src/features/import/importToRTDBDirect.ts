@@ -2,7 +2,7 @@ import { rtdb as database } from '../../services/firebase'
 import { ref, set, runTransaction, serverTimestamp } from 'firebase/database'
 import type { NormalizedRow } from './types'
 import { slugify } from './parseWorkbook'
-import { normalizeDispo } from '../../services/normalization'
+import { normalizeDispo, canonicalizeLieu } from '../../services/normalization'
 
 // Types pour l'import RTDB
 export interface CollaborateurRTDB {
@@ -57,8 +57,17 @@ export interface ImportProgressRTDB {
 /**
  * Génère un ID déterministe pour une disposition
  */
-function makeDispoId(collaborateurId: string, date: string, heureDebut?: string): string {
-  const key = `${collaborateurId}_${date}_${heureDebut || 'default'}`
+export function makeDispoId(
+  collaborateurId: string,
+  date: string,
+  heureDebut?: string | null,
+  heureFin?: string | null,
+  lieu?: string | null
+): string {
+  const hd = (heureDebut || 'default').replace(/[^0-9]/g, '') || 'default'
+  const hf = (heureFin || 'default').replace(/[^0-9]/g, '') || 'default'
+  const canonLieu = canonicalizeLieu(lieu || '') || 'none'
+  const key = `${collaborateurId}_${date}_${hd}_${hf}_${canonLieu}`
   return key.replace(/[^a-zA-Z0-9_-]/g, '')
 }
 
@@ -134,13 +143,20 @@ function prepareDataForImportRTDB(data: NormalizedRow[], tenantId: string) {
     }
     
     // Créer la disposition
-    const dispoId = makeDispoId(slug, row.date, row.heure_debut)
     const normalized = normalizeDispo({
       date: row.date,
       lieu: row.lieu || null,
       heure_debut: row.heure_debut || null,
       heure_fin: row.heure_fin || null,
     })
+
+    const dispoId = makeDispoId(
+      slug,
+      row.date,
+      normalized.heure_debut || row.heure_debut || null,
+      normalized.heure_fin || row.heure_fin || null,
+      normalized.lieu || (row.lieu || null)
+    )
 
     dispositions.push({
       id: dispoId,

@@ -228,10 +228,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 // PlanningLayout retiré : TopNav globale dans App.vue
-import { parseWorkbook } from './parseWorkbook'
+import { parseWorkbook, slugify } from './parseWorkbook'
 import { importToRTDB, validateImportDataRTDB } from './importToRTDBDirect'
 import { disponibilitesRTDBService } from '../../services/disponibilitesRTDBService'
 import type { ParseResult, ImportStats, ImportProgress } from './types'
+import { normalizeDispo } from '../../services/normalization'
 
 // Refs
 const fileInput = ref<HTMLInputElement>()
@@ -299,28 +300,53 @@ const verifyImportedData = async () => {
     verifying.value = true
     step.value = 'verifying'
 
-    // Récupérer les données importées depuis RTDB
-    const importedDispos = await disponibilitesRTDBService.getAllDisponibilites()
-    
-    // Filtrer les données récemment importées (dernière heure)
-    const recentImports = importedDispos.filter(dispo => {
-      const importTime = new Date(dispo.updatedAt)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-      return importTime > oneHourAgo
+    // Récupérer toutes les dispos présentes dans RTDB (tenant aligné plus haut)
+    const allDispos = await disponibilitesRTDBService.getAllDisponibilites()
+
+    // Construire l'ensemble des IDs attendus d'après les lignes parsées (logique identique à l'import)
+    const { makeDispoId } = await import('./importToRTDBDirect')
+
+    const expectedIds = new Set(
+      parseResult.value.data.map(row => {
+        // Reproduire exactement la logique utilisée pendant l'import
+        const normalized = normalizeDispo({
+          date: row.date,
+          lieu: row.lieu || null,
+          heure_debut: row.heure_debut || null,
+          heure_fin: row.heure_fin || null,
+        })
+        const collabSlug = slugify(row.nom, row.prenom)
+        return makeDispoId(
+          collabSlug,
+          row.date,
+          normalized.heure_debut || row.heure_debut || null,
+          normalized.heure_fin || row.heure_fin || null,
+          normalized.lieu || row.lieu || null
+        )
+      })
+    )
+
+    const actualIds = new Set(allDispos.map(d => d.id))
+
+    let verified = 0
+    const missing: string[] = []
+    expectedIds.forEach(id => {
+      if (actualIds.has(id)) verified++
+      else missing.push(id)
     })
 
-    const importedCount = importStats.value.disposCreated + importStats.value.disposMerged
-    const verifiedCount = recentImports.length
-    const missingCount = Math.max(0, importedCount - verifiedCount)
+    const importedCount = expectedIds.size
+    const verifiedCount = verified
+    const missingCount = importedCount - verifiedCount
 
     verificationResult.value = {
       success: missingCount === 0 && verifiedCount > 0,
-      message: verifiedCount > 0 ? 'Données vérifiées avec succès' : 'Aucune donnée trouvée dans le planning',
+      message: missingCount === 0 ? 'Données vérifiées avec succès' : 'Des données semblent manquantes',
       details: {
         importedCount,
         verifiedCount,
         missingCount,
-        sampleData: recentImports.slice(0, 5)
+        sampleData: allDispos.slice(0, 5)
       }
     }
 
@@ -439,7 +465,9 @@ async function startImport() {
     
     console.log('👤 Utilisateur authentifié:', currentUser.email)
     
-    const tenantId = (import.meta as any).env?.VITE_TENANT_ID || 'keydispo'
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || 'keydispo'
+  // Aligner le service RTDB sur le tenant utilisé pour l'import
+  disponibilitesRTDBService.setTenantId(tenantId)
     console.log('🏢 Tenant ID:', tenantId)
     
     const stats = await importToRTDB(
@@ -454,7 +482,7 @@ async function startImport() {
     
     console.log('✅ Import terminé:', stats)
     
-    // Lancer la vérification des données
+  // Lancer la vérification des données
     await verifyImportedData()
     
   } catch (error) {

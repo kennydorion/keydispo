@@ -139,6 +139,9 @@
     v-model="showStatsModal"
     title="Statistiques multi-utilisateur"
     size="large"
+  @before-open="modalA11y.onBeforeOpen"
+  @open="modalA11y.onOpen"
+  @close="modalA11y.onClose"
   >
     <div class="stats-modal">
       <!-- Résumé général -->
@@ -236,6 +239,9 @@
     v-model="showActivitiesModal"
     title="Activités en cours"
     size="medium"
+  @before-open="modalA11y.onBeforeOpen"
+  @open="modalA11y.onOpen"
+  @close="modalA11y.onClose"
   >
     <div class="activities-modal">
       <div 
@@ -270,43 +276,32 @@
 // COMPOSANT SESSIONSTATUSBAR - VERSION AUTONOME PHASE 3
 // ==========================================
 
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
+import { useModalA11y } from '@/composables/useModalA11y'
 import { useToast } from 'vuestic-ui'
 import { useSessionDisplay } from '../services/sessionDisplayService'
-import type { DisplayUser, SessionStats, CellIndicator } from '../services/sessionDisplayService'
+import type { DisplayUser } from '../services/sessionDisplayService'
 
 // Utiliser directement le service sans props externes
 const sessionDisplay = useSessionDisplay()
 
 // Propriétés réactives depuis le service
-const displayUsers = computed(() => sessionDisplay.displayUsers.value)
+const displayUsers = computed(() => sessionDisplay.users.value)
 const sortedUsers = computed(() => sessionDisplay.sortedUsers.value) 
 const stats = computed(() => sessionDisplay.stats.value)
-const importantActivities = computed(() => sessionDisplay.importantActivities.value)
-const conflicts = computed(() => sessionDisplay.conflicts.value)
+const importantActivities = computed(() => sessionDisplay.getImportantCellIndicators())
+const conflicts = computed(() => sessionDisplay.getCurrentConflicts())
 
 // État système depuis le service
 const realtimeActive = computed(() => sessionDisplay.realtimeActive.value)
-const realtimeListeners = computed(() => sessionDisplay.realtimeListeners.value)
+const realtimeListeners = computed(() => sessionDisplay.realtimeListeners.value.length)
 const isEmulatorMode = computed(() => sessionDisplay.isEmulatorMode.value)
-
-// Interface maintenue pour compatibilité mais utilisée en interne
-interface Props {
-  // Props optionnelles pour override si nécessaire
-  maxAvatars?: number
-  showStats?: boolean
-}
 
 interface Emits {
   (e: 'cleanup-sessions'): void
   (e: 'show-realtime-stats'): void
   (e: 'debug-multi-user'): void
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  maxAvatars: 5,
-  showStats: true
-})
 
 const emit = defineEmits<Emits>()
 
@@ -317,6 +312,7 @@ const emit = defineEmits<Emits>()
 const showStatsModal = ref(false)
 const showActivitiesModal = ref(false)
 const { notify } = useToast()
+const modalA11y = useModalA11y()
 
 // ==========================================
 // MÉTHODES UTILITAIRES

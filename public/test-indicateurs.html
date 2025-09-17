@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Indicateurs Collaborateur</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            max-width: 800px;
+        }
+        
+        .test-cell {
+            width: 150px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #666;
+            box-sizing: border-box;
+            margin: 2px;
+            overflow: hidden;
+        }
+        
+        /* Styles identiques à ceux du composant */
+        .test-cell.has-presence {
+            position: relative;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 0 2px var(--hovering-user-color, #007bff),
+                        0 0 8px color-mix(in srgb, var(--hovering-user-color, #007bff) 20%, transparent) !important;
+            background: color-mix(in srgb, var(--hovering-user-color, #007bff) 10%, white) !important;
+            animation: presencePulse 2s infinite ease-in-out;
+        }
+
+        .test-cell.has-presence::after {
+            content: attr(data-initials);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 32px;
+            height: 32px;
+            background: var(--hovering-user-color, #007bff);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 2px solid white;
+            animation: presenceIndicator 2s infinite ease-in-out;
+        }
+
+        .test-cell.locked-by-others {
+            position: relative;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 0 2px #ef4444,
+                        0 0 8px rgba(239, 68, 68, 0.25) !important;
+            background: rgba(239, 68, 68, 0.15) !important;
+            cursor: not-allowed !important;
+            opacity: 0.5 !important;
+        }
+
+        .test-cell.locked-by-others::before {
+            content: "block";
+            font-family: 'Material Icons';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            border: 2px solid white;
+        }
+
+        .test-cell.selected-cell {
+            background: rgba(59, 130, 246, 0.15) !important;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 0 2px #3b82f6 !important;
+            position: relative;
+        }
+
+        .test-cell.selected-cell::before {
+            content: "✓";
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            z-index: 950;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+
+        .test-cell.selected-cell.has-presence::before {
+            top: 4px;
+            right: 4px;
+            width: 14px;
+            height: 14px;
+            font-size: 8px;
+            z-index: 1100;
+        }
+
+        .test-cell.selected-cell.has-presence::after {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        .test-cell.selected-cell.has-presence {
+            box-shadow: inset 0 0 0 3px var(--hovering-user-color, #007bff),
+                        0 0 12px color-mix(in srgb, var(--hovering-user-color, #007bff) 30%, transparent) !important;
+            background: linear-gradient(
+                45deg,
+                rgba(59, 130, 246, 0.2) 50%,
+                color-mix(in srgb, var(--hovering-user-color, #007bff) 15%, white) 50%
+            ) !important;
+        }
+
+        @keyframes presencePulse {
+            0%, 100% {
+                box-shadow: inset 0 0 0 2px var(--hovering-user-color, #007bff),
+                            0 0 8px color-mix(in srgb, var(--hovering-user-color, #007bff) 20%, transparent);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: inset 0 0 0 2px var(--hovering-user-color, #007bff),
+                            0 0 16px color-mix(in srgb, var(--hovering-user-color, #007bff) 40%, transparent);
+                transform: scale(1.01);
+            }
+        }
+
+        @keyframes presenceIndicator {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        .description {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test des Indicateurs de Présence - Interface Collaborateur</h1>
+    
+    <div class="test-grid">
+        <div>
+            <div class="description">Cellule normale</div>
+            <div class="test-cell">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Admin KP survole (bleu)</div>
+            <div class="test-cell has-presence" 
+                 style="--hovering-user-color: #007bff" 
+                 data-initials="KP">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Admin KP survole (vert)</div>
+            <div class="test-cell has-presence" 
+                 style="--hovering-user-color: #10b981" 
+                 data-initials="KP">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Cellule verrouillée</div>
+            <div class="test-cell locked-by-others">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Cellule sélectionnée</div>
+            <div class="test-cell selected-cell">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Sélectionnée + Admin survole</div>
+            <div class="test-cell selected-cell has-presence" 
+                 style="--hovering-user-color: #f59e0b" 
+                 data-initials="KP">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Sélectionnée + Verrouillée</div>
+            <div class="test-cell selected-cell locked-by-others">
+                Disponible
+            </div>
+        </div>
+        
+        <div>
+            <div class="description">Cellule vide</div>
+            <div class="test-cell" style="color: #999;">
+                Cliquer pour ajouter
+            </div>
+        </div>
+    </div>
+    
+    <h2>Description des indicateurs :</h2>
+    <ul>
+        <li><strong>KP au centre</strong> : Un admin KeyPlacement survole cette cellule</li>
+        <li><strong>🔒 au centre</strong> : Cellule verrouillée/utilisée par un autre utilisateur</li>
+        <li><strong>✓ en haut à droite</strong> : Cellule sélectionnée pour action en lot</li>
+        <li><strong>Bordure colorée + animation</strong> : Présence active d'autres utilisateurs</li>
+    </ul>
+</body>
+</html>

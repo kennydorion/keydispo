@@ -9,21 +9,22 @@ export class EmergencyOptimizationService {
   
   // Flags d'urgence pour désactiver des fonctionnalités
   public static EMERGENCY_MODE = {
-    DISABLE_PRESENCE_TRACKING: true,     // Désactiver le tracking de présence
-    DISABLE_CELL_STATE_SYNC: true,       // Désactiver la sync des états de cellules
-    DISABLE_AUTO_CLEANUP: true,          // Désactiver le nettoyage automatique
-    DISABLE_REALTIME_STATS: true,        // Désactiver les stats temps réel
-    REDUCE_LISTENER_COUNT: true,         // Réduire le nombre de listeners
-    FORCE_CACHE_MODE: true               // Forcer l'utilisation du cache
+    DISABLE_PRESENCE_TRACKING: false,    // Désactiver le tracking de présence
+    DISABLE_CELL_STATE_SYNC: false,      // Désactiver la sync des états de cellules
+    DISABLE_AUTO_CLEANUP: false,         // Désactiver le nettoyage automatique
+    DISABLE_REALTIME_STATS: false,       // Désactiver les stats temps réel
+  REDUCE_LISTENER_COUNT: false,        // Réduire le nombre de listeners
+  FORCE_CACHE_MODE: false,             // Forcer l'utilisation du cache
+  DISABLE_HOVER_BROADCAST: false       // Désactiver l'émission des survols
   }
   
   // Limites d'urgence
   public static EMERGENCY_LIMITS = {
-    MAX_FIRESTORE_READS_PER_MINUTE: 100,   // Limite absolue de lectures/minute
-    MAX_CONCURRENT_LISTENERS: 3,           // Max listeners simultanés
-    MAX_DOCS_PER_QUERY: 20,               // Max documents par requête
+    MAX_FIRESTORE_READS_PER_MINUTE: 200,   // Limite absolue de lectures/minute
+    MAX_CONCURRENT_LISTENERS: 10,          // Max listeners simultanés
+    MAX_DOCS_PER_QUERY: 50,               // Max documents par requête
     CACHE_TTL_SECONDS: 30,                // TTL cache ultra-court
-    MAX_SESSIONS_TO_CLEANUP: 10           // Max sessions à nettoyer d'un coup
+    MAX_SESSIONS_TO_CLEANUP: 20           // Max sessions à nettoyer d'un coup
   }
   
   // Compteurs de surveillance
@@ -131,8 +132,9 @@ export class EmergencyOptimizationService {
       DISABLE_CELL_STATE_SYNC: true,
       DISABLE_AUTO_CLEANUP: true,
       DISABLE_REALTIME_STATS: true,
-      REDUCE_LISTENER_COUNT: true,
-      FORCE_CACHE_MODE: true
+  REDUCE_LISTENER_COUNT: true,
+  FORCE_CACHE_MODE: true,
+  DISABLE_HOVER_BROADCAST: true
     }
     
     EmergencyOptimizationService.EMERGENCY_LIMITS.MAX_FIRESTORE_READS_PER_MINUTE = 50
@@ -151,8 +153,9 @@ export class EmergencyOptimizationService {
       DISABLE_CELL_STATE_SYNC: false,
       DISABLE_AUTO_CLEANUP: false,
       DISABLE_REALTIME_STATS: false,
-      REDUCE_LISTENER_COUNT: false,
-      FORCE_CACHE_MODE: false
+  REDUCE_LISTENER_COUNT: false,
+  FORCE_CACHE_MODE: false,
+  DISABLE_HOVER_BROADCAST: false
     }
     
     EmergencyOptimizationService.EMERGENCY_LIMITS.MAX_FIRESTORE_READS_PER_MINUTE = 200

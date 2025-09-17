@@ -74,7 +74,6 @@ export class UserPreferencesService {
       const now = Date.now()
       
       if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-        console.log('📦 Préférences chargées depuis le cache')
         userPreferences.value = cached.preferences
         notifyPreferencesChange()
         return cached.preferences
@@ -115,7 +114,7 @@ export class UserPreferencesService {
       } else {
         // Document n'existe pas, créer avec les préférences par défaut
         console.log('📝 Création du document utilisateur avec préférences par défaut')
-        await this.initializeUserDocument(userId)
+        await UserPreferencesService.initializeUserDocument(userId)
         userPreferences.value = { ...defaultPreferences }
         notifyPreferencesChange()
         return userPreferences.value
@@ -128,7 +127,7 @@ export class UserPreferencesService {
       if (error?.code === 'permission-denied') {
         console.log('🔐 Erreur de permission, tentative de création du document utilisateur')
         try {
-          await this.initializeUserDocument(userId)
+          await UserPreferencesService.initializeUserDocument(userId)
           userPreferences.value = { ...defaultPreferences }
           notifyPreferencesChange()
           return userPreferences.value

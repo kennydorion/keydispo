@@ -4,7 +4,7 @@
       <img src="/keyplacementlogo.svg" alt="Key Placement" />
     </div>
     <ul class="sidebar-list">
-      <li v-for="item in items" :key="item.name">
+      <li v-for="item in items" :key="item.path">
         <router-link :to="item.path" class="sidebar-link" :class="{active: $route.path.startsWith(item.path)}" :aria-current="$route.path.startsWith(item.path) ? 'page' : undefined">
           <span class="sidebar-icon material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
           <span class="sidebar-label">{{ item.label }}</span>
@@ -16,14 +16,10 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import { InterfaceManager } from '../services/interfaceManager'
 const $route = useRoute()
-const items = [
-  { name: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: 'dashboard' },
-  { name: 'planning', label: 'Planning', path: '/semaine', icon: 'calendar_month' },
-  { name: 'collaborateurs', label: 'Collaborateurs', path: '/collaborateurs', icon: 'group' },
-  { name: 'import', label: 'Import', path: '/import', icon: 'upload' },
-  { name: 'parametres', label: 'Paramètres', path: '/parametres', icon: 'settings' }
-]
+const items = computed(() => InterfaceManager.navigationItems.value)
 </script>
 
 <style scoped>

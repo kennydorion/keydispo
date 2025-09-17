@@ -5,13 +5,7 @@ import {
   get as rtdbGet,
   remove as rtdbRemove,
   onValue as rtdbOnValue,
-  off as rtdbOff,
-  query as rtdbQuery,
-  orderByChild,
-  equalTo,
-  startAt,
-  endAt,
-  limitToFirst
+  off as rtdbOff
 } from 'firebase/database'
 import { rtdb, auth } from './firebase'
 import { AuthService } from './auth'
@@ -119,7 +113,7 @@ export interface DisponibiliteRTDB {
   
   // Nouvelles fonctionnalités
   type?: 'standard' | 'formation' | 'urgence' | 'maintenance'
-  timeKind?: 'fixed' | 'flexible' | 'oncall'
+  timeKind?: 'fixed' | 'flexible' | 'oncall' | 'overnight'
   slots?: string[]
   isFullDay?: boolean
   
@@ -151,6 +145,17 @@ export class DisponibilitesRTDBService {
     return this.instance
   }
 
+  /**
+   * Définir dynamiquement le tenantId (utile pour l'interface collaborateur)
+   */
+  public setTenantId(tenantId: string) {
+    if (!tenantId || tenantId === this.tenantId) return
+    console.log(`🔧 RTDB Service: changement de tenantId -> ${tenantId} (ancien: ${this.tenantId})`)
+    this.tenantId = tenantId
+    // Invalider le cache lié aux dispos car le tenant change
+    this.cache.invalidate('dispos_')
+  }
+
   // =============================================
   // UTILITAIRES ET HELPERS OPTIMISÉS
   // =============================================
@@ -160,7 +165,9 @@ export class DisponibilitesRTDBService {
    */
   private getDisposRef(yearMonth?: string) {
     if (yearMonth) {
-      // Structure optimisée : /tenants/{tenant}/disponibilites/{YYYY-MM}/{id}
+  // Structure optimisée ou par date :
+  //  - /tenants/{tenant}/disponibilites/{YYYY-MM}/{id}
+  //  - /tenants/{tenant}/disponibilites/{YYYY-MM-DD}/{id}
       return rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${yearMonth}`)
     }
     // Fallback vers l'ancienne structure pour la compatibilité
@@ -199,6 +206,130 @@ export class DisponibilitesRTDBService {
   }
 
   /**
+   * Obtenir tous les jours dans une plage de dates (YYYY-MM-DD)
+   */
+  private getDaysInRange(startDate: string, endDate: string): string[] {
+    const days: string[] = []
+    const start = new Date(startDate + 'T00:00:00')
+    const end = new Date(endDate + 'T00:00:00')
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().split('T')[0]
+      days.push(iso)
+    }
+    return days
+  }
+
+  private isYYYYMM(key: string): boolean {
+    return /^\d{4}-\d{2}$/.test(key)
+  }
+
+  private isYYYYMMDD(key: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(key)
+  }
+
+  /**
+   * Clé de tri robuste: d'abord date (hors de cette fonction), puis un nom affichable.
+   * Fallback sur collaborateurId si nom/prénom manquants (cas import RTDB).
+   */
+  private getDisplayName(dispo: Partial<DisponibiliteRTDB>): string {
+    const first = (dispo.prenom || '').toString().trim()
+    const last = (dispo.nom || '').toString().trim()
+    const full = `${first} ${last}`.trim()
+    if (full) return full.toLowerCase()
+    return (dispo.collaborateurId || '').toString().toLowerCase()
+  }
+
+  private compareDispos(a: DisponibiliteRTDB, b: DisponibiliteRTDB): number {
+    if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '')
+    return this.getDisplayName(a).localeCompare(this.getDisplayName(b))
+  }
+
+  /**
+   * Aplatit une structure potentielle depuis la racine:
+   *  - racine -> {id} -> dispo
+   *  - racine -> {YYYY-MM} -> {id}|{YYYY-MM-DD}->{id}
+   *  - racine -> {YYYY-MM-DD} -> {id}
+   */
+  private flattenDisponibilitesFromRootSnapshot(
+    snapshot: any,
+    startDate?: string,
+    endDate?: string
+  ): DisponibiliteRTDB[] {
+    const out: DisponibiliteRTDB[] = []
+    if (!snapshot.exists()) return out
+
+    const within = (d: string) => {
+      if (!startDate || !endDate) return true
+      return d >= startDate && d <= endDate
+    }
+
+    snapshot.forEach((child1: any) => {
+      const key1: string = child1.key
+      const val1 = child1.val()
+
+      if (this.isYYYYMMDD(key1)) {
+        // Niveau date directe
+        const dateKey = key1
+        if (!within(dateKey)) return
+        if (val1 && typeof val1 === 'object') {
+          Object.values(val1).forEach((rec: any) => {
+            if (rec && rec.tenantId === this.tenantId && rec.date && within(rec.date)) {
+              // Garantir un ID unique
+              if (!rec.id) {
+                rec.id = `${rec.collaborateurId || 'unknown'}_${rec.date || 'nodate'}_${rec.heure_debut || '0000'}_${rec.heure_fin || '2359'}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+              }
+              out.push(rec as DisponibiliteRTDB)
+            }
+          })
+        }
+      } else if (this.isYYYYMM(key1)) {
+        // Niveau mois potentiel: peut contenir des ids ou des dates
+        child1.forEach((child2: any) => {
+          const key2: string = child2.key
+          const val2 = child2.val()
+          if (this.isYYYYMMDD(key2)) {
+            const dateKey = key2
+            if (!within(dateKey)) return
+            if (val2 && typeof val2 === 'object') {
+              Object.values(val2).forEach((rec: any) => {
+                if (rec && rec.tenantId === this.tenantId && rec.date && within(rec.date)) {
+                  // Garantir un ID unique
+                  if (!rec.id) {
+                    rec.id = `${rec.collaborateurId || 'unknown'}_${rec.date || 'nodate'}_${rec.heure_debut || '0000'}_${rec.heure_fin || '2359'}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+                  }
+                  out.push(rec as DisponibiliteRTDB)
+                }
+              })
+            }
+          } else {
+            // id -> dispo
+            const rec = val2
+            if (rec && rec.tenantId === this.tenantId && rec.date && within(rec.date)) {
+              // Garantir un ID unique
+              if (!rec.id) {
+                rec.id = `${rec.collaborateurId || 'unknown'}_${rec.date || 'nodate'}_${rec.heure_debut || '0000'}_${rec.heure_fin || '2359'}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+              }
+              out.push(rec as DisponibiliteRTDB)
+            }
+          }
+        })
+      } else {
+        // id à la racine
+        const rec = val1
+        if (rec && rec.tenantId === this.tenantId && rec.date && within(rec.date)) {
+          // Garantir un ID unique
+          if (!rec.id) {
+            rec.id = `${rec.collaborateurId || 'unknown'}_${rec.date || 'nodate'}_${rec.heure_debut || '0000'}_${rec.heure_fin || '2359'}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+          }
+          out.push(rec as DisponibiliteRTDB)
+        }
+      }
+    })
+
+    return out
+  }
+
+  /**
    * Générer un ID unique pour une disponibilité
    */
   private generateDispoId(): string {
@@ -209,6 +340,9 @@ export class DisponibilitesRTDBService {
    * Formater une disponibilité pour RTDB (structure plate)
    */
   private formatDispoForRTDB(dispo: Partial<DisponibiliteRTDB>): any {
+    // DEBUG: Tracer l'email avant formatage
+    console.log('🔧 formatDispoForRTDB - dispo.email entrant:', dispo.email)
+    
     const formatted: any = {
       id: dispo.id || this.generateDispoId(),
       collaborateurId: dispo.collaborateurId || '',
@@ -230,6 +364,9 @@ export class DisponibilitesRTDBService {
       isArchived: dispo.isArchived || false,
       hasConflict: dispo.hasConflict || false
     }
+
+    // DEBUG: Tracer l'email après formatage
+    console.log('🔧 formatDispoForRTDB - formatted.email sortant:', formatted.email)
 
     // Ajouter les propriétés optionnelles seulement si elles ne sont pas undefined
     if (dispo.type !== undefined) {
@@ -260,12 +397,26 @@ export class DisponibilitesRTDBService {
    */
   async createDisponibilite(dispo: Partial<DisponibiliteRTDB>): Promise<string> {
     try {
-      const formattedDispo = this.formatDispoForRTDB(dispo)
-      const dispoRef = rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${formattedDispo.id}`)
+      // DEBUG: Tracer l'email reçu
+      console.log('🚀 RTDB Service - createDisponibilite called with:', dispo)
+      console.log('📧 Email dans la disponibilité reçue:', dispo.email)
+      
+  const formattedDispo = this.formatDispoForRTDB(dispo)
+      
+      // DEBUG: Tracer l'email après formatage
+      console.log('📧 Email après formatage:', formattedDispo.email)
+      
+      // Écrire sous la date si présente (structure par date), sinon fallback racine
+      const basePath = `tenants/${this.tenantId}/disponibilites`
+      const dispoPath = formattedDispo.date && this.isYYYYMMDD(formattedDispo.date)
+        ? `${basePath}/${formattedDispo.date}/${formattedDispo.id}`
+        : `${basePath}/${formattedDispo.id}`
+      const dispoRef = rtdbRef(rtdb, dispoPath)
       
       await rtdbSet(dispoRef, formattedDispo)
       
       console.log(`✅ Disponibilité créée en RTDB: ${formattedDispo.id}`)
+      console.log('📧 Email final sauvegardé:', formattedDispo.email)
       return formattedDispo.id
     } catch (error) {
       console.error('❌ Erreur création disponibilité RTDB:', error)
@@ -274,25 +425,94 @@ export class DisponibilitesRTDBService {
   }
 
   /**
+   * Trouve le chemin exact d'une disponibilité par son id, quelle que soit la structure de stockage.
+   */
+  private async findDispoPathById(id: string): Promise<string | null> {
+    const rootRef = this.getDisposRef()
+    const snapshot = await rtdbGet(rootRef)
+    if (!snapshot.exists()) return null
+
+    const base = `tenants/${this.tenantId}/disponibilites`
+
+    // 1) id directement à la racine
+    if (snapshot.hasChild(id)) {
+      return `${base}/${id}`
+    }
+
+    // 2) Parcours des niveaux 1 -> (YYYY-MM | YYYY-MM-DD | ids)
+    let foundPath: string | null = null
+    snapshot.forEach((child1: any) => {
+      if (foundPath) return true // break
+      const key1: string = child1.key
+
+      // 2a) niveau date direct YYYY-MM-DD
+      if (this.isYYYYMMDD(key1)) {
+        if (child1.hasChild(id)) {
+          foundPath = `${base}/${key1}/${id}`
+          return true
+        }
+        return false
+      }
+
+      // 2b) niveau mois YYYY-MM (peut contenir ids ou sous-niveaux dates)
+      if (this.isYYYYMM(key1)) {
+        child1.forEach((child2: any) => {
+          if (foundPath) return true
+          const key2: string = child2.key
+          if (this.isYYYYMMDD(key2)) {
+            if (child2.hasChild(id)) {
+              foundPath = `${base}/${key1}/${key2}/${id}`
+              return true
+            }
+          } else {
+            if (key2 === id) {
+              foundPath = `${base}/${key1}/${id}`
+              return true
+            }
+          }
+          return false
+        })
+        return false
+      }
+
+      // 2c) autre clé: traiter comme id (sécurité déjà couverte par 1))
+      return false
+    })
+
+    return foundPath
+  }
+
+  /**
    * Mettre à jour une disponibilité existante
    */
   async updateDisponibilite(id: string, updates: Partial<DisponibiliteRTDB>): Promise<void> {
     try {
-      // Récupérer la disponibilité existante pour incrémenter la version
+      // Trouver la dispo existante et son chemin
       const existing = await this.getDisponibilite(id)
-      if (!existing) {
-        throw new Error(`Disponibilité ${id} non trouvée`)
-      }
+      if (!existing) throw new Error(`Disponibilité ${id} non trouvée`)
+
+      const currentPath = await this.findDispoPathById(id)
+      if (!currentPath) throw new Error(`Chemin RTDB introuvable pour la dispo ${id}`)
 
       const updatedDispo = this.formatDispoForRTDB({
         ...existing,
         ...updates,
         id,
-        version: existing.version + 1
+        version: (existing.version || 0) + 1
       })
 
-      const dispoRef = rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${id}`)
-      await rtdbSet(dispoRef, updatedDispo)
+      const basePath = `tenants/${this.tenantId}/disponibilites`
+      const newPath = updatedDispo.date && this.isYYYYMMDD(updatedDispo.date)
+        ? `${basePath}/${updatedDispo.date}/${id}`
+        : `${basePath}/${id}`
+
+      if (currentPath !== newPath) {
+        // Déplacement: écrire au nouveau chemin puis supprimer l'ancien
+        await rtdbSet(rtdbRef(rtdb, newPath), updatedDispo)
+        await rtdbRemove(rtdbRef(rtdb, currentPath))
+      } else {
+        await rtdbSet(rtdbRef(rtdb, currentPath), updatedDispo)
+      }
       
       console.log(`✅ Disponibilité mise à jour en RTDB: ${id}`)
     } catch (error) {
@@ -306,8 +526,12 @@ export class DisponibilitesRTDBService {
    */
   async deleteDisponibilite(id: string): Promise<void> {
     try {
-      const dispoRef = rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${id}`)
-      await rtdbRemove(dispoRef)
+      const path = await this.findDispoPathById(id)
+      if (!path) {
+        console.warn(`⚠️ Chemin indisponible pour suppression dispo ${id} (déjà supprimée ?)`)
+        return
+      }
+      await rtdbRemove(rtdbRef(rtdb, path))
       
       console.log(`✅ Disponibilité supprimée de RTDB: ${id}`)
     } catch (error) {
@@ -321,13 +545,16 @@ export class DisponibilitesRTDBService {
    */
   async getDisponibilite(id: string): Promise<DisponibiliteRTDB | null> {
     try {
-      const dispoRef = rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${id}`)
-      const snapshot = await rtdbGet(dispoRef)
-      
-      if (snapshot.exists()) {
-        return snapshot.val() as DisponibiliteRTDB
-      }
-      return null
+  // Essayer racine directe
+  const directRef = rtdbRef(rtdb, `tenants/${this.tenantId}/disponibilites/${id}`)
+  const directSnap = await rtdbGet(directRef)
+  if (directSnap.exists()) return directSnap.val() as DisponibiliteRTDB
+
+  // Sinon, chercher le chemin
+  const path = await this.findDispoPathById(id)
+  if (!path) return null
+  const snap = await rtdbGet(rtdbRef(rtdb, path))
+  return snap.exists() ? (snap.val() as DisponibiliteRTDB) : null
     } catch (error) {
       console.error('❌ Erreur récupération disponibilité RTDB:', error)
       return null
@@ -343,19 +570,15 @@ export class DisponibilitesRTDBService {
    */
   async getDisponibilitesByDateRange(startDate: string, endDate: string): Promise<DisponibiliteRTDB[]> {
     try {
-      console.log('🔍 RTDB: getDisponibilitesByDateRange (OPTIMISÉ)', { startDate, endDate, tenantId: this.tenantId })
-      
       // Vérifier le cache d'abord
       const cacheKey = this.getCacheKey(startDate, endDate)
       const cached = this.cache.get(cacheKey)
       if (cached) {
-        console.log('⚡ Cache hit - pas de téléchargement RTDB')
         return cached.filter(d => d.date >= startDate && d.date <= endDate)
       }
 
       // Obtenir les mois concernés pour des requêtes ciblées
       const months = this.getMonthsInRange(startDate, endDate)
-      console.log(`� Requête sur ${months.length} mois:`, months)
 
       const allDisponibilites: DisponibiliteRTDB[] = []
 
@@ -377,10 +600,8 @@ export class DisponibilitesRTDBService {
             })
           }
           
-          console.log(`📊 Mois ${yearMonth}: ${monthDispos.length} disponibilités`)
           return monthDispos
         } catch (monthError) {
-          console.log(`⚠️ Mois ${yearMonth} non trouvé (structure optimisée pas encore utilisée)`)
           return []
         }
       })
@@ -391,22 +612,43 @@ export class DisponibilitesRTDBService {
         allDisponibilites.push(...monthDispos)
       })
 
-      // Si aucune donnée trouvée dans la nouvelle structure, utiliser l'ancienne
+      // Si aucune donnée trouvée dans la structure mois, essayer structure par jour
       if (allDisponibilites.length === 0) {
-        console.log('🔄 Fallback vers structure classique')
-        return this.getDisponibilitesByDateRangeFallback(startDate, endDate)
+        const days = this.getDaysInRange(startDate, endDate)
+        const dayPromises = days.map(async (day) => {
+          try {
+            const dayRef = this.getDisposRef(day)
+            const snap = await rtdbGet(dayRef)
+            const arr: DisponibiliteRTDB[] = []
+            if (snap.exists()) {
+              const val = snap.val()
+              if (val && typeof val === 'object') {
+                Object.values(val).forEach((rec: any) => {
+                  if (rec && rec.tenantId === this.tenantId && rec.date >= startDate && rec.date <= endDate) {
+                    arr.push(rec as DisponibiliteRTDB)
+                  }
+                })
+              }
+            }
+            return arr
+          } catch {
+            return []
+          }
+        })
+        const dayResults = await Promise.all(dayPromises)
+        dayResults.forEach(arr => allDisponibilites.push(...arr))
+
+        if (allDisponibilites.length === 0) {
+          return this.getDisponibilitesByDateRangeFallback(startDate, endDate)
+        }
       }
 
-      // Trier par date puis par nom
-      allDisponibilites.sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date)
-        return a.nom.localeCompare(b.nom)
-      })
+  // Trier par date puis par nom (robuste)
+  allDisponibilites.sort((a, b) => this.compareDispos(a, b))
 
       // Mettre en cache le résultat
       this.cache.set(cacheKey, allDisponibilites)
 
-      console.log(`✅ RTDB optimisé: ${allDisponibilites.length} disponibilités (${months.length} mois)`)
       return allDisponibilites
       
     } catch (error) {
@@ -420,38 +662,16 @@ export class DisponibilitesRTDBService {
    */
   private async getDisponibilitesByDateRangeFallback(startDate: string, endDate: string): Promise<DisponibiliteRTDB[]> {
     try {
-      console.log('🔄 RTDB: Fallback vers ancienne structure')
       const disposRef = this.getDisposRef()
       const snapshot = await rtdbGet(disposRef)
-      const disponibilites: DisponibiliteRTDB[] = []
-
-      if (snapshot.exists()) {
-        let totalCount = 0
-        let filteredCount = 0
-        
-        snapshot.forEach((child) => {
-          totalCount++
-          const dispo = child.val() as DisponibiliteRTDB
-          
-          if (dispo.tenantId === this.tenantId && 
-              dispo.date >= startDate && 
-              dispo.date <= endDate) {
-            disponibilites.push(dispo)
-            filteredCount++
-          }
-        })
-
-        console.log(`📊 Fallback RTDB: ${filteredCount}/${totalCount} disponibilités filtrées`)
-      }
+      const disponibilites = this.flattenDisponibilitesFromRootSnapshot(snapshot, startDate, endDate)
+        .sort((a, b) => this.compareDispos(a, b))
 
       // Mettre en cache même le fallback
       const cacheKey = this.getCacheKey(startDate, endDate)
       this.cache.set(cacheKey, disponibilites)
 
-      return disponibilites.sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date)
-        return a.nom.localeCompare(b.nom)
-      })
+      return disponibilites
     } catch (error) {
       console.error('❌ Erreur fallback RTDB:', error)
       return []
@@ -464,23 +684,11 @@ export class DisponibilitesRTDBService {
   async getDisponibilitesByCollaborateur(collaborateurId: string): Promise<DisponibiliteRTDB[]> {
     try {
       const disposRef = this.getDisposRef()
-      const collabQuery = rtdbQuery(
-        disposRef,
-        orderByChild('collaborateurId'),
-        equalTo(collaborateurId)
-      )
-      
-      const snapshot = await rtdbGet(collabQuery)
-      const disponibilites: DisponibiliteRTDB[] = []
-      
-      if (snapshot.exists()) {
-        snapshot.forEach((child) => {
-          const dispo = child.val() as DisponibiliteRTDB
-          if (dispo.tenantId === this.tenantId) {
-            disponibilites.push(dispo)
-          }
-        })
-      }
+      const snapshot = await rtdbGet(disposRef)
+      // Aplatis pour supporter racine -> dates -> ids
+      const disponibilites = this.flattenDisponibilitesFromRootSnapshot(snapshot)
+        .filter(d => d.tenantId === this.tenantId && d.collaborateurId === collaborateurId)
+        .sort((a, b) => this.compareDispos(a, b))
       
       console.log(`👤 RTDB: ${disponibilites.length} disponibilités trouvées pour collaborateur ${collaborateurId}`)
       return disponibilites
@@ -498,27 +706,11 @@ export class DisponibilitesRTDBService {
       const targetTenantId = tenantIdParam || this.tenantId
       const disposRef = this.getDisposRef()
       const snapshot = await rtdbGet(disposRef)
-      const disponibilites: DisponibiliteRTDB[] = []
-      
-      if (snapshot.exists()) {
-        snapshot.forEach((child) => {
-          const dispo = child.val() as DisponibiliteRTDB
-          if (dispo.tenantId === targetTenantId) {
-            disponibilites.push(dispo)
-          }
-        })
-      }
-      
-      // Trier par date puis par nom
-      disponibilites.sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date)
-        return a.nom.localeCompare(b.nom)
-      })
-      
-      // Appliquer la limite si spécifiée
+      // Aplatis pour supporter racine -> dates -> ids
+      const disponibilites = this.flattenDisponibilitesFromRootSnapshot(snapshot)
+        .filter(d => d.tenantId === targetTenantId)
+        .sort((a, b) => this.compareDispos(a, b))
       const result = limit ? disponibilites.slice(0, limit) : disponibilites
-      
-      console.log(`📊 RTDB: ${result.length} disponibilités totales (limit: ${limit || 'aucune'})`)
       return result
     } catch (error) {
       console.error('❌ Erreur récupération toutes disponibilités RTDB:', error)
@@ -545,93 +737,59 @@ export class DisponibilitesRTDBService {
       const months = this.getMonthsInRange(startDate, endDate)
       const cacheKey = this.getCacheKey(startDate, endDate)
       
-      // Si peu de mois (≤ 3), utiliser des listeners ciblés par mois
+      // Si plage courte (≤ 3 mois), écouter par jours pour coller à la structure d'import
       if (months.length <= 3) {
-        console.log(`📡 Listener RTDB optimisé par mois: ${months.length} mois`)
-        
-        const monthListeners: Array<() => void> = []
-        const monthData = new Map<string, DisponibiliteRTDB[]>()
-        
+        const days = this.getDaysInRange(startDate, endDate)
+        const dayListeners: Array<() => void> = []
+        const dayData = new Map<string, DisponibiliteRTDB[]>()
+
         const aggregateAndCallback = () => {
           const allDispos: DisponibiliteRTDB[] = []
-          monthData.forEach(dispos => allDispos.push(...dispos))
-          
-          // Filtrer et trier
+          dayData.forEach(dispos => allDispos.push(...dispos))
           const filtered = allDispos
             .filter(d => d.tenantId === this.tenantId && d.date >= startDate && d.date <= endDate)
-            .sort((a, b) => {
-              if (a.date !== b.date) return a.date.localeCompare(b.date)
-              return a.nom.localeCompare(b.nom)
-            })
-          
-          // Mettre en cache
+            .sort((a, b) => this.compareDispos(a, b))
           this.cache.set(cacheKey, filtered, listenerId)
-          
-          console.log(`🔄 Listener optimisé: ${filtered.length} disponibilités (${months.length} mois)`)
+          console.log(`🔄 Listener par jour: ${filtered.length} disponibilités (${days.length} jours)`) 
           callback(filtered)
         }
-        
-        // Créer un listener par mois
-        months.forEach(yearMonth => {
-          const monthRef = this.getDisposRef(yearMonth)
-          
-          const handleMonthSnapshot = (snapshot: any) => {
-            const monthDispos: DisponibiliteRTDB[] = []
-            
+
+        days.forEach(day => {
+          const dayRef = this.getDisposRef(day)
+          const handleDaySnapshot = (snapshot: any) => {
+            const arr: DisponibiliteRTDB[] = []
             if (snapshot.exists()) {
-              snapshot.forEach((child: any) => {
-                const dispo = child.val() as DisponibiliteRTDB
-                if (dispo.tenantId === this.tenantId) {
-                  monthDispos.push(dispo)
-                }
-              })
+              const val = snapshot.val()
+              if (val && typeof val === 'object') {
+                Object.values(val).forEach((rec: any) => {
+                  if (rec && rec.tenantId === this.tenantId) {
+                    arr.push(rec as DisponibiliteRTDB)
+                  }
+                })
+              }
             }
-            
-            monthData.set(yearMonth, monthDispos)
+            dayData.set(day, arr)
             aggregateAndCallback()
           }
-          
-          rtdbOnValue(monthRef, handleMonthSnapshot)
-          
-          monthListeners.push(() => {
-            rtdbOff(monthRef, 'value', handleMonthSnapshot)
+          rtdbOnValue(dayRef, handleDaySnapshot)
+          dayListeners.push(() => {
+            rtdbOff(dayRef, 'value', handleDaySnapshot)
           })
         })
-        
-        // Stocker le cleanup global
+
         this.listeners.set(listenerId, () => {
-          monthListeners.forEach(cleanup => cleanup())
+          dayListeners.forEach(cleanup => cleanup())
           this.cache.removeListener(listenerId)
         })
-        
+
       } else {
         // Fallback vers l'ancienne méthode pour les plages trop larges
-        console.log(`📡 Listener RTDB classique (${months.length} mois, trop large pour optimisation)`)
-        
         const disposRef = this.getDisposRef()
         
         const handleSnapshot = (snapshot: any) => {
-          const disponibilites: DisponibiliteRTDB[] = []
-          
-          if (snapshot.exists()) {
-            snapshot.forEach((child: any) => {
-              const dispo = child.val() as DisponibiliteRTDB
-              if (dispo.tenantId === this.tenantId && 
-                  dispo.date >= startDate && 
-                  dispo.date <= endDate) {
-                disponibilites.push(dispo)
-              }
-            })
-          }
-          
-          disponibilites.sort((a, b) => {
-            if (a.date !== b.date) return a.date.localeCompare(b.date)
-            return a.nom.localeCompare(b.nom)
-          })
-          
+          const disponibilites = this.flattenDisponibilitesFromRootSnapshot(snapshot, startDate, endDate)
+            .sort((a, b) => this.compareDispos(a, b))
           this.cache.set(cacheKey, disponibilites, listenerId)
-          
-          console.log(`🔄 Listener fallback: ${disponibilites.length} disponibilités`)
           callback(disponibilites)
         }
         
@@ -643,7 +801,6 @@ export class DisponibilitesRTDBService {
         })
       }
       
-      console.log(`📡 Listener RTDB optimisé créé: ${listenerId}`)
       return listenerId
       
     } catch (error) {

@@ -239,6 +239,9 @@
       cancel-text="Annuler"
       @ok="handleDeleteCollaborateur"
       ok-color="danger"
+      @before-open="modalA11y.onBeforeOpen"
+      @open="modalA11y.onOpen"
+      @close="modalA11y.onClose"
     >
       <p>
         Êtes-vous sûr de vouloir supprimer le collaborateur 
@@ -261,6 +264,7 @@ import { auth } from '../services/firebase'
 import { getUserInitials } from '../services/avatarUtils'
 import { formatPhone, phoneToHref } from '../utils/phoneFormatter'
 import { DEFAULT_COLOR } from '../utils/collaborateurColors'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 // Type local pour les collaborateurs
 interface Collaborateur {
@@ -295,6 +299,8 @@ const perPage = ref(20)
 // Modales
 const showDeleteModal = ref(false)
 const collaborateurToDelete = ref<Collaborateur | null>(null)
+// Accessibilité modale
+const modalA11y = useModalA11y()
 
 
 
@@ -417,6 +423,17 @@ const loadCollaborateurs = async () => {
     try {
       data = await CollaborateursServiceV2.loadCollaborateursFromRTDB(tenantId)
       console.log('✅ Données RTDB chargées:', data.length)
+      // Si RTDB est vide, fallback explicite vers Firestore
+      if (!data || data.length === 0) {
+        console.log('ℹ️ RTDB vide, fallback vers Firestore')
+        try {
+          data = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
+          console.log('✅ Données Firestore chargées:', data.length)
+        } catch (firestoreError) {
+          console.warn('⚠️ Erreur Firestore, fallback import:', firestoreError)
+          data = await CollaborateursServiceV2.loadCollaborateursFromImport(tenantId)
+        }
+      }
     } catch (rtdbError) {
       console.warn('⚠️ Erreur RTDB, tentative Firestore:', rtdbError)
       // Fallback sur Firestore

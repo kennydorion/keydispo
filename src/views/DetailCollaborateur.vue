@@ -185,6 +185,50 @@
             </div>
           </va-card-content>
         </va-card>
+
+        <!-- Codes d'inscription -->
+        <va-card class="registration-card">
+          <va-card-title>
+            <va-icon name="vpn_key" class="mr-2" />
+            Code d'inscription collaborateur
+          </va-card-title>
+          <va-card-content>
+            <div class="registration-grid">
+              <div class="registration-row">
+                <div class="registration-label">Code actuel</div>
+                <div class="registration-value">
+                  <span v-if="registrationCode">{{ registrationCode }}</span>
+                  <span v-else class="no-data">Aucun</span>
+                </div>
+              </div>
+              <div class="registration-row">
+                <div class="registration-label">Statut</div>
+                <div class="registration-value">
+                  <va-chip :color="statusColor" size="small">{{ registrationStatusDisplay }}</va-chip>
+                </div>
+              </div>
+              <div class="registration-row" v-if="registrationExpiresAt">
+                <div class="registration-label">Expire le</div>
+                <div class="registration-value">{{ formatTimestamp(registrationExpiresAt) }}</div>
+              </div>
+            </div>
+
+            <div class="registration-actions">
+              <va-button color="primary" :loading="regLoading" @click="generateCode">
+                <va-icon name="auto_fix_high" class="mr-2" />
+                Générer un code
+              </va-button>
+              <va-button preset="outline" :disabled="!registrationCode" @click="copyCode">
+                <va-icon name="content_copy" class="mr-2" />
+                Copier
+              </va-button>
+              <va-button color="danger" preset="outline" :disabled="!registrationCode || registrationStatus !== 'active'" :loading="regLoading" @click="revokeCode">
+                <va-icon name="block" class="mr-2" />
+                Révoquer
+              </va-button>
+            </div>
+          </va-card-content>
+        </va-card>
       </div>
     </div>
 
@@ -204,6 +248,9 @@
       :cancel-text="'Annuler'"
       @ok="supprimerCollaborateur"
       hide-default-actions
+      @before-open="modalA11y.onBeforeOpen"
+      @open="modalA11y.onOpen"
+      @close="modalA11y.onClose"
     >
       <div class="delete-modal-content">
         <va-icon name="warning" color="danger" size="48px" class="mb-4" />
@@ -238,6 +285,8 @@ import { getUserInitials } from '../services/avatarUtils'
 import { DEFAULT_COLOR } from '../utils/collaborateurColors'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { registrationCodesService } from '../services/registrationCodes'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 // Types
 interface Collaborateur {
@@ -267,6 +316,13 @@ const loading = ref(true)
 const deleting = ref(false)
 const showDeleteModal = ref(false)
 const disponibilitesCount = ref(0)
+// Registration code reactive state
+const registrationCode = ref<string | null>(null)
+const registrationStatus = ref<'active' | 'used' | 'revoked' | 'expired' | 'none'>('none')
+const registrationExpiresAt = ref<number | null>(null)
+const regLoading = ref(false)
+// Accessibilité modale
+const modalA11y = useModalA11y()
 
 // Computed
 const collaborateurId = computed(() => route.params.id as string)
@@ -299,6 +355,14 @@ const formatDate = (date: any) => {
     return format(dateObj, 'dd MMMM yyyy', { locale: fr })
   } catch {
     return 'Date invalide'
+  }
+}
+
+const formatTimestamp = (ts: number) => {
+  try {
+    return format(new Date(ts), 'dd MMM yyyy HH:mm', { locale: fr })
+  } catch {
+    return '—'
   }
 }
 
@@ -358,8 +422,18 @@ const loadCollaborateur = async () => {
     
     console.log('✅ Collaborateur chargé:', collaborateur.value)
     
-    // TODO: Charger le nombre de disponibilités
-    disponibilitesCount.value = 0 // Placeholder pour l'instant
+    // TODO: Charger le nombre de disponibilités (placeholder)
+    disponibilitesCount.value = 0
+
+    // Charger le code d'inscription depuis RTDB (index côté collaborateur) si dispo
+    try {
+      const rc = (collab as any).registrationCode || null
+      const rs = (collab as any).registrationStatus || 'none'
+      const re = (collab as any).registrationExpiresAt || null
+      registrationCode.value = rc
+      registrationStatus.value = rs
+      registrationExpiresAt.value = re
+    } catch {}
     
   } catch (error) {
     console.error('❌ Erreur chargement collaborateur:', error)
@@ -370,6 +444,81 @@ const loadCollaborateur = async () => {
     router.push('/collaborateurs')
   } finally {
     loading.value = false
+  }
+}
+
+const statusColor = computed(() => {
+  switch (registrationStatus.value) {
+    case 'active': return 'success'
+    case 'used': return 'info'
+    case 'revoked': return 'danger'
+    case 'expired': return 'warning'
+    default: return 'secondary'
+  }
+})
+
+const registrationStatusDisplay = computed(() => {
+  switch (registrationStatus.value) {
+    case 'active': return 'Actif'
+    case 'used': return 'Utilisé'
+    case 'revoked': return 'Révoqué'
+    case 'expired': return 'Expiré'
+    default: return 'Aucun'
+  }
+})
+
+const generateCode = async () => {
+  if (!collaborateur.value) return
+  try {
+    regLoading.value = true
+    const tenantId = AuthService.currentTenantId || 'keydispo'
+    // Révoquer le code actuel s'il est actif
+    if (registrationCode.value && registrationStatus.value === 'active') {
+      try {
+        await registrationCodesService.revoke(tenantId, registrationCode.value, auth.currentUser?.uid || 'system')
+      } catch (e) {
+        console.warn('Impossible de révoquer le code existant avant régénération')
+      }
+    }
+    const res = await registrationCodesService.generateForCollaborateur(
+      tenantId,
+      collaborateur.value.id!,
+      auth.currentUser?.uid || 'system',
+      { expiresInDays: 7 }
+    )
+    registrationCode.value = res.code
+    registrationStatus.value = res.status
+    registrationExpiresAt.value = res.expiresAt || null
+    notify({ message: `Code généré: ${res.code}`, color: 'success' })
+  } catch (e: any) {
+    notify({ message: e?.message || 'Erreur génération du code', color: 'danger' })
+  } finally {
+    regLoading.value = false
+  }
+}
+
+const copyCode = async () => {
+  if (!registrationCode.value) return
+  try {
+    await navigator.clipboard.writeText(registrationCode.value)
+    notify({ message: 'Code copié dans le presse-papiers', color: 'success' })
+  } catch {
+    notify({ message: 'Impossible de copier le code', color: 'warning' })
+  }
+}
+
+const revokeCode = async () => {
+  if (!registrationCode.value) return
+  try {
+    regLoading.value = true
+    const tenantId = AuthService.currentTenantId || 'keydispo'
+    await registrationCodesService.revoke(tenantId, registrationCode.value, auth.currentUser?.uid || 'system')
+    registrationStatus.value = 'revoked'
+    notify({ message: 'Code révoqué', color: 'success' })
+  } catch (e: any) {
+    notify({ message: e?.message || 'Erreur révocation du code', color: 'danger' })
+  } finally {
+    regLoading.value = false
   }
 }
 

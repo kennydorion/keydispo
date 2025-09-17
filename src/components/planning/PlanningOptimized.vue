@@ -30,9 +30,12 @@
       :extending="false"
       :is-busy="isLoading"
       :is-initial-load="planningData.isInitialLoad.value"
-      :fetching-ranges="planningData.fetchingRanges.value"
+      :fetching-ranges="planningData.fetchingRanges.value.length > 0"
       :is-emulator="emulatorMode"
     />
+
+  <!-- Header de filtres compact -->
+  <FiltersHeaderNew />
 
     <!-- Grille principale -->
     <div class="planning-grid-wrapper">
@@ -49,6 +52,9 @@
         :row-height="rowHeight"
         :header-height="headerHeight"
         :sticky-left-width="stickyLeftWidth"
+        :is-hovered-by-others="isHoveredByOthers"
+        :get-hovering-user-color="getHoveringUserColor"
+        :get-hovering-user-initials="getHoveringUserInitials"
         @open-collaborateur-info="openCollaborateurInfo"
         @cell-click="handleCellClick"
         @cell-hover="handleCellHover"
@@ -62,7 +68,7 @@
       :show-modal="showLoadingModal"
       :loading-collaborateurs="isLoading"
       :loading-disponibilites="planningData.loadingDisponibilites.value"
-      :fetching-ranges="planningData.fetchingRanges.value"
+      :fetching-ranges="planningData.fetchingRanges.value.length > 0"
       :all-collaborateurs-count="collaborateurs.length"
       :visible-days-count="dateArray.length"
     />
@@ -73,6 +79,9 @@
       title="Informations Collaborateur"
       size="medium"
       :mobile-fullscreen="isMobile"
+  @before-open="modalA11y.onBeforeOpen"
+  @open="modalA11y.onOpen"
+  @close="modalA11y.onClose"
     >
       <div v-if="selectedCollaborateur" class="collab-info-modal">
         <div class="info-section">
@@ -118,13 +127,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useModalA11y } from '@/composables/useModalA11y'
 import PlanningStatusPanel from './PlanningStatusPanel.vue'
 import PlanningSelectionBar from './PlanningSelectionBar.vue'
 import PlanningIndicators from './PlanningIndicators.vue'
 import PlanningGrid from './PlanningGrid.vue'
 import PlanningLoadingModal from './PlanningLoadingModal.vue'
+import FiltersHeaderNew from '../FiltersHeaderNew.vue'
 import { usePlanningData } from '@/composables/usePlanningData'
+import { usePlanningFilters } from '@/composables/usePlanningFilters'
+import { useCollabPresence } from '@/composables/useCollabPresence'
+import { hybridMultiUserService as collaborationService } from '@/services/hybridMultiUserService'
+import { AuthService } from '@/services/auth'
+import { auth } from '@/services/firebase'
+import { getUserInitials } from '@/services/avatarUtils'
 
 interface Collaborateur {
   id: string
@@ -166,6 +183,7 @@ const isMobile = ref(false)
 const showInfoModal = ref(false)
 const showLoadingModal = ref(false)
 const selectedCollaborateur = ref<Collaborateur | null>(null)
+const modalA11y = useModalA11y()
 const selectedCells = ref(new Set<string>())
 const selectedDates = ref<string[]>([])
 const selectedCollaborateurs = ref<string[]>([])
@@ -175,30 +193,53 @@ const cellLocks = ref(new Map<string, CellLockInfo>())
 const loadingProgress = ref(0)
 const loadingMessage = ref('')
 
-// Données du planning avec le composable
+// Données du planning avec les composables centralisés
 const planningData = usePlanningData()
-const {
-  allCollaborateurs: collaborateurs,
-  disponibilitesCache,
-  loadingCollaborateurs: isLoading,
-  loadCollaborateursFromFirebase: loadCollaborateurs,
-  getDisponibilites: getDisponibilitiesByDateRange
-} = planningData
+const planningFilters = usePlanningFilters()
 
-// Computed pour les disponibilités (extraction du cache)
-const disponibilites = computed(() => {
-  const allDispos: any[] = []
-  disponibilitesCache.value.forEach(dispos => {
-    allDispos.push(...dispos)
-  })
-  return allDispos
-})
+// Extraction des données filtrées
+const {
+  filteredCollaborateurs: collaborateurs,
+  filteredDisponibilites: disponibilites,
+  isLoading,
+  loadCollaborateurs,
+  getDisponibilitiesByDateRange
+} = planningData
 
 // États temps réel
 const realtimeStatus = ref('connected')
 const usersInSession = ref<UserInSession[]>([])
 const emulatorMode = ref(false)
 const optimizationSuggestions = ref<string[]>([])
+
+// Gestion multi-utilisateur et présence
+const visibleDaysForPresence = computed(() => dateArray.value.map(date => ({ date })))
+const presenceRowsRef = ref<Array<{ id: string }>>([])
+
+// Fonction pour obtenir la couleur utilisateur (simulée pour l'instant)
+function getUserColorWrapper(uid: string): string {
+  // Couleurs par défaut basées sur l'ID utilisateur
+  const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4']
+  const hash = uid.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+  return colors[hash % colors.length]
+}
+
+// Configuration du composable useCollabPresence
+const {
+  isHoveredByOthers,
+  getHoveringUserColor,
+  getHoveringUserInitials,
+} = useCollabPresence(
+  collaborationService,
+  visibleDaysForPresence,
+  computed(() => presenceRowsRef.value),
+  (u: any) => getUserInitials(u),
+  (uid: string) => getUserColorWrapper(uid),
+)
+
+// Variables pour gérer les timers de debounce du survol
+let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let hoverEndGraceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Transformation des données pour compatibilité avec les composants
 const activeUsers = computed(() => 
@@ -219,8 +260,54 @@ const connectedUsers = computed(() =>
   }))
 )
 
-// Génération des dates (7 jours à partir d'aujourd'hui)
+// Génération des dates basée sur les filtres ou par défaut 7 jours
 const dateArray = computed(() => {
+  const dateFrom = planningFilters.filterState.dateFrom
+  const dateTo = planningFilters.filterState.dateTo
+  
+  // Si des dates sont sélectionnées dans les filtres, les utiliser
+  if (dateFrom && dateTo) {
+    const dates: string[] = []
+    const startDate = new Date(dateFrom)
+    const endDate = new Date(dateTo)
+    
+    // Générer toutes les dates entre dateFrom et dateTo
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+      dates.push(date.toISOString().split('T')[0])
+    }
+    
+    return dates
+  }
+  
+  // Si seulement dateFrom est spécifiée, afficher 7 jours à partir de cette date
+  if (dateFrom) {
+    const dates: string[] = []
+    const startDate = new Date(dateFrom)
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + i)
+      dates.push(date.toISOString().split('T')[0])
+    }
+    
+    return dates
+  }
+  
+  // Si seulement dateTo est spécifiée, afficher 7 jours jusqu'à cette date
+  if (dateTo) {
+    const dates: string[] = []
+    const endDate = new Date(dateTo)
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(endDate)
+      date.setDate(endDate.getDate() - i)
+      dates.push(date.toISOString().split('T')[0])
+    }
+    
+    return dates
+  }
+  
+  // Par défaut : 7 jours à partir d'aujourd'hui
   const dates: string[] = []
   const today = new Date()
   
@@ -263,13 +350,56 @@ function handleCellClick(collaborateurId: string, date: string, event: MouseEven
 }
 
 function handleCellHover(collaborateurId: string, date: string, _event: MouseEvent) {
-  // Gestion du survol - pourrait être utilisé pour des previews
-  console.log('Cell hover:', collaborateurId, date)
+  // Gestion du survol collaboratif
+  handleCellHoverDebounced(collaborateurId, date)
 }
 
-function handleCellLeave(collaborateurId: string, date: string, _event: MouseEvent) {
-  // Gestion de la sortie du survol
-  console.log('Cell leave:', collaborateurId, date)
+function handleCellLeave(_collaborateurId: string, _date: string, _event: MouseEvent) {
+  // Gestion de la sortie du survol collaboratif
+  handleCellHoverEnd()
+}
+
+/**
+ * Gérer le survol d'une cellule (avec debounce)
+ */
+function handleCellHoverDebounced(collaborateurId: string, date: string) {
+  // Annuler le timer de fin de hover si on revient rapidement
+  if (hoverEndGraceTimer) {
+    clearTimeout(hoverEndGraceTimer)
+    hoverEndGraceTimer = null
+  }
+
+  // Annuler le timer précédent de debounce s'il existe
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+  }
+
+  // Équilibre entre réactivité et performance
+  hoverDebounceTimer = setTimeout(() => {
+    if (collaborationService && typeof collaborationService.updateHoveredCell === 'function') {
+      collaborationService.updateHoveredCell(collaborateurId, date)
+    }
+  }, 10) // 10ms - bon compromis
+}
+
+/**
+ * Gérer la sortie du survol d'une cellule (immédiat)
+ */
+function handleCellHoverEnd() {
+  // Annuler le timer de debounce (on ne veut plus envoyer un nouveau hover)
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+    hoverDebounceTimer = null
+  }
+
+  // Timer de grâce : on attend un peu avant de vraiment supprimer le hover
+  // (au cas où l'utilisateur repasse la souris sur une autre cellule rapidement)
+  hoverEndGraceTimer = setTimeout(() => {
+    if (collaborationService && typeof collaborationService.clearHoveredCell === 'function') {
+      collaborationService.clearHoveredCell()
+    }
+    hoverEndGraceTimer = null
+  }, 50) // 50ms de grâce
 }
 
 function handleDateSelect(date: string) {
@@ -313,9 +443,11 @@ function handleForceSync() {
 
 // Utilitaires
 function getCollaborateurDisponibilites(collaborateur: Collaborateur): any[] {
-  return disponibilites.value.filter((d: any) => 
-    d.nom === collaborateur.nom && d.prenom === collaborateur.prenom
-  )
+  return disponibilites.value.filter((d: any) => {
+    const matchById = d.collaborateurId ? d.collaborateurId === collaborateur.id : false
+    const matchByName = d.nom === collaborateur.nom && d.prenom === collaborateur.prenom
+    return matchById || matchByName
+  })
 }
 
 function formatDate(dateString: string): string {
@@ -337,6 +469,25 @@ function updateMobileState() {
 onMounted(async () => {
   updateMobileState()
   window.addEventListener('resize', updateMobileState)
+  
+  // Initialiser le service de collaboration
+  try {
+    if (auth.currentUser && AuthService.currentTenantId) {
+      const tenantId = AuthService.currentTenantId
+      await (collaborationService as any).init(tenantId, {
+        userId: auth.currentUser.uid,
+        userName: auth.currentUser.displayName || auth.currentUser.email || 'Utilisateur',
+        userEmail: auth.currentUser.email || ''
+      })
+      
+      // Mettre à jour les lignes de présence avec les collaborateurs
+      setTimeout(() => {
+        presenceRowsRef.value = collaborateurs.value.map(c => ({ id: c.id }))
+      }, 100)
+    }
+  } catch (error) {
+    console.warn('Impossible d\'initialiser le service de collaboration:', error)
+  }
   
   // Charger les données initiales
   showLoadingModal.value = true
@@ -362,8 +513,46 @@ onMounted(async () => {
   }
 })
 
+// Watcher pour mettre à jour le planning quand les dates des filtres changent
+watch(
+  () => dateArray.value,
+  async (newDateArray: string[], oldDateArray: string[] | undefined) => {
+    // Éviter les mises à jour inutiles
+    if (JSON.stringify(newDateArray) === JSON.stringify(oldDateArray)) return
+    
+    console.log('📅 Dates du planning mises à jour:', newDateArray)
+    
+    // Afficher un feedback de chargement si les dates ont vraiment changé
+    if (newDateArray.length > 0) {
+      loadingMessage.value = 'Mise à jour de la période...'
+      
+      // Optionnel : recharger les disponibilités pour la nouvelle période
+      // Le composable usePlanningData le fait déjà automatiquement
+      // mais on peut forcer un rafraîchissement si nécessaire
+      
+      // Mettre à jour les lignes de présence
+      setTimeout(() => {
+        presenceRowsRef.value = collaborateurs.value.map(c => ({ id: c.id }))
+      }, 100)
+    }
+  },
+  { immediate: false }
+)
+
 onUnmounted(() => {
   window.removeEventListener('resize', updateMobileState)
+  
+  // Nettoyer les timers et le service de collaboration
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer)
+  }
+  if (hoverEndGraceTimer) {
+    clearTimeout(hoverEndGraceTimer)
+  }
+  
+  if (collaborationService) {
+    collaborationService.cleanup()
+  }
 })
 </script>
 

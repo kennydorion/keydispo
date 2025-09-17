@@ -1,216 +1,26 @@
-<!--
-  Cellule individuelle du planning
-  Extrait de SemaineVirtualClean.vue pour améliorer la modularité
--->
 <template>
   <div
     class="excel-cell"
-    :data-day-date="date"
-    :data-cell-id="`${collaborateurId}_${date}`"
-    :class="[
-      getCellClasses(),
-      getCellKindClass(collaborateurId, date)
-    ]"
-    :style="{ width: dayWidth + 'px', height: rowHeight + 'px' }"
-    @click="onCellClick"
-    @mouseenter="onCellHover"
-    @mouseleave="onCellLeave"
+    :data-day-date="day.date"
+    :data-day-index="absDayIndex"
+    :data-row-index="rowIndex"
+    :data-cell-id="`${collabId}_${day.date}`"
+    :data-today="day.isToday ? 'true' : 'false'"
+    :data-initials="hoveringInitials"
+    :class="normalizedClasses"
+    :style="{ width: dayWidth + 'px', '--hovering-user-color': hoveringColor }"
+    @click.stop="(e) => emit('cell-click', e)"
+    @mousedown.stop="(e) => emit('cell-mousedown', e)"
+    @mouseenter="(e) => emit('cell-mouseenter', e)"
+    @mouseleave="() => emit('cell-mouseleave')"
+    @mouseup="() => emit('cell-mouseup')"
   >
-    <!-- Icône de verrouillage simple -->
-    <div v-if="isLockedByOthers" class="cell-lock-indicator" title="Cellule verrouillée par un autre utilisateur">
-      <va-icon name="lock" size="12px" />
+    <div v-if="locked" class="cell-lock-overlay">
+      <va-icon name="lock" class="lock-icon" />
     </div>
 
-    <!-- Indicateur de survol collaboratif -->
-    <div v-if="isHoveredByOthers" class="cell-presence-indicator">
-      <div class="presence-initials-container">
-        <template v-for="(initial, idx) in hoveringUserInitials" :key="idx">
-          <div
-            v-if="initial && initial.trim()"
-            class="presence-initial"
-            :style="{ backgroundColor: hoveringUserColor }"
-            :title="hoveringUserTooltip"
-          >
-            {{ initial }}
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- Disponibilités dans la cellule -->
-    <div class="cell-content">
-      <div v-if="!cellDispos.length" class="empty-cell">
-        <!-- Cellule vide -->
-      </div>
-      
-      <template v-else>
-        <div
-          v-for="(dispo, idx) in cellDispos"
-          :key="`${dispo.id || idx}`"
-          class="dispo-bar"
-          :class="[
-            getDispoBarClass(dispo),
-            getDispoTypeClass(dispo),
-            getDispoContinuationClass(dispo, date)
-          ]"
-          :style="getDispoBarStyle()"
-          :title="getDispoBarTitle(dispo, date)"
-        >
-          <div class="dispo-content">
-            <span class="dispo-time">{{ timeLabelForCell(dispo, date) }}</span>
-            <span v-if="dispo.lieu" class="dispo-lieu">{{ dispo.lieu }}</span>
-          </div>
-        </div>
-      </template>
-    </div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-
-// Interface pour les disponibilités
-interface Disponibilite {
-  id?: string
-  nom: string
-  prenom: string
-  metier: string
-  phone: string
-  email: string
-  ville: string
-  date: string
-  lieu: string
-  heure_debut: string
-  heure_fin: string
-  tenantId: string
-  collaborateurId?: string
-  type?: 'mission' | 'disponible' | 'indisponible'
-  timeKind?: 'range' | 'slot' | 'full-day' | 'overnight'
-  slots?: string[]
-  isFullDay?: boolean
-  version?: number
-  updatedAt?: any
-  updatedBy?: string
-  _cont?: 'start' | 'end'
-}
-
-interface Props {
-  collaborateurId: string
-  date: string
-  dayWidth: number
-  rowHeight: number
-  cellDispos: Disponibilite[]
-  isToday: boolean
-  isWeekend: boolean
-  isDayLoaded: boolean
-  isWeekBoundary: boolean
-  isSelected: boolean
-  isLockedByOthers: boolean
-  isHoveredByOthers: boolean
-  hoveringUserInitials: string[]
-  hoveringUserColor: string
-  hoveringUserTooltip: string
-}
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  click: [collaborateurId: string, date: string]
-  hover: [collaborateurId: string, date: string]
-  leave: [collaborateurId: string, date: string]
-}>()
-
-// Classes CSS dynamiques pour la cellule
-const getCellClasses = () => ({
-  'today': props.isToday,
-  'weekend': props.isWeekend,
-  'has-dispos': props.cellDispos.length > 0,
-  'loading-placeholder': !props.isDayLoaded,
-  'week-boundary-right': props.isWeekBoundary,
-  'selected': props.isSelected,
-  'locked': props.isLockedByOthers,
-  'has-indicator': props.isLockedByOthers || props.isHoveredByOthers,
-  'has-presence': props.isHoveredByOthers
-})
-
-// Event handlers
-function onCellClick() {
-  emit('click', props.collaborateurId, props.date)
-}
-
-function onCellHover() {
-  emit('hover', props.collaborateurId, props.date)
-}
-
-function onCellLeave() {
-  emit('leave', props.collaborateurId, props.date)
-}
-
-// Helper functions (à implémenter selon la logique existante)
-function getCellKindClass(collaborateurId: string, date: string): string {
-  // Logique pour déterminer le type de cellule (disponible/indisponible/etc.)
-  return 'cell-kind-default'
-}
-
-function getDispoBarClass(dispo: Disponibilite): string {
-  const type = dispo.type || 'disponible'
-  return `dispo-${type}`
-}
-
-function getDispoTypeClass(dispo: Disponibilite): string {
-  return `type-${dispo.type || 'disponible'}`
-}
-
-function getDispoContinuationClass(dispo: Disponibilite, cellDate: string): string {
-  if (dispo._cont === 'start') return 'continuation-start'
-  if (dispo._cont === 'end') return 'continuation-end'
-  return ''
-}
-
-function getDispoBarStyle(): object {
-  return {}
-}
-
-function getDispoBarTitle(dispo: Disponibilite, cellDate: string): string {
-  const timeLabel = timeLabelForCell(dispo, cellDate)
-  const lieu = dispo.lieu ? ` - ${dispo.lieu}` : ''
-  return `${timeLabel}${lieu}`
-}
-
-function timeLabelForCell(dispo: Disponibilite, day: string): string {
-  const s = dispo.heure_debut?.substring(0, 5) || ''
-  const e = dispo.heure_fin?.substring(0, 5) || ''
-  
-  if (!s || !e) return ''
-  
-  // Logique simplifiée pour l'affichage des heures
-  if (dispo._cont === 'start') return `${s}→…`
-  if (dispo._cont === 'end') return `…→${e}`
-  
-  return `${s}-${e}`.replace(':00', '').replace(':00', '') + 'h'
-}
-</script>
-
-<style scoped>
-.excel-cell {
-  position: relative;
-  border-right: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.excel-cell:hover {
-  background: rgba(33, 150, 243, 0.05);
-}
-
-.excel-cell.today {
-  background: rgba(255, 235, 59, 0.1);
-  border-right-color: #FFC107;
+    <div class="dispo-bars" :class="dispoBarsLayoutClass">
+      <template v-for="dispo in getCellDisposSorted(collabId, day.date)" :key="(dispo as any).id || (dispo as any)._key">
 }
 
 .excel-cell.weekend {

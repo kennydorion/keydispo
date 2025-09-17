@@ -9,12 +9,15 @@ import {
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { multiUserService } from './multiUserService'
 import type { TenantUser } from '../types'
 
 const googleProvider = new GoogleAuthProvider()
 
 export class AuthService {
-  static currentTenantId = import.meta.env.VITE_TENANT_ID || 'default'
+  // Par défaut, utiliser le tenant "keydispo" (jeu de données principal)
+  // Évite de tomber sur un tenant "default" vide si la variable d'env est absente
+  static currentTenantId = import.meta.env.VITE_TENANT_ID || 'keydispo'
   static adminEmails: string[] = (import.meta.env.VITE_ADMIN_EMAILS || '')
     .split(',')
     .map((e: string) => e.trim().toLowerCase())
@@ -55,6 +58,7 @@ export class AuthService {
 
   static async signOut() {
     try {
+  try { multiUserService.setShutdownReason('signout') } catch {}
       await signOut(auth)
     } catch (error) {
       console.error('Error signing out:', error)
@@ -68,45 +72,32 @@ export class AuthService {
 
   private static async ensureUserInTenant(
     user: User, 
-    defaultRole: 'admin' | 'editor' | 'viewer' = 'viewer',
+    defaultRole: 'admin' | 'editor' | 'viewer' | 'collaborateur' = 'viewer',
     displayName?: string
   ) {
-    try {
-      const userRef = doc(db, `tenants/${this.currentTenantId}/users/${user.uid}`)
-      
-      // Construire les données utilisateur
+    const userRef = doc(db, `tenants/${this.currentTenantId}/users/${user.uid}`)
+    const userDoc = await getDoc(userRef)
+
+    if (!userDoc.exists()) {
+      // Construire les données utilisateur sans displayName si undefined
       const email = (user.email || '').toLowerCase()
       const elevatedRole = this.adminEmails.includes(email) ? 'admin' : defaultRole
       const tenantData: any = {
         uid: user.uid,
         role: elevatedRole,
         email: user.email!,
+        createdAt: new Date(),
         lastAccess: new Date()
       }
-      
       // Ajouter displayName uniquement si défini
       const name = displayName || user.displayName
       if (name) {
         tenantData.displayName = name
       }
-      
-      // Utiliser setDoc avec merge pour créer ou mettre à jour
-      await setDoc(userRef, tenantData, { merge: true })
-      
-      // Si c'est une création (pas de createdAt existant), l'ajouter
-      try {
-        const checkDoc = await getDoc(userRef)
-        if (checkDoc.exists() && !checkDoc.data().createdAt) {
-          await setDoc(userRef, { createdAt: new Date() }, { merge: true })
-        }
-      } catch (error) {
-        // Si getDoc échoue, on ajoute createdAt en espérant que c'est une création
-        await setDoc(userRef, { createdAt: new Date() }, { merge: true })
-      }
-      
-    } catch (error) {
-      console.error('❌ Erreur lors de la création/mise à jour de l\'utilisateur:', error)
-      throw error
+      await setDoc(userRef, tenantData)
+    } else {
+      // Update last access
+      await setDoc(userRef, { lastAccess: new Date() }, { merge: true })
     }
   }
 
@@ -121,7 +112,7 @@ export class AuthService {
     }
   }
 
-  static async updateUserRole(userId: string, role: 'admin' | 'editor' | 'viewer') {
+  static async updateUserRole(userId: string, role: 'admin' | 'editor' | 'viewer' | 'collaborateur') {
     try {
       const userRef = doc(db, `tenants/${this.currentTenantId}/users/${userId}`)
       await setDoc(userRef, { role }, { merge: true })

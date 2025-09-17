@@ -16,8 +16,8 @@
       <!-- Carte de connexion -->
       <div class="login-card">
         <div class="login-form">
-          <h2>Connexion</h2>
-          <p class="form-subtitle">Accédez à votre tableau de bord</p>
+          <h2>{{ isCollaborateurContext ? 'Connexion Collaborateur' : 'Connexion' }}</h2>
+          <p class="form-subtitle">{{ isCollaborateurContext ? 'Accédez à votre planning' : 'Accédez à votre tableau de bord' }}</p>
           
           <form @submit.prevent="handleLogin" novalidate>
             <div class="form-group">
@@ -72,6 +72,8 @@
           <div v-if="!firebaseStatus.configValid" class="error-message" style="margin-top:8px;">Configuration Firebase invalide: {{ firebaseStatus.missing.join(', ') || (firebaseStatus.fakeKey ? 'apiKey factice' : '') }}.</div>
 
           <p class="switch-link">Pas encore de compte ? <router-link to="/register">Créer un compte</router-link></p>
+          <p v-if="!isCollaborateurContext" class="switch-link">Vous êtes collaborateur ? <router-link to="/collaborateur/login" style="color: var(--va-info);">Connexion collaborateur</router-link></p>
+          <p v-else class="switch-link">Vous êtes administrateur ? <router-link to="/login" style="color: var(--va-info);">Connexion administrateur</router-link></p>
         </div>
         
         <!-- Section administrateur (uniquement sur émulateur) -->
@@ -108,12 +110,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { AuthService } from '../services/auth'
+import { InterfaceManager } from '../services/interfaceManager'
 import { firebaseStatus } from '../services/firebase'
 
 const router = useRouter()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
@@ -121,6 +125,23 @@ const isLoading = ref(false)
 const error = ref('')
 const isCreatingAdmin = ref(false)
 const adminCreated = ref(false)
+
+// Déterminer si on est dans le contexte collaborateur
+const isCollaborateurContext = computed(() => {
+  return route.path.includes('/collaborateur/') || InterfaceManager.currentInterface.value === 'collaborateur'
+})
+
+// Définir l'interface selon le contexte
+onMounted(() => {
+  // Déterminer le contexte basé sur l'URL
+  if (route.path.includes('/collaborateur/')) {
+    InterfaceManager.setTemporaryInterface('collaborateur')
+    InterfaceManager.setLoginOrigin('collaborateur')
+  } else {
+    InterfaceManager.setTemporaryInterface('admin')
+    InterfaceManager.setLoginOrigin('admin')
+  }
+})
 
 // Affiche la section émulateur UNIQUEMENT si explicitement activé
 // via VITE_USE_EMULATOR=1 (évite l'affichage en prod même si servi en local)
@@ -136,9 +157,35 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
-    await AuthService.signInWithEmail(email.value, password.value)
-    // Redirection automatique vers le dashboard via le router guard
-    await router.push('/dashboard')
+    const user = await AuthService.signInWithEmail(email.value, password.value)
+    console.log('🔐 Connexion réussie via formulaire')
+    
+    // Récupérer le rôle de l'utilisateur avec petite tolérance (premier login/propagation)
+    let role: any = null
+    for (let i = 0; i < 3; i++) {
+      const tenantUser = await AuthService.getUserRole(user.uid)
+      role = tenantUser?.role
+      if (role) break
+      await new Promise(r => setTimeout(r, 200))
+    }
+    
+    if (isCollaborateurContext.value) {
+      // Contexte collaborateur - tous les rôles sont acceptés
+      console.log('✅ Connexion collaborateur réussie, redirection vers interface collaborateur')
+      InterfaceManager.forceCollaborateurInterface()
+      await router.push('/collaborateur/planning')
+    } else {
+      // Contexte admin - vérifier les permissions
+      if (!role || !['admin', 'editor', 'viewer'].includes(role)) {
+        // Ne pas déconnecter brutalement: laisser InterfaceManager gérer l’autorisation post-login
+        error.value = 'Accès non autorisé. Ce formulaire est réservé aux administrateurs.'
+      }
+      
+      InterfaceManager.forceAdminInterface()
+      console.log('✅ Utilisateur admin vérifié, accès à l\'interface admin autorisé')
+      await router.push('/dashboard')
+    }
+    
   } catch (err: any) {
     console.error('Login error:', err)
     if (err.code === 'auth/user-not-found') {
@@ -162,11 +209,37 @@ const signInWithGoogle = async () => {
   error.value = ''
 
   try {
-    await AuthService.signInWithGoogle()
-    await router.push('/dashboard')
+    const user = await AuthService.signInWithGoogle()
+    console.log('🔐 Connexion Google réussie')
+    
+    // Récupérer le rôle de l'utilisateur avec petite tolérance
+    let role: any = null
+    for (let i = 0; i < 3; i++) {
+      const tenantUser = await AuthService.getUserRole(user.uid)
+      role = tenantUser?.role
+      if (role) break
+      await new Promise(r => setTimeout(r, 200))
+    }
+    
+    if (isCollaborateurContext.value) {
+      // Contexte collaborateur - tous les rôles sont acceptés
+      console.log('✅ Connexion Google collaborateur réussie, redirection vers interface collaborateur')
+      InterfaceManager.forceCollaborateurInterface()
+      await router.push('/collaborateur/planning')
+    } else {
+      // Contexte admin - vérifier les permissions
+      if (!role || !['admin', 'editor', 'viewer'].includes(role)) {
+        error.value = 'Accès non autorisé. Ce formulaire est réservé aux administrateurs.'
+      }
+      
+      InterfaceManager.forceAdminInterface()
+      console.log('✅ Utilisateur admin Google vérifié, accès à l\'interface admin autorisé')
+      await router.push('/dashboard')
+    }
+    
   } catch (err: any) {
-    console.error('Google sign in error:', err)
-    error.value = 'Erreur de connexion Google'
+    console.error('Google Sign-In error:', err)
+    error.value = 'Erreur de connexion avec Google'
   } finally {
     isLoading.value = false
   }
@@ -210,7 +283,24 @@ const loginAsTestUser = async () => {
   error.value = ''
   
   try {
-    await AuthService.signInWithEmail('admin@test.com', 'password123')
+    const user = await AuthService.signInWithEmail('admin@test.com', 'password123')
+    console.log('🔐 Connexion utilisateur test via formulaire admin')
+    
+    // Vérifier que l'utilisateur a bien un rôle admin pour accéder à l'interface admin
+    const tenantUser = await AuthService.getUserRole(user.uid)
+    const role = tenantUser?.role
+    
+    if (!role || !['admin', 'editor', 'viewer'].includes(role)) {
+      error.value = 'Utilisateur test non configuré comme administrateur.'
+      await AuthService.signOut()
+      return
+    }
+    
+    // Marquer que l'utilisateur s'est connecté via l'interface admin
+    sessionStorage.setItem('loginInterface', 'admin')
+    console.log('✅ Utilisateur test admin vérifié, accès à l\'interface admin autorisé')
+    
+    // Redirection vers l'interface admin
     await router.push('/dashboard')
   } catch (err: any) {
     console.error('Test user login error:', err)

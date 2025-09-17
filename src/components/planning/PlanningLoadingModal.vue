@@ -13,6 +13,9 @@
     fullscreen
     blur
     overlay-opacity="0.9"
+  @before-open="modalA11y.onBeforeOpen"
+  @open="modalA11y.onOpen"
+  @close="modalA11y.onClose"
   >
     <div class="modern-loading-container">
       <div class="loading-card">
@@ -76,6 +79,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 interface Props {
   showModal: boolean
@@ -87,6 +91,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const modalA11y = useModalA11y()
 
 // Calcul du pourcentage de progression
 const progressValue = computed(() => {

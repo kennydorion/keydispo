@@ -40,13 +40,10 @@ export class CollaborateursServiceV2 {
    */
   static async loadCollaborateursFromRTDB(tenantId: string): Promise<CollaborateurV2[]> {
     try {
-      console.log('🔄 Chargement des collaborateurs RTDB pour tenant:', tenantId)
-      
       const collaborateursRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs`)
       const snapshot = await rtdbGet(collaborateursRef)
       
       if (!snapshot.exists()) {
-        console.log('📭 Aucun collaborateur trouvé dans RTDB')
         return []
       }
       
@@ -66,7 +63,12 @@ export class CollaborateursServiceV2 {
           tenantId: collabData.tenantId,
           actif: collabData.actif !== false,
           createdAt: new Date(collabData.createdAt || Date.now()),
-          updatedAt: new Date(collabData.updatedAt || Date.now())
+          updatedAt: new Date(collabData.updatedAt || Date.now()),
+          // Champs optionnels rapports à l'inscription
+          ...(collabData.registrationCode ? { registrationCode: collabData.registrationCode } : {}),
+          ...(collabData.registrationStatus ? { registrationStatus: collabData.registrationStatus } : {}),
+          ...(collabData.registrationExpiresAt ? { registrationExpiresAt: collabData.registrationExpiresAt } : {}),
+          ...(collabData.userId ? { userId: collabData.userId } : {})
         } as CollaborateurV2)
       })
       
@@ -76,7 +78,6 @@ export class CollaborateursServiceV2 {
         return a.prenom.localeCompare(b.prenom)
       })
       
-      console.log(`✅ ${collaborateurs.length} collaborateurs RTDB chargés`)
       return collaborateurs
       
     } catch (error) {
@@ -93,13 +94,10 @@ export class CollaborateursServiceV2 {
       // Essayer RTDB d'abord
       const rtdbCollaborateurs = await this.loadCollaborateursFromRTDB(tenantId)
       if (rtdbCollaborateurs.length > 0) {
-        console.log(`✅ ${rtdbCollaborateurs.length} collaborateurs RTDB chargés`)
         return rtdbCollaborateurs
       }
       
       // Fallback vers Firestore si RTDB vide
-      console.log('🔄 Fallback: Chargement des collaborateurs Firestore pour tenant:', tenantId)
-      
       const collaborateursRef = collection(db, `tenants/${tenantId}/collaborateurs`)
       const q = query(collaborateursRef, orderBy('nom'), orderBy('prenom'))
       
@@ -125,7 +123,6 @@ export class CollaborateursServiceV2 {
         } as CollaborateurV2)
       })
       
-      console.log(`✅ ${collaborateurs.length} collaborateurs importés chargés`)
       return collaborateurs
       
     } catch (error) {
@@ -139,8 +136,6 @@ export class CollaborateursServiceV2 {
    */
   static async loadCollaborateurs(tenantId: string): Promise<CollaborateurV2[]> {
     try {
-      console.log('🔄 Chargement des collaborateurs pour tenant:', tenantId)
-      
       const collaborateursRef = collection(db, `tenants/${tenantId}/collaborateurs`)
       const q = query(collaborateursRef, where('actif', '==', true), orderBy('nom'), orderBy('prenom'))
       
@@ -157,7 +152,6 @@ export class CollaborateursServiceV2 {
         } as CollaborateurV2)
       })
       
-      console.log(`✅ ${collaborateurs.length} collaborateurs chargés`)
       return collaborateurs
       
     } catch (error) {
@@ -197,8 +191,12 @@ export class CollaborateursServiceV2 {
         color: data.color || null,
         tenantId: data.tenantId,
         actif: data.actif !== false,
-        createdAt: new Date(data.createdAt || Date.now()),
-        updatedAt: new Date(data.updatedAt || Date.now())
+  createdAt: new Date(data.createdAt || Date.now()),
+  updatedAt: new Date(data.updatedAt || Date.now()),
+  ...(data.registrationCode ? { registrationCode: data.registrationCode } : {}),
+  ...(data.registrationStatus ? { registrationStatus: data.registrationStatus } : {}),
+  ...(data.registrationExpiresAt ? { registrationExpiresAt: data.registrationExpiresAt } : {}),
+  ...(data.userId ? { userId: data.userId } : {})
       } as CollaborateurV2
       
     } catch (error) {
@@ -270,6 +268,29 @@ export class CollaborateursServiceV2 {
         updatedAt: serverTimestamp()
       })
       
+      // Écriture en miroir dans RTDB pour que la liste (qui lit RTDB) voie immédiatement le nouveau collaborateur
+      try {
+        const rtdbPath = `tenants/${tenantId}/collaborateurs/${collaborateurRef.id}`
+        await rtdbUpdate(rtdbRef(rtdb, rtdbPath), {
+          nom: data.nom,
+          prenom: data.prenom,
+          metier: data.metier,
+          note: (data as any).note || '',
+          email: (data as any).email || '',
+          phone: (data as any).phone || '',
+          color: (data as any).color || null,
+          tenantId,
+          actif: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          updatedBy: userId,
+          version: 1
+        })
+        console.log('✅ Collaborateur écrit dans RTDB:', rtdbPath)
+      } catch (rtdbErr) {
+        console.warn('⚠️ Échec écriture RTDB (création collaborateur):', rtdbErr)
+      }
+
       console.log('✅ Collaborateur créé:', collaborateurRef.id)
       return collaborateurRef.id
       

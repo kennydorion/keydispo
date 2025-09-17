@@ -4,6 +4,7 @@ import App from './App.vue'
 import routes, { setupRouterGuards } from './router/routes'
 import { createVuestic } from 'vuestic-ui'
 import { installMultiUserSystem } from './services/multiUserPlugin'
+import { InterfaceManager } from './services/interfaceManager'
 import './style.css'
 
 // Création du routeur
@@ -22,8 +23,17 @@ app.use(createVuestic())
 // Installation du système multi-utilisateur unifié
 app.use(installMultiUserSystem)
 
+// Initialisation du gestionnaire d'interfaces
+InterfaceManager.initialize(router)
+
 // Guards de navigation (auth + rôles)
 setupRouterGuards(router)
 
 // Montage de l'application
 app.mount('#app')
+
+// Exposition globale pour debug (dev seulement)
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.debugInterfaceManager = InterfaceManager
+}

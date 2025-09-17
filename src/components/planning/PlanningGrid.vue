@@ -7,7 +7,10 @@
   <div 
     ref="containerRef"
     class="planning-grid-container"
-    :class="{ 'mobile': isMobile }"
+    :class="{ 
+      'mobile': isMobile,
+      'collaborateur-mode': collaborateurMode
+    }"
     @scroll="handleScroll"
   >
     <!-- En-tête fixe avec les dates -->
@@ -20,6 +23,7 @@
         :header-height="headerHeight"
         :availability-count="getAvailabilityCountForDate(date)"
         :is-selected="selectedDates.includes(date)"
+        :title="getMonthName(date) + ' ' + date.substring(8,10)"
         @select-date="handleDateSelect"
       />
     </div>
@@ -53,33 +57,60 @@
 
         <!-- Cellules de planning -->
         <div class="planning-cells">
-          <PlanningCell
+          <div
             v-for="date in visibleDates"
             :key="`${collaborateur.id}-${date}`"
-            :collaborateur-id="collaborateur.id"
-            :date="date"
-            :day-width="columnWidth"
-            :row-height="rowHeight"
-            :cell-dispos="getCellDisposForCell(collaborateur.id, date)"
-            :is-today="isDateToday(date)"
-            :is-weekend="isDateWeekend(date)"
-            :is-selected="isCellSelected(collaborateur.id, date)"
-            :is-day-loaded="true"
-            :is-week-boundary="false"
-            :locked-by="getCellLockInfo(collaborateur.id, date)?.userName || null"
-            :is-locked="!!getCellLockInfo(collaborateur.id, date)"
-            :is-locked-by-others="!!getCellLockInfo(collaborateur.id, date)"
-            :is-hovered-by-others="false"
-            :hovering-user-initials="[]"
-            :hovering-user-color="''"
-            :hovering-user-tooltip="''"
-            :is-mobile="isMobile"
-            :is-first-of-month="false"
-            :month-name="getMonthName(date)"
-            @click="(collaborateurId, date) => handleCellClick(collaborateurId, date, {} as MouseEvent)"
-            @hover="(collaborateurId, date) => handleCellHover(collaborateurId, date, {} as MouseEvent)"
-            @leave="(collaborateurId, date) => handleCellLeave(collaborateurId, date, {} as MouseEvent)"
-          />
+            class="planning-cell"
+            :class="{
+              'today': isDateToday(date),
+              'weekend': isDateWeekend(date),
+              'selected': isCellSelected(collaborateur.id, date),
+              'locked': !!getCellLockInfo(collaborateur.id, date),
+              'has-dispo': getCellDisposForCell(collaborateur.id, date).length > 0,
+              'hovered-by-others': props.isHoveredByOthers?.(collaborateur.id, date)
+            }"
+            :style="{ 
+              width: columnWidth + 'px', 
+              height: rowHeight + 'px',
+              '--hovering-user-color': props.getHoveringUserColor?.(collaborateur.id, date) || '#2196F3'
+            }"
+            :data-hovering-initials="props.getHoveringUserInitials?.(collaborateur.id, date)"
+            @click.stop="handleCellClick(collaborateur.id, date, $event as MouseEvent)"
+            @mouseenter="handleCellHover(collaborateur.id, date, $event as MouseEvent)"
+            @mouseleave="handleCellLeave(collaborateur.id, date, $event as MouseEvent)"
+            :title="`${collaborateur.prenom} ${collaborateur.nom} — ${date}`"
+          >
+              <div class="cell-content">
+              <div class="cell-chip" v-if="getCellDisposForCell(collaborateur.id, date).length">
+                {{ getCellDisposForCell(collaborateur.id, date).length }} dispo(s)
+              </div>
+
+              <!-- Badges de disponibilités (missions/indispos/dispos) -->
+              <div class="cell-badges" v-if="getCellDisposForCell(collaborateur.id, date).length">
+                <span
+                  v-for="dispo in getCellDisposForCell(collaborateur.id, date).slice(0, 3)"
+                  :key="dispo.id || dispo.lieu + '-' + dispo.heure_debut + '-' + dispo.heure_fin"
+                  class="dispo-badge"
+                  :class="getBadgeClass(dispo)"
+                  :title="getBadgeTitle(dispo)"
+                >
+                  {{ getBadgeLabel(dispo) }}
+                </span>
+                <span v-if="getCellDisposForCell(collaborateur.id, date).length > 3" class="dispo-badge more">+{{ getCellDisposForCell(collaborateur.id, date).length - 3 }}</span>
+              </div>
+              
+              <!-- Indicateur de survol par d'autres utilisateurs -->
+              <div 
+                v-if="props.isHoveredByOthers?.(collaborateur.id, date)"
+                class="hovering-indicator"
+                :style="{ borderColor: props.getHoveringUserColor?.(collaborateur.id, date) }"
+              >
+                <span class="hovering-initials">
+                  {{ props.getHoveringUserInitials?.(collaborateur.id, date) }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -102,7 +133,8 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import CollaborateurColumn from './CollaborateurColumn.vue'
 import DateHeaderCell from './DateHeaderCell.vue'
-import PlanningCell from './PlanningCell.vue'
+import { resolveDispoKind, getDispoTypeClass, getTemporalDisplay } from '@/services/planningDisplayService'
+// PlanningCell temporairement retiré pour stabiliser le build
 
 interface Collaborateur {
   id: string
@@ -155,6 +187,11 @@ interface Props {
   rowHeight?: number
   headerHeight?: number
   stickyLeftWidth?: number
+  collaborateurMode?: boolean
+  // Props pour gestion multiuser des survols
+  isHoveredByOthers?: (collaborateurId: string, date: string) => boolean
+  getHoveringUserColor?: (collaborateurId: string, date: string) => string
+  getHoveringUserInitials?: (collaborateurId: string, date: string) => string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -162,7 +199,11 @@ const props = withDefaults(defineProps<Props>(), {
   columnWidth: 100,
   rowHeight: 60,
   headerHeight: 80,
-  stickyLeftWidth: 200
+  stickyLeftWidth: 200,
+  collaborateurMode: false,
+  isHoveredByOthers: () => false,
+  getHoveringUserColor: () => '#2196F3',
+  getHoveringUserInitials: () => '',
 })
 
 const emit = defineEmits<{
@@ -264,11 +305,11 @@ function getCellDisposForCell(collaborateurId: string, date: string): Disponibil
   const collab = props.collaborateurs.find(c => c.id === collaborateurId)
   if (!collab) return []
   
-  return props.disponibilites.filter(d => 
-    d.nom === collab.nom && 
-    d.prenom === collab.prenom && 
-    d.date === date
-  )
+  return props.disponibilites.filter(d => {
+    const matchById = d.collaborateurId ? d.collaborateurId === collaborateurId : false
+    const matchByName = d.nom === collab.nom && d.prenom === collab.prenom
+    return (matchById || matchByName) && d.date === date
+  })
 }
 
 function isDateToday(date: string): boolean {
@@ -330,6 +371,38 @@ function handleCellLeave(collaborateurId: string, date: string, event: MouseEven
 
 function handleDateSelect(date: string) {
   emit('dateSelect', date)
+}
+
+// Badges helpers
+function getBadgeClass(dispo: Disponibilite): string[] {
+  const cls = getDispoTypeClass(dispo as any)
+  return ['badge', cls]
+}
+
+function getBadgeLabel(dispo: Disponibilite): string {
+  const kind = resolveDispoKind(dispo as any)
+  if (kind.type === 'mission') {
+    const label = (dispo.lieu && dispo.lieu.trim()) ? dispo.lieu : 'Mission'
+    const time = getTemporalDisplay(dispo as any)
+    return time && time !== 'Journée' ? `${label} • ${time}` : label
+  }
+  if (kind.type === 'indisponible') {
+    const time = getTemporalDisplay(dispo as any)
+    return time && time !== 'Journée' ? `Indispo • ${time}` : 'Indispo'
+  }
+  const time = getTemporalDisplay(dispo as any)
+  return time && time !== 'Journée' ? `Dispo • ${time}` : 'Dispo'
+}
+
+function getBadgeTitle(dispo: Disponibilite): string {
+  const kind = resolveDispoKind(dispo as any)
+  const time = getTemporalDisplay(dispo as any)
+  const base = kind.type.charAt(0).toUpperCase() + kind.type.slice(1)
+  if (kind.type === 'mission') {
+    const label = (dispo.lieu && dispo.lieu.trim()) ? dispo.lieu : 'Mission'
+    return `${base}: ${label}${time ? ` (${time})` : ''}`
+  }
+  return `${base}${time ? ` (${time})` : ''}`
 }
 
 // Gestion du redimensionnement
@@ -482,5 +555,200 @@ onMounted(() => {
 .grid-header {
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* Mode Collaborateur - Thème blanc et adaptatif */
+.planning-grid-container.collaborateur-mode {
+  --planning-bg: #ffffff;
+  --planning-border: #e0e7ff;
+  --planning-header-bg: #f8fafc;
+  --planning-text: #374151;
+  --planning-accent: #6366f1;
+  background: var(--planning-bg);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.planning-grid-container.collaborateur-mode .grid-header {
+  background: var(--planning-header-bg);
+  border-bottom: 1px solid var(--planning-border);
+  color: var(--planning-text);
+}
+
+.planning-grid-container.collaborateur-mode .planning-row {
+  background: var(--planning-bg);
+  border-bottom: 1px solid var(--planning-border);
+}
+
+.planning-grid-container.collaborateur-mode .planning-row:hover {
+  background: #f9fafb;
+}
+
+/* Cellules spécifiques mode collaborateur */
+.planning-grid-container.collaborateur-mode .planning-cell {
+  border-color: var(--planning-border);
+  color: var(--planning-text);
+}
+
+.planning-grid-container.collaborateur-mode .planning-cell:hover {
+  background: #f0f4ff;
+  border-color: var(--planning-accent);
+}
+
+.planning-grid-container.collaborateur-mode .planning-cell.has-dispo {
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  border-color: var(--planning-accent);
+  color: var(--planning-text);
+}
+
+.planning-grid-container.collaborateur-mode .planning-cell.has-dispo:hover {
+  background: linear-gradient(135deg, #c7d2fe, #a5b4fc);
+}
+
+/* Styles généraux pour les cellules de planning */
+.planning-cell {
+  border: 1px solid #e0e7ff;
+  background: #ffffff;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planning-cell:hover {
+  background: #f0f4ff;
+}
+
+.planning-cell.has-dispo {
+  background: rgba(76, 175, 80, 0.1);
+  border-left: 3px solid #4CAF50;
+}
+
+.planning-cell.selected {
+  background: rgba(255, 152, 0, 0.2);
+  border: 2px solid #ff9800;
+}
+
+.planning-cell.hovered-by-others {
+  background: rgba(33, 150, 243, 0.1);
+  border: 2px solid var(--hovering-user-color, #2196F3);
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+  animation: pulse-hover 2s infinite;
+}
+
+@keyframes pulse-hover {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 12px var(--hovering-user-color, rgba(33, 150, 243, 0.5));
+  }
+}
+
+.cell-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell-chip {
+  background: #4CAF50;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cell-badges {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.dispo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  background: #eef2f7;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  max-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.dispo-badge.more {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Couleurs par type via classes de planningDisplayService */
+.dispo-card-mission {
+  background: #fff7ed;
+  color: #7c2d12;
+  border-color: #fdba74;
+}
+.dispo-card-indisponible {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
+}
+.dispo-card-disponible {
+  background: #dcfce7;
+  color: #065f46;
+  border-color: #86efac;
+}
+
+.hovering-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--hovering-user-color, #2196F3);
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.hovering-initials {
+  color: var(--hovering-user-color, #2196F3);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Scrollbars pour mode collaborateur */
+.planning-grid-container.collaborateur-mode::-webkit-scrollbar-track {
+  background: var(--planning-header-bg);
+}
+
+.planning-grid-container.collaborateur-mode::-webkit-scrollbar-thumb {
+  background: var(--planning-border);
+}
+
+.planning-grid-container.collaborateur-mode::-webkit-scrollbar-thumb:hover {
+  background: var(--planning-accent);
 }
 </style>

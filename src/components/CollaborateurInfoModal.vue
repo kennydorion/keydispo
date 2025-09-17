@@ -5,7 +5,9 @@
     :fullscreen="false"
     max-width="600px"
     no-padding
-    @close="closeModal"
+  @before-open="modalA11y.onBeforeOpen"
+  @open="modalA11y.onOpen"
+  @close="() => { modalA11y.onClose(); closeModal() }"
   >
     <div v-if="collaborateur" class="collaborateur-info-compact">
       <!-- En-tête compact avec couleur du collaborateur -->
@@ -216,6 +218,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Collaborateur, DisponibiliteExtended } from '@/types/planning'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 // Props
 interface Props {
@@ -250,6 +253,9 @@ const expandedSections = ref({
   stats: false,
   notes: false
 })
+
+// Accessibilité modale
+const modalA11y = useModalA11y()
 
 // Computed
 const isVisible = computed({
@@ -303,6 +309,7 @@ const avatarColor = computed(() => {
   const uid = `${props.collaborateur.nom}-${props.collaborateur.prenom}`.toLowerCase()
   return getUserColor(uid, props.collaborateurColor)
 })
+void avatarColor.value
 
 // Watchers
 watch(() => props.collaborateur, (newCollaborateur) => {

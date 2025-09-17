@@ -23,6 +23,10 @@
               <input id="email" v-model="email" type="email" class="form-input" placeholder="vous@email.com" required />
             </div>
             <div class="form-group">
+              <label for="collabCode">Code d'inscription collaborateur (fourni par votre administrateur)</label>
+              <input id="collabCode" v-model="collabCode" type="text" class="form-input" placeholder="Ex: AB3D7K92" />
+            </div>
+            <div class="form-group">
               <label for="password">Mot de passe</label>
               <input id="password" v-model="password" type="password" class="form-input" placeholder="••••••••" required minlength="6" />
             </div>
@@ -44,7 +48,13 @@
           <div v-if="success" class="success-message">Compte créé ! Vous pouvez maintenant vous connecter.</div>
 
           <p class="switch-link">
-            Déjà un compte ? <router-link to="/login">Connexion</router-link>
+            Déjà un compte ?
+            <template v-if="isCollaborateurRegister">
+              <router-link to="/collaborateur/login">Connexion collaborateur</router-link>
+            </template>
+            <template v-else>
+              <router-link to="/login">Connexion</router-link>
+            </template>
           </p>
         </div>
       </div>
@@ -53,15 +63,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { AuthService } from '../services/auth'
 import { firebaseStatus } from '../services/firebase'
+import { registrationCodesService } from '../services/registrationCodes'
+import { InterfaceManager } from '../services/interfaceManager'
+import { auth } from '../services/firebase'
 
 const router = useRouter()
+const route = useRoute()
 
 const displayName = ref('')
 const email = ref('')
+const collabCode = ref('')
 const password = ref('')
 const password2 = ref('')
 const isLoading = ref(false)
@@ -69,6 +84,23 @@ const error = ref('')
 const success = ref(false)
 const configValid = firebaseStatus.configValid
 const missingVarsDisplay = firebaseStatus.missing.length ? firebaseStatus.missing.join(', ') : (firebaseStatus.fakeKey ? 'apiKey factice' : 'variables OK')
+const isCollaborateurRegister = ref(false)
+const isLoggedIn = ref(false)
+const currentUid = ref<string | null>(null)
+
+onMounted(() => {
+  isCollaborateurRegister.value = route.path.includes('/collaborateur/')
+  if (isCollaborateurRegister.value) {
+    InterfaceManager.setTemporaryInterface('collaborateur')
+    InterfaceManager.setLoginOrigin('collaborateur')
+  } else {
+    InterfaceManager.setTemporaryInterface('admin')
+    InterfaceManager.setLoginOrigin('admin')
+  }
+  // État d'auth courant
+  isLoggedIn.value = !!auth.currentUser
+  currentUid.value = auth.currentUser?.uid ?? null
+})
 
 async function handleRegister() {
   error.value = ''
@@ -89,10 +121,54 @@ async function handleRegister() {
 
   isLoading.value = true
   try {
-    await AuthService.signUpWithEmail(email.value, password.value, displayName.value)
+    // Prévalidation du code collaborateur (si fourni)
+    const code = (collabCode.value || '').trim().toUpperCase()
+    if (code) {
+      try {
+        const info = await registrationCodesService.getCode(AuthService.currentTenantId || 'keydispo', code)
+        const now = Date.now()
+        if (!info) throw new Error('Code invalide')
+        if (info.status !== 'active') throw new Error('Code non actif')
+        if (info.expiresAt && now > info.expiresAt) throw new Error('Code expiré')
+      } catch (preErr: any) {
+        error.value = preErr?.message || 'Code collaborateur invalide'
+        return
+      }
+    }
+    // Si déjà connecté: ne pas créer un nouveau compte
+    if (auth.currentUser) {
+      if (!code) {
+        error.value = 'Vous êtes déjà connecté. Déconnectez-vous pour créer un nouveau compte ou saisissez un code collaborateur pour lier votre compte.'
+        return
+      }
+      try {
+        await registrationCodesService.consumeAndLink(AuthService.currentTenantId || 'keydispo', code, auth.currentUser.uid)
+        success.value = true
+        // Rediriger selon l’interface courante
+        const target = route.path.includes('/collaborateur/') ? '/collaborateur/planning' : '/dashboard'
+        setTimeout(() => router.push(target), 1200)
+        return
+      } catch (linkErr: any) {
+        console.warn('Lien collaborateur échoué (compte existant):', linkErr)
+        error.value = linkErr?.message || 'Code collaborateur invalide'
+        return
+      }
+    }
+
+    // Sinon: créer le compte puis lier le code si présent
+    const user = await AuthService.signUpWithEmail(email.value, password.value, displayName.value)
+    if (code) {
+      try {
+        await registrationCodesService.consumeAndLink(AuthService.currentTenantId || 'keydispo', code, user.uid)
+      } catch (linkErr: any) {
+        console.warn('Lien collaborateur échoué:', linkErr)
+        error.value = linkErr?.message || 'Code collaborateur invalide'
+        return
+      }
+    }
     success.value = true
-    // Option: rediriger directement après une courte pause
-    setTimeout(() => router.push('/login'), 1200)
+    const targetLogin = route.path.includes('/collaborateur/') ? '/collaborateur/login' : '/login'
+    setTimeout(() => router.push(targetLogin), 1200)
   } catch (err: any) {
     console.error('Register error', err)
     if (err.code === 'auth/email-already-in-use') error.value = 'Email déjà utilisé'

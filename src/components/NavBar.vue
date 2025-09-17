@@ -15,7 +15,7 @@
     <!-- Logo -->
     <div class="navbar-brand">
       <img src="/keyplacementlogo.svg" alt="Key Placement" class="navbar-logo" />
-      <span class="navbar-title">Key Placement</span>
+      <span class="navbar-title">{{ isCollaborateurInterface ? 'Mon Espace' : 'Key Placement' }}</span>
     </div>
 
     <!-- Desktop Navigation -->
@@ -61,9 +61,19 @@
             </div>
           </div>
           <hr class="dropdown-divider" />
+          <!-- Option pour changer d'interface (pour les admins) -->
+          <button class="dropdown-item" @click="toggleInterface" v-if="!isCollaborateurInterface">
+            <i class="material-icons">switch_account</i>
+            <span>Interface Collaborateur</span>
+          </button>
+          <button class="dropdown-item" @click="toggleInterface" v-if="isCollaborateurInterface">
+            <i class="material-icons">admin_panel_settings</i>
+            <span>Interface Admin</span>
+          </button>
+          <hr class="dropdown-divider" />
           <button class="dropdown-item" @click="goToSettings">
-            <i class="material-icons">settings</i>
-            <span>Paramètres</span>
+            <i class="material-icons">{{ isCollaborateurInterface ? 'account_circle' : 'settings' }}</i>
+            <span>{{ isCollaborateurInterface ? 'Mon Profil' : 'Paramètres' }}</span>
           </button>
           <button class="dropdown-item" @click="signOut">
             <i class="material-icons">logout</i>
@@ -109,9 +119,18 @@
       </div>
       
       <div class="mobile-footer">
+        <!-- Option pour changer d'interface (pour les admins) -->
+        <button class="mobile-action" @click="toggleInterface" v-if="!isCollaborateurInterface">
+          <i class="material-icons">switch_account</i>
+          <span>Interface Collaborateur</span>
+        </button>
+        <button class="mobile-action" @click="toggleInterface" v-if="isCollaborateurInterface">
+          <i class="material-icons">admin_panel_settings</i>
+          <span>Interface Admin</span>
+        </button>
         <button class="mobile-action" @click="goToSettings">
-          <i class="material-icons">settings</i>
-          <span>Paramètres</span>
+          <i class="material-icons">{{ isCollaborateurInterface ? 'account_circle' : 'settings' }}</i>
+          <span>{{ isCollaborateurInterface ? 'Mon Profil' : 'Paramètres' }}</span>
         </button>
         <button class="mobile-action" @click="signOut">
           <i class="material-icons">logout</i>
@@ -141,13 +160,30 @@ const userUid = ref<string>('')
 // User preferences for avatar color
 const { preferences, loadPreferences } = useUserPreferences()
 
-// Navigation items
-const navigationItems = [
-  { path: '/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
-  { path: '/semaine', label: 'Planning', icon: 'calendar_today' },
-  { path: '/collaborateurs', label: 'Collaborateurs', icon: 'people' },
-  { path: '/import', label: 'Import', icon: 'upload_file' }
-]
+// Détection automatique du contexte selon la route
+const isCollaborateurInterface = computed(() => {
+  return route.path.startsWith('/collaborateur/')
+})
+
+// Navigation items adaptée au contexte
+const navigationItems = computed(() => {
+  if (isCollaborateurInterface.value) {
+    // Interface collaborateur - navigation simplifiée
+    return [
+      { path: '/collaborateur/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
+      { path: '/collaborateur/planning', label: 'Mon Planning', icon: 'calendar_today' },
+      { path: '/collaborateur/profil', label: 'Mon Profil', icon: 'account_circle' }
+    ]
+  } else {
+    // Interface admin - navigation complète
+    return [
+      { path: '/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
+      { path: '/semaine', label: 'Planning', icon: 'calendar_month' },
+      { path: '/collaborateurs', label: 'Collaborateurs', icon: 'people' },
+      { path: '/import', label: 'Import', icon: 'upload' }
+    ]
+  }
+})
 
 // Computed properties
 const userName = computed(() => {
@@ -200,7 +236,25 @@ const closeUserMenu = () => {
 }
 
 const goToSettings = () => {
-  router.push('/parametres')
+  if (isCollaborateurInterface.value) {
+    // Pour l'interface collaborateur, aller au profil
+    router.push('/collaborateur/profil')
+  } else {
+    // Pour l'interface admin, aller aux paramètres
+    router.push('/parametres')
+  }
+  closeUserMenu()
+  closeMobileMenu()
+}
+
+const toggleInterface = () => {
+  if (isCollaborateurInterface.value) {
+    // Passer à l'interface admin
+    router.push('/dashboard')
+  } else {
+    // Passer à l'interface collaborateur
+    router.push('/collaborateur/dashboard')
+  }
   closeUserMenu()
   closeMobileMenu()
 }
@@ -210,7 +264,12 @@ const signOut = async () => {
     await firebaseSignOut(auth)
     closeUserMenu()
     closeMobileMenu()
-    router.push('/login')
+    // Rediriger vers la page de connexion appropriée
+    if (isCollaborateurInterface.value) {
+      router.push('/collaborateur/login')
+    } else {
+      router.push('/login')
+    }
   } catch (error) {
     console.error('Erreur lors de la déconnexion:', error)
   }

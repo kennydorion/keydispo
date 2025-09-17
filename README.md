@@ -2,6 +2,12 @@
 
 Application web Vue 3 pour la gestion des disponibilités des collaborateurs avec import Excel, gestion multi-utilisateurs et déploiement Netlify.
 
+## 🔑 Codes d'inscription Collaborateurs (Nouveau)
+
+- Les admins peuvent générer un code lié à un collaborateur depuis la page Détail Collaborateur (section "Code d'inscription collaborateur").
+- Le collaborateur utilise ce code lors de l'inscription sur la page /register pour lier son compte à sa fiche.
+- Les codes expirent par défaut au bout de 7 jours; ils peuvent être révoqués et régénérés.
+
 ## 🎯 État Actuel (13 août 2025)
 
 ### ✅ Fonctionnel et Testé
@@ -102,6 +108,12 @@ cp .env.example .env.local
 # Éditer .env.local avec vos valeurs Firebase
 ```
 
+Astuce réseau: si vous voyez des erreurs Firestore "Listen 400 (Bad Request)" dans certains navigateurs (ex: Safari) ou derrière un proxy/antivirus, activez le long-polling forcé:
+
+```
+VITE_FORCE_LONG_POLL=1
+```
+
 ### 3. Déployer les règles Firestore
 
 ```bash
@@ -167,6 +179,10 @@ VITE_FB_STORAGE_BUCKET=your_project.appspot.com
 VITE_FB_MESSAGING_SENDER_ID=your_sender_id
 VITE_FB_APP_ID=your_app_id
 VITE_TENANT_ID=default
+VITE_FB_DATABASE_URL=https://your_project_id-default-rtdb.europe-west1.firebasedatabase.app
+VITE_ADMIN_EMAILS=admin@example.com
+# Optionnel si besoin face aux proxys/Safari
+VITE_FORCE_LONG_POLL=0
 ```
 
 ### 3. Redirections SPA
