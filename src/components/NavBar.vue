@@ -61,12 +61,12 @@
             </div>
           </div>
           <hr class="dropdown-divider" />
-          <!-- Option pour changer d'interface (pour les admins) -->
-          <button class="dropdown-item" @click="toggleInterface" v-if="!isCollaborateurInterface">
+          <!-- Option pour changer d'interface (pour les admins seulement) -->
+          <button class="dropdown-item" @click="toggleInterface" v-if="!isCollaborateurInterface && canAccessAdmin">
             <i class="material-icons">switch_account</i>
             <span>Interface Collaborateur</span>
           </button>
-          <button class="dropdown-item" @click="toggleInterface" v-if="isCollaborateurInterface">
+          <button class="dropdown-item" @click="toggleInterface" v-if="isCollaborateurInterface && canAccessAdmin">
             <i class="material-icons">admin_panel_settings</i>
             <span>Interface Admin</span>
           </button>
@@ -119,12 +119,12 @@
       </div>
       
       <div class="mobile-footer">
-        <!-- Option pour changer d'interface (pour les admins) -->
-        <button class="mobile-action" @click="toggleInterface" v-if="!isCollaborateurInterface">
+        <!-- Option pour changer d'interface (pour les admins seulement) -->
+        <button class="mobile-action" @click="toggleInterface" v-if="!isCollaborateurInterface && canAccessAdmin">
           <i class="material-icons">switch_account</i>
           <span>Interface Collaborateur</span>
         </button>
-        <button class="mobile-action" @click="toggleInterface" v-if="isCollaborateurInterface">
+        <button class="mobile-action" @click="toggleInterface" v-if="isCollaborateurInterface && canAccessAdmin">
           <i class="material-icons">admin_panel_settings</i>
           <span>Interface Admin</span>
         </button>
@@ -148,6 +148,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/services/firebase'
 import { signOut as firebaseSignOut, onAuthStateChanged, type User } from 'firebase/auth'
 import { useUserPreferences } from '@/services/userPreferences'
+import { AuthService } from '@/services/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -156,6 +157,7 @@ const showMobileMenu = ref(false)
 const showUserMenu = ref(false)
 const userEmail = ref<string>('')
 const userUid = ref<string>('')
+const userRole = ref<string>('')
 
 // User preferences for avatar color
 const { preferences, loadPreferences } = useUserPreferences()
@@ -163,6 +165,11 @@ const { preferences, loadPreferences } = useUserPreferences()
 // Détection automatique du contexte selon la route
 const isCollaborateurInterface = computed(() => {
   return route.path.startsWith('/collaborateur/')
+})
+
+// Vérifier si l'utilisateur peut accéder à l'interface admin
+const canAccessAdmin = computed(() => {
+  return userRole.value && ['admin', 'editor'].includes(userRole.value)
 })
 
 // Navigation items adaptée au contexte
@@ -286,11 +293,23 @@ const handleClickOutside = (event: MouseEvent) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   
-  onAuthStateChanged(auth, (user: User | null) => {
+  onAuthStateChanged(auth, async (user: User | null) => {
     userEmail.value = user?.email || ''
     userUid.value = user?.uid || ''
-    if (user && loadPreferences) {
-      void loadPreferences(user.uid)
+    if (user) {
+      if (loadPreferences) {
+        void loadPreferences(user.uid)
+      }
+      // Charger le rôle utilisateur
+      try {
+        const tenantUser = await AuthService.getUserRole(user.uid)
+        userRole.value = tenantUser?.role || ''
+      } catch (error) {
+        console.error('Error loading user role:', error)
+        userRole.value = ''
+      }
+    } else {
+      userRole.value = ''
     }
   })
 })

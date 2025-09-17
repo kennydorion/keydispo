@@ -120,11 +120,13 @@
         :type-options="typeOptionsCollaborateur"
         :slot-options="slotOptions"
         :lieux-options-strings="lieuxOptionsStrings"
-  :is-edit-form-valid="!!isEditFormValid"
+        :is-edit-form-valid="!!isEditFormValid"
         :saving="isSaving"
         :time-kind-options="timeKindOptionsForCollaborateur(editingDispo.type)"
-  :time-kind-options-filtered="timeKindOptionsFilteredForCollaborateur(editingDispo.type)"
-  :is-detected-overnight="isDetectedOvernight"
+        :time-kind-options-filtered="timeKindOptionsFilteredForCollaborateur(editingDispo.type)"
+        :is-detected-overnight="isDetectedOvernight"
+        :is-collaborator-view="true"
+        :is-overnight-time="isOvernightTime"
         :get-type-icon="getTypeIcon"
         :get-type-text="getTypeText"
         :get-type-color="getTypeColor"
@@ -132,8 +134,6 @@
         :get-slot-text="getSlotText"
         :get-time-kind-icon="getTimeKindIcon"
         :get-user-initials="getUserInitials"
-  :is-collaborator-view="true"
-  :is-overnight-time="isOvernightTime"
         @cancel-modal="cancelCollaborateurModal"
         @save-dispos="saveCollaborateurDispos"
         @edit-dispo-line="editDispoLine"
@@ -1007,19 +1007,7 @@ function onCalendarEdit(id: string) {
   const existing = mesDisponibilites.value.find(d => d.id === id)
   if (!existing) return
   
-  // Bloquer l'édition des missions
-  const kind = normalizeDispo({
-    date: existing.date,
-    lieu: existing.lieu,
-    heure_debut: existing.heure_debut,
-    heure_fin: existing.heure_fin
-  })
-  if (kind.type === 'mission') {
-    toast({ message: 'Mission assignée — non modifiable.', color: 'warning' })
-    return
-  }
-  
-  // Ouvrir la nouvelle modale pour édition
+  // Ouvrir la modale pour voir les détails (missions en lecture seule grâce à isCollaboratorView)
   openCollaborateurDispoModal(existing.date, existing)
 }
 
@@ -1347,8 +1335,8 @@ onBeforeUnmount(() => {
   --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   
   background: var(--collaborateur-bg);
-  min-height: calc(100vh - 64px); /* Prendre toute la fenêtre moins la navbar */
-  height: calc(100vh - 64px); /* important pour FullCalendar height:100% */
+  min-height: calc(100vh - 64px - 80px); /* Prendre toute la fenêtre moins la navbar (64px) et l'en-tête collaborateur (80px) */
+  height: calc(100vh - 64px - 80px); /* important pour FullCalendar height:100% */
   padding: 0; /* edge-to-edge comme l'admin */
   display: flex;
   flex-direction: column;
@@ -1357,11 +1345,16 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-/* Mobile - ajuster pour la hauteur de navbar mobile */
+/* Mobile - ajuster pour la hauteur de navbar mobile et en-tête */
 @media (max-width: 768px) {
   .planning-collaborateur {
-    min-height: calc(100vh - 56px);
-    height: calc(100vh - 56px);
+    min-height: calc(100vh - 56px - 70px); /* navbar mobile (56px) + en-tête mobile (70px) */
+    height: calc(100vh - 56px - 70px);
+  }
+  
+  .collaborateur-header {
+    height: 70px; /* Hauteur réduite sur mobile */
+    min-height: 70px;
   }
 }
 
@@ -1381,6 +1374,8 @@ onBeforeUnmount(() => {
   background: var(--surface-light);
   border-bottom: 1px solid var(--border-light);
   box-shadow: var(--shadow-soft);
+  height: 80px; /* Hauteur fixe pour les calculs */
+  min-height: 80px;
 }
 
 /* Bandeau haut calqué sur l'admin */
@@ -1388,6 +1383,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 100%; /* Prendre toute la hauteur de l'en-tête */
   padding: 16px 24px;
   background: var(--primary-gradient);
   color: white;
