@@ -391,6 +391,7 @@ onBeforeUnmount(() => {
   height: 60px;
   width: auto;
   object-fit: contain;
+  padding: 8px;
 }
 
 .navbar-title {
@@ -796,8 +797,9 @@ onBeforeUnmount(() => {
   }
   
   .navbar-logo {
-    width: 32px;
-    height: 32px;
+    height: 50px;
+    width: auto;
+    padding: 6px;
   }
   
   .navbar-nav {
