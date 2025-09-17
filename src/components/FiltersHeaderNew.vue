@@ -13,17 +13,18 @@
       </div>
       
       <div class="header-actions">
-        <!-- Bouton toggle filtres mobile -->
-        <button 
-          v-if="isMobile" 
-          class="filters-toggle"
-          @click="toggleFilters"
-          :class="{ active: !filtersCollapsed }"
-        >
-          <span class="material-icons">{{ filtersCollapsed ? 'expand_more' : 'expand_less' }}</span>
-          <span>Filtres</span>
-          <span v-if="hasActiveFilters" class="filter-badge">{{ activeFilterChips.length }}</span>
-        </button>
+        <!-- Simple lien centré pour filtres mobile -->
+        <div v-if="isMobile" class="filters-simple-toggle">
+          <a 
+            href="#" 
+            @click.prevent="toggleFilters"
+            class="filters-link"
+            :class="{ active: !filtersCollapsed }"
+          >
+            {{ filtersCollapsed ? 'Afficher filtres' : 'Masquer filtres' }}
+            <span v-if="hasActiveFilters" class="filter-count">({{ activeFilterChips.length }})</span>
+          </a>
+        </div>
         <!-- Bouton mobile original (masqué) -->
         <button class="mobile-toggle" @click="$emit('openMobileFilters')" style="display: none;">
           <span class="material-icons">tune</span>
@@ -215,9 +216,9 @@ const filtersCollapsed = ref(false)
 // Détection mobile
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
-  // Auto-collapse sur mobile si les filtres ne sont pas utilisés
-  if (isMobile.value && !hasActiveFilters.value) {
-    filtersCollapsed.value = true
+  // Filtres visibles par défaut sur mobile
+  if (isMobile.value) {
+    filtersCollapsed.value = false // Afficher par défaut
   }
 }
 
@@ -747,6 +748,55 @@ watch(
 .active-chips-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px }
 .active-chips-row { padding: 4px 2px 0 }
 .filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff }
+.chip-icon { font-size: 14px }
+.chip-label { font-size: 12px; font-weight: 600 }
+.chip-clear { background: transparent; border: none; padding: 0; margin-left: 2px; display: grid; place-items: center; cursor: pointer; color: #6366f1 }
+.chip-clear .material-icons { font-size: 16px }
+.chip-clear:hover { color: #3730a3 }
+
+/* Simple lien centré pour filtres mobile */
+.filters-simple-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.filters-link {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filters-link:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.filters-link.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.filter-count {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
 .chip-icon { font-size: 14px }
 .chip-label { font-size: 12px; font-weight: 600 }
 .chip-clear { background: transparent; border: none; padding: 0; margin-left: 2px; display: grid; place-items: center; cursor: pointer; color: #6366f1 }

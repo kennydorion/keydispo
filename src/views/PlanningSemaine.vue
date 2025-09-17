@@ -8160,7 +8160,7 @@ onUnmounted(() => {
   font-size: 14px;
   color: #333;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 200;
+  z-index: 1000; /* Augmenté pour être au-dessus de tout */
   pointer-events: none;
   backdrop-filter: blur(4px);
 }
