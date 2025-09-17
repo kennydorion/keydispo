@@ -472,6 +472,7 @@ input, select, textarea {
   padding: 0.6em 0.8em;
   background: #fff;
   color: var(--kd-gray-900);
+  font-size: 16px; /* Minimum 16px pour éviter le zoom automatique sur iOS */
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 input:focus, select:focus, textarea:focus {
@@ -837,5 +838,30 @@ body > [data-va-toast] {
 .collaborateur-light-theme .va-select-option--selected {
   background: #eff6ff !important;
   color: #2563eb !important;
+}
+
+/* ===== CORRECTION ZOOM AUTOMATIQUE iOS ===== */
+/* Force une taille de police minimale de 16px sur tous les inputs pour éviter le zoom automatique sur iOS Safari */
+input, textarea, select,
+.va-input input,
+.va-textarea textarea,
+.va-select input,
+.va-date-input input,
+.va-time-input input {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100% !important;
+}
+
+/* Applique aussi aux inputs de recherche */
+input[type="search"],
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"] {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100% !important;
 }
 
