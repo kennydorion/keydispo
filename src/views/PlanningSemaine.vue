@@ -1008,6 +1008,21 @@ const isBusy = computed(() => {
 watch(() => planningData.isLoading.value, (v) => { loadingCollaborateurs.value = v }, { immediate: true })
 watch(() => (planningData.loadingDisponibilites.value || (planningData.fetchingRanges.value?.length > 0)), (v) => { loadingDisponibilites.value = v }, { immediate: true })
 
+// CORRECTION: Watcher pour forcer le recalcul du filtrage quand le chargement est terminé
+watch(isBusy, async (busy, prevBusy) => {
+  // Quand on passe de busy=true à busy=false (fin de chargement)
+  if (prevBusy && !busy) {
+    await nextTick()
+    console.log('🔍 [DEBUG] Fin de chargement - forcer recalcul filtrage:', filteredCollaborateurs.value.length)
+    // Forcer la réactivité
+    const scroller = planningScroll.value
+    if (scroller) {
+      recomputeRowWindow(scroller)
+      ensureRowsVisible()
+    }
+  }
+}, { immediate: false })
+
 // Options de formulaire
 const allTypeOptions = [
   { text: 'Mission', value: 'mission' },
@@ -5742,6 +5757,9 @@ onMounted(async () => {
   generateInitialDays()
   await planningData.loadCollaborateurs()
   
+  // CORRECTION: Forcer la réactivité après le chargement des collaborateurs
+  await nextTick()
+  
   // Initialiser le moteur WASM ultra-performant
   await initializeWASMEngine()
   
@@ -5753,6 +5771,9 @@ onMounted(async () => {
       await generateDisponibilitesForDateRange(firstDay.date, lastDay.date)
     }
   }
+  
+  // CORRECTION: Forcer la réactivité après le chargement des disponibilités 
+  await nextTick()
   
   // Configurer le moteur WASM avec les données actuelles
   updateWASMConfiguration()
@@ -5775,6 +5796,16 @@ onMounted(async () => {
     } catch (error) {
       console.warn('⚠️ Erreur lors du chargement des préférences:', error)
     }
+  }
+  
+  // CORRECTION: Forcer un recalcul final pour s'assurer que le filtrage est appliqué
+  await nextTick()
+  // Trigger manuel pour forcer la réactivité du filtrage
+  console.log('🔍 [DEBUG] Fin d\'initialisation - collaborateurs filtrés:', filteredCollaborateurs.value.length)
+  // Forcer le recalcul si nécessaire
+  if (scroller) {
+    recomputeRowWindow(scroller)
+    ensureRowsVisible()
   }
   
   // Initialiser les couleurs CSS de l'utilisateur
