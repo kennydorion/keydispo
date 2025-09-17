@@ -1211,15 +1211,15 @@ function computeResponsive() {
   let day = 124
   let rowH = 65 // Réduit à 65px pour une meilleure proportion
   if (w <= 390) { // iPhone 12 width
-    sticky = 72; day = Math.max(44, Math.min(60, Math.floor((w - sticky - 8)/7))); rowH = 55 // Réduit
+    sticky = 140; day = Math.max(35, Math.min(45, Math.floor((w - sticky - 8)/7))); rowH = 60 // Largeur collaborateurs augmentée
   } else if (w <= 430) {
-    sticky = 78; day = Math.max(48, Math.min(64, Math.floor((w - sticky - 10)/7))); rowH = 58 // Réduit
+    sticky = 150; day = Math.max(40, Math.min(50, Math.floor((w - sticky - 10)/7))); rowH = 62 // Largeur collaborateurs augmentée
   } else if (w <= 520) {
-    sticky = 90; day = Math.max(54, Math.min(70, Math.floor((w - sticky - 12)/7))); rowH = 60 // Réduit
+    sticky = 160; day = Math.max(45, Math.min(55, Math.floor((w - sticky - 12)/7))); rowH = 64 // Largeur collaborateurs augmentée
   } else if (w <= 640) {
-    sticky = 110; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 16)/7))); rowH = 62 // Réduit
+    sticky = 180; day = Math.max(50, Math.min(65, Math.floor((w - sticky - 16)/7))); rowH = 66 // Largeur collaborateurs augmentée
   } else if (w <= 900) {
-    sticky = 140; day = Math.max(70, Math.min(96, Math.floor((w - sticky - 20)/7))); rowH = 65 // Réduit
+    sticky = 200; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 20)/7))); rowH = 68 // Largeur collaborateurs augmentée
   }
   
   dayWidthRef.value = day
@@ -8638,34 +8638,36 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px; /* Augmenté de 2px → 3px pour plus d'espace */
   min-width: 0;
 }
 
 .collaborateur-nom-complet {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  line-height: 1.1;
+  gap: 2px; /* Augmenté de 1px → 2px pour plus d'espace */
+  line-height: 1.2; /* Augmenté de 1.1 → 1.2 */
   overflow: hidden;
 }
 
 .collaborateur-nom-complet .nom {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px; /* Augmenté de 13px → 14px */
   color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em; /* Optimisé pour mobile */
 }
 
 .collaborateur-nom-complet .prenom {
-  font-weight: 400;
-  font-size: 12px;
-  color: #4b5563;
+  font-weight: 500; /* Augmenté de 400 → 500 */
+  font-size: 13px; /* Augmenté de 12px → 13px */
+  color: #374151; /* Couleur plus foncée pour meilleur contraste */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em; /* Optimisé pour mobile */
 }
 
 .collaborateur-nom-complet.clickable-name {
@@ -8689,18 +8691,19 @@ onUnmounted(() => {
 }
 
 .collaborateur-metier {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 1px solid #d1d5db;
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 500;
+  background: #eef2ff; /* Couleur plus douce et lisible */
+  color: #374151; /* Texte plus foncé pour meilleur contraste */
+  border: 1px solid #c7d2fe; /* Bordure plus douce */
+  padding: 2px 6px; /* Padding augmenté pour plus d'espace */
+  border-radius: 4px; /* Coins légèrement plus arrondis */
+  font-size: 11px; /* Augmenté de 10px → 11px */
+  font-weight: 600; /* Augmenté de 500 → 600 */
   line-height: 1.2;
   max-width: fit-content;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 1px; /* Petit espacement avec le nom */
 }
 
 /* === PARTIE DROITE: ACTIONS === */
@@ -10937,6 +10940,62 @@ body.dragging-selection .excel-cell {
 
 .dispo-bars.multi .dispo-footer {
   display: none !important; /* Masquer le lieu en mode multi pour économiser l'espace */
+}
+
+/* =================================================
+   OPTIMISATIONS MOBILE POUR INFORMATIONS COLLABORATEURS
+   ================================================= */
+
+/* Styles spécifiques mobile pour améliorer la lisibilité */
+@media (max-width: 640px) {
+  .collaborateur-content {
+    padding: 6px 8px; /* Plus d'espace interne */
+  }
+  
+  .collaborateur-nom-complet .nom {
+    font-size: 15px !important; /* Encore plus gros sur très petit écran */
+    font-weight: 700 !important; /* Plus gras pour meilleur contraste */
+  }
+  
+  .collaborateur-nom-complet .prenom {
+    font-size: 14px !important; /* Encore plus gros sur très petit écran */
+    font-weight: 600 !important; /* Plus gras pour meilleur contraste */
+  }
+  
+  .collaborateur-metier {
+    font-size: 12px !important; /* Plus gros sur mobile */
+    padding: 3px 8px !important; /* Plus d'espace */
+    font-weight: 700 !important; /* Plus gras */
+    background: #ddd6fe !important; /* Couleur plus contrastée */
+    color: #1f2937 !important; /* Texte plus foncé */
+  }
+  
+  .collaborateur-actions .contact-icon {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* Encore plus d'optimisations pour très petits écrans */
+@media (max-width: 430px) {
+  .collaborateur-nom-complet .nom {
+    font-size: 16px !important; /* Maximum pour iPhone */
+  }
+  
+  .collaborateur-nom-complet .prenom {
+    font-size: 15px !important; /* Maximum pour iPhone */
+  }
+  
+  .collaborateur-metier {
+    font-size: 13px !important;
+    padding: 4px 10px !important;
+  }
+  
+  /* Augmenter légèrement la hauteur des lignes sur très petit écran */
+  .collab-sticky {
+    min-height: 70px;
+  }
 }
 
 /* Fin des styles */
