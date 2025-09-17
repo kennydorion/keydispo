@@ -13,15 +13,30 @@
       </div>
       
       <div class="header-actions">
-        <!-- Bouton mobile -->
-        <button class="mobile-toggle" @click="$emit('openMobileFilters')">
+        <!-- Bouton toggle filtres mobile -->
+        <button 
+          v-if="isMobile" 
+          class="filters-toggle"
+          @click="toggleFilters"
+          :class="{ active: !filtersCollapsed }"
+        >
+          <span class="material-icons">{{ filtersCollapsed ? 'expand_more' : 'expand_less' }}</span>
+          <span>Filtres</span>
+          <span v-if="hasActiveFilters" class="filter-badge">{{ activeFilterChips.length }}</span>
+        </button>
+        <!-- Bouton mobile original (masqué) -->
+        <button class="mobile-toggle" @click="$emit('openMobileFilters')" style="display: none;">
           <span class="material-icons">tune</span>
         </button>
       </div>
     </div>
 
   <!-- Section de filtrage moderne et compacte -->
-  <div class="filters-panel compact-panel">
+  <div 
+    v-show="!isMobile || !filtersCollapsed"
+    class="filters-panel compact-panel"
+    :class="{ 'mobile-collapsed': isMobile && filtersCollapsed }"
+  >
       <div class="filters-inner">
         <!-- Recherche sur ligne complète -->
         <div class="search-full-row">
@@ -181,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
 import { usePlanningFilters } from '../composables/usePlanningFilters'
 
 // Émissions
@@ -192,6 +207,33 @@ defineEmits<{
   today: []
   next: []
 }>()
+
+// État mobile et filtres rétractables
+const isMobile = ref(false)
+const filtersCollapsed = ref(false)
+
+// Détection mobile
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+  // Auto-collapse sur mobile si les filtres ne sont pas utilisés
+  if (isMobile.value && !hasActiveFilters.value) {
+    filtersCollapsed.value = true
+  }
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+// Toggle des filtres mobile
+const toggleFilters = () => {
+  filtersCollapsed.value = !filtersCollapsed.value
+}
 
 // Composables
 const planningFilters = usePlanningFilters()
@@ -261,6 +303,21 @@ const selectSuggestion = (suggestion: any) => {
     planningFilters.selectSuggestion(suggestion)
   }
 }
+
+// Détection des filtres actifs
+const hasActiveFilters = computed(() => {
+  const { filterState } = planningFilters
+  return !!(
+    filterState.search ||
+    filterState.selectedMetier?.length ||
+    filterState.selectedStatut?.length ||
+    filterState.selectedLieu?.length ||
+    filterState.dateFrom ||
+    filterState.dateTo ||
+    filterState.startTime ||
+    filterState.endTime
+  )
+})
 
 // Chips des filtres actifs pour clarté et actions rapides
 type Chip = { key: string; icon: string; label: string; onClear: () => void }

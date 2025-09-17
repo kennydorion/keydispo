@@ -10135,6 +10135,33 @@ body.dragging-selection .excel-cell {
     top: 140px;
     left: 10px;
   }
+
+  /* Amélioration du bouton Aujourd'hui sur mobile */
+  .excel-corner .today-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px; /* Taille de touch-target recommandée */
+    border-radius: 8px;
+  }
+  
+  .excel-corner .today-btn .material-icons {
+    font-size: 18px;
+  }
+  
+  /* Corner plus compact sur mobile */
+  .excel-corner {
+    min-width: 120px;
+    max-width: 140px;
+  }
+  
+  /* Header plus compact sur mobile */
+  .planning-header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* === POPUP CONTEXTUEL === */
