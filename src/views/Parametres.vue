@@ -452,11 +452,12 @@ async function resetAllToDefaults() {
 /**
  * Formater une date pour l'affichage
  */
-function formatDate(date: Date): string {
+function formatDate(date: Date | number): string {
+  const dateObj = typeof date === 'number' ? new Date(date) : date
   return new Intl.DateTimeFormat('fr-FR', {
     dateStyle: 'short',
     timeStyle: 'short'
-  }).format(date)
+  }).format(dateObj)
 }
 
 /**
@@ -1171,5 +1172,145 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Styles pour la gestion de la liste blanche */
+.security-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.security-info {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.security-description {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+.security-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.allowlist-management {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.empty-allowlist {
+  text-align: center;
+  padding: 32px 16px;
+  color: #6c757d;
+}
+
+.empty-allowlist p {
+  margin: 8px 0;
+}
+
+.empty-note {
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.allowlist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.allowlist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.email-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.email-text {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.email-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.role-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.role-admin {
+  background: #dc3545;
+  color: white;
+}
+
+.role-editor {
+  background: #fd7e14;
+  color: white;
+}
+
+.role-viewer {
+  background: #6c757d;
+  color: white;
+}
+
+.role-collaborateur {
+  background: #28a745;
+  color: white;
+}
+
+.added-date {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.add-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
 }
 </style>

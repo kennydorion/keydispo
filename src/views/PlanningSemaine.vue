@@ -314,7 +314,7 @@
           <!-- <div class="today-overlay-left" aria-hidden="true"></div> -->
           
           <!-- Conteneur virtualisé des collaborateurs -->
-          <div class="rows-window" :style="{ transform: `translateY(${rowWindowOffsetPx}px)` }">
+          <div class="rows-window" :key="renderKey" :style="{ transform: `translateY(${rowWindowOffsetPx}px)` }">
             <div
               v-for="(collaborateur, rowIndex) in paginatedCollaborateurs"
               :key="collaborateur.id"
@@ -680,6 +680,20 @@ interface Disponibilite {
 // Utilisation du composable de filtres centralisé
 const planningFilters = usePlanningFilters()
 const planningData = usePlanningData()
+
+// Déclarer tôt pour utilisation par useVirtualGrid
+const filteredCollaborateurs = computed(() => {
+  const centralizedFiltered = planningData.filteredCollaborateurs.value
+  if (isCollaborateurInterface.value && !canAccessAdminFeatures.value) {
+    const uid = auth.currentUser?.uid || ''
+    const email = auth.currentUser?.email || ''
+    const byUserId = centralizedFiltered.filter(c => (c as any).userId && (c as any).userId === uid)
+    if (byUserId.length > 0) return byUserId
+    if (email) return centralizedFiltered.filter(c => c.email === email)
+    return []
+  }
+  return centralizedFiltered
+})
 
 // Alias pour faciliter la transition et maintenir la compatibilité
 const searchTerm = computed({
@@ -1348,7 +1362,7 @@ const {
   recomputeWindow,
   isScrollingFast,
   rowWindowStartIndex,
-  // rowWindowEndIndex, // retiré: non utilisé
+  rowWindowEndIndex, // nécessaire pour le reset forcé
   rowWindowOffsetPx,
   windowedRows,
   recomputeRowWindow,
@@ -1356,42 +1370,36 @@ const {
   // updateVirtualizationStats, // retiré: non utilisé
 } = vg
 
+// Clé pour forcer un re-render de la fenêtre des lignes
+const renderKey = ref(0)
+function forceRender() {
+  renderKey.value++
+}
+
 const paginatedCollaborateurs = computed(() => {
   const rows = windowedRows.value
+  
+  // DEBUG: Log pour tracer le problème de filtrage
+  console.log('🔍 [DEBUG] paginatedCollaborateurs calcul:', {
+    windowedRowsLength: rows.length,
+    filteredCollaborateursLength: filteredCollaborateurs.value.length,
+    hasFilters: planningFilters.hasActiveFilters.value
+  })
   
   // Filet de sécurité: si la fenêtre virtualisée est vide alors que des résultats existent,
   // tenter un reclamp immédiat, puis exposer un petit sous-ensemble en dernier recours.
   if (rows.length === 0 && filteredCollaborateurs.value.length > 0) {
-    const scroller = planningScroll.value
-    if (scroller) {
-      // Recalcule synchronisé de la fenêtre verticale
-      try {
-        recomputeRowWindow(scroller)
-      } catch (error) {
-        console.error('Erreur recomputeRowWindow:', error)
-      }
-      const reclamped = windowedRows.value
-      if (reclamped.length > 0) {
-        return reclamped
-      }
-    } else {
-      // Sans scroller, demander un minimum de lignes
-      try { 
-        recomputeRowWindow(null as any)
-      } catch (error) {
-        console.error('Erreur recomputeRowWindow sans scroller:', error)
-      }
-      const reclamped = windowedRows.value
-      if (reclamped.length > 0) {
-        return reclamped
-      }
-    }
-
-    // Dernier recours: afficher les premières lignes pour éviter un écran "vide"
-    const n = Math.min(20, filteredCollaborateurs.value.length)
-    return filteredCollaborateurs.value.slice(0, n)
+    console.log('� [DEBUG] PROBLÈME: Fenêtre virtualisée vide mais filteredCollaborateurs non vide!')
+    console.log('🔧 [DEBUG] Tentative de correction immédiate...')
+    
+    // SOLUTION RADICALE: Bypasser complètement la virtualisation pour le filtrage
+    // Retourner directement les premiers résultats filtrés
+    const directResults = filteredCollaborateurs.value.slice(0, Math.min(50, filteredCollaborateurs.value.length))
+    console.log('� [DEBUG] Bypass virtualisation - retour direct:', directResults.length, 'collaborateurs')
+    return directResults
   }
   
+  console.log('🔍 [DEBUG] Retour windowedRows normal:', rows.length)
   return rows
 })
 
@@ -2142,40 +2150,132 @@ const isDev = computed(() => {
 // })
 
 // Utiliser le système centralisé 
-const filteredCollaborateurs = computed(() => {
-  const centralizedFiltered = planningData.filteredCollaborateurs.value
-  
-  // Debug log pour tracer le filtrage
-  console.log('🔍 [PlanningSemaine] Collaborateurs filtrés:', {
-    centralizedCount: centralizedFiltered.length,
-    totalFromStats: planningData.filterStats.value.totalCollaborateurs,
-    hasActiveFilters: planningFilters.hasActiveFilters.value,
-    filterState: planningFilters.filterState
-  })
-  
-  // Appliquer le filtrage par rôle utilisateur (interface collaborateur)
-  // Ne restreindre que si l'utilisateur n'a PAS d'accès admin/editor
-  if (isCollaborateurInterface.value && !canAccessAdminFeatures.value) {
-    const uid = auth.currentUser?.uid || ''
-    const email = auth.currentUser?.email || ''
-    // Tenter un match par userId si dispo, sinon fallback email
-    const byUserId = centralizedFiltered.filter(c => (c as any).userId && (c as any).userId === uid)
-    if (byUserId.length > 0) {
-      return byUserId
-    } else if (email) {
-      return centralizedFiltered.filter(c => c.email === email)
-    } else {
-      return []
-    }
-  }
-  
-  return centralizedFiltered
-})
+// (déclaration déplacée plus haut)
 
 // Synchroniser les lignes de présence une fois filteredCollaborateurs déclaré
 watch(filteredCollaborateurs, (list) => {
   presenceRowsRef.value = list.map(c => ({ id: c.id }))
 }, { immediate: true, deep: false })
+
+// CORRECTION: Watcher agressif pour forcer la mise à jour de la virtualisation
+watch(filteredCollaborateurs, async (newList, oldList) => {
+  console.log('🔍 [DEBUG] filteredCollaborateurs changé:', {
+    newLength: newList.length,
+    oldLength: oldList?.length,
+    windowedRowsLength: windowedRows.value.length
+  })
+  
+  // Toujours forcer le recalcul quand les données filtrées changent
+  await nextTick()
+  const scroller = planningScroll.value
+  console.log('🔍 [DEBUG] Forcer recalcul virtualisation après changement filtrage')
+  
+  // CRITICAL: Toujours recalculer la fenêtre, pas seulement si elle est vide
+  if (scroller) {
+    // Recalcule complet (horizontal + vertical)
+    recomputeWindow(scroller)
+    recomputeRowWindow(scroller)
+    ensureRowsVisible()
+  } else {
+    // Sans scroller, recalcul minimal mais complet
+    recomputeWindow(null as any)
+    recomputeRowWindow(null as any)
+  }
+  
+  // Double-check: Attendre un autre tick et vérifier si windowedRows a été mis à jour
+  await nextTick()
+  console.log('🔍 [DEBUG] Après recalcul - windowedRows.length:', windowedRows.value.length)
+  
+  // Si malgré le recalcul, windowedRows est toujours vide, forcer un reset complet
+  if (newList.length > 0 && windowedRows.value.length === 0) {
+    console.log('🚨 [DEBUG] PROBLÈME: windowedRows vide malgré recalcul, reset complet')
+    // Reset complet de la virtualisation
+  rowWindowStartIndex.value = 0
+  rowWindowEndIndex.value = Math.min(9, newList.length - 1) // Afficher au moins 10 éléments
+  await nextTick()
+  // Frame suivante pour laisser le DOM se stabiliser
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    console.log('🔧 [DEBUG] Après reset forcé - windowedRows.length:', windowedRows.value.length)
+    if (windowedRows.value.length === 0) {
+      // Forcer un re-render de la fenêtre des lignes
+      forceRender()
+    }
+    
+    // NOUVEAU: Si même après reset forcé ça ne marche pas, simuler un click
+    if (windowedRows.value.length === 0) {
+      console.log('🚨 [DEBUG] Reset forcé inefficace, simulation click automatique')
+      setTimeout(async () => {
+        const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
+        if (container) {
+          container.dispatchEvent(new Event('focus'))
+          // Déclenche un léger scroll programmatique pour imiter l'action utilisateur
+          container.scrollTop = container.scrollTop + 1
+          container.scrollTop = container.scrollTop - 1
+          container.click()
+          await nextTick()
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+          console.log('🔧 [DEBUG] Après click auto dans watcher - windowedRows.length:', windowedRows.value.length)
+        }
+      }, 50)
+    }
+  }
+}, { immediate: false, deep: false })
+
+// DEBUG: Watcher pour surveiller les changements de windowedRows
+watch(windowedRows, (newRows, oldRows) => {
+  console.log('🔍 [DEBUG] windowedRows changé:', {
+    newLength: newRows.length,
+    oldLength: oldRows?.length,
+    filteredLength: filteredCollaborateurs.value.length
+  })
+}, { immediate: false, deep: false })
+
+// CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
+watch(planningFilters.filterState, async () => {
+  console.log('🔍 [DEBUG] Filtres changés, recalcul virtualisation')
+  await nextTick()
+  
+  // Force le recalcul de la virtualisation quand les filtres changent
+  const scroller = planningScroll.value
+  if (scroller) {
+    // Recalcule complet (horizontal + vertical)
+    recomputeWindow(scroller)
+    recomputeRowWindow(scroller)
+  } else {
+    recomputeWindow(null as any)
+    recomputeRowWindow(null as any)
+  }
+  
+  await nextTick()
+  console.log('🔍 [DEBUG] Après recalcul filtres - windowedRows.length:', windowedRows.value.length)
+  
+  // NOUVEAU: Force refresh automatique si les résultats ne s'affichent pas
+  if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
+    console.log('🚨 [DEBUG] Auto-refresh nécessaire, simulation double-clic')
+    // Attendre encore un peu puis forcer un refresh complet
+    setTimeout(async () => {
+      await nextTick()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
+        console.log('🔧 [DEBUG] Force refresh automatique')
+        // Simuler un event qui force le re-render (comme le double-clic)
+        const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
+        if (container) {
+          container.dispatchEvent(new Event('focus'))
+          container.scrollTop = container.scrollTop + 1
+          container.scrollTop = container.scrollTop - 1
+          container.click()
+          await nextTick()
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+          console.log('🔧 [DEBUG] Après click automatique - windowedRows.length:', windowedRows.value.length)
+        }
+        if (windowedRows.value.length === 0) {
+          forceRender()
+        }
+      }
+    }, 100)
+  }
+}, { immediate: false, deep: true })
 
 // Re-clamper la fenêtre virtualisée à chaque changement de la liste filtrée
 const _prevFilteredCount = ref(0)
@@ -5204,7 +5304,7 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
 }
 
 // Gestion des clics sur éléments internes (cartes/boutons) pour respecter le multisélection
-function onInnerDispoClick(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'end' }), collaborateurId: string, date: string, event: MouseEvent) {
+function onInnerDispoClick(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'end' }), _collaborateurId: string, date: string, event: MouseEvent) {
   // Si on est en mode multisélection (desktop Ctrl/Cmd ou mobile FAB), laisser l'événement remonter vers la cellule parent
   if (event.ctrlKey || event.metaKey || (isMobileView.value && isSelectionMode.value)) {
     // Ne pas arrêter la propagation - l'événement remonte vers handleCellClickNew de la cellule parent
@@ -8223,11 +8323,11 @@ onUnmounted(() => {
 /* .excel-rows: pas de contain: paint pour éviter un stacking context qui cacherait les overlays */
 
 .excel-row {
-  content-visibility: auto;
-  /* réserve la hauteur pour éviter les reflows quand l'élément devient visible */
-  contain-intrinsic-size: var(--row-height);
-  /* éviter paint pour ne pas créer de stacking context bloquant les overlays */
-  contain: layout style;
+  /* IMPORTANT: forcer le rendu immédiat des lignes pour éviter l'écran vide après filtrage */
+  content-visibility: visible; /* au lieu de auto: certains navigateurs ne peignent pas après transform */
+  /* supprimer les contain qui peuvent empêcher le paint correct lorsqu'on translate le conteneur */
+  contain: none;
+  contain-intrinsic-size: auto; /* ne pas réserver artificiellement la hauteur */
 }
 
 .excel-months-row, .excel-days-row {
@@ -8242,6 +8342,14 @@ onUnmounted(() => {
 .rows-window {
   display: block;
   will-change: transform;
+}
+
+/* S'assurer que la fenêtre de lignes est rendue et visible (pas de clipping caché) */
+.rows-window {
+  position: relative;
+  visibility: visible;
+  opacity: 1;
+  contain: none;
 }
 
 .excel-scroll.panning {

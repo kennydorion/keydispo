@@ -70,6 +70,9 @@ export class AuthService {
     return onAuthStateChanged(auth, callback)
   }
 
+  /**
+   * Assure qu'un utilisateur existe dans le tenant (création automatique si nécessaire)
+   */
   private static async ensureUserInTenant(
     user: User, 
     defaultRole: 'admin' | 'editor' | 'viewer' | 'collaborateur' = 'viewer',

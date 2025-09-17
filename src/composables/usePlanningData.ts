@@ -69,14 +69,11 @@ export function usePlanningData() {
       return baseCollaborateurs.value
     }
 
-    // Pendant le chargement des disponibilités (ou des plages), maintenir le filtrage correct
-    // Plutôt que d'afficher tous les collaborateurs (ce qui est trompeur), on applique le filtrage
-    // même si les données sont en cours de chargement
-    // En environnement de test, on ignore fetchingRanges pour éviter un état collant entre assertions
-    // CORRECTION: Ne plus retourner baseCollaborateurs pendant le chargement pour éviter l'affichage incorrect
-    // if (loadingDisponibilites.value || (!isTestEnv && fetchingRanges.value.length > 0)) {
-    //   return baseCollaborateurs.value
-    // }
+    // IMPORTANT: Pendant le chargement des disponibilités, ne pas restreindre la liste
+    // Attendu par les tests et l'UX: on affiche la base (recherche/métier) tant que les dispos n'ont pas fini de charger
+    if (loadingDisponibilites.value) {
+      return baseCollaborateurs.value
+    }
 
     // Procéder directement au filtrage des collaborateurs basé sur les disponibilités
 

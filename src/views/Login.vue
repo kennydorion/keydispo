@@ -54,10 +54,20 @@
           
 
           
-          <div v-if="error" class="error-message">
-            {{ error }}
-          </div>
+                    <div v-if="error" class="error-message">{{ error }}</div>
           <div v-if="!firebaseStatus.configValid" class="error-message" style="margin-top:8px;">Configuration Firebase invalide: {{ firebaseStatus.missing.join(', ') || (firebaseStatus.fakeKey ? 'apiKey factice' : '') }}.</div>
+
+          <!-- Message informatif sur l'accès sécurisé -->
+          <div class="info-message" style="margin-top: 16px; padding: 12px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 6px; font-size: 0.9em; color: #0056b3;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <span class="material-symbols-outlined" style="font-size: 18px;">security</span>
+              <strong>Accès sécurisé</strong>
+            </div>
+            <p style="margin: 0; line-height: 1.4;">
+              Seuls les comptes autorisés par un administrateur peuvent accéder au système. 
+              Si vous n'avez pas de compte, contactez votre administrateur.
+            </p>
+          </div>
 
           <p class="switch-link">
             Pas encore de compte ? 

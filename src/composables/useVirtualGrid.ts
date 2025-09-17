@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 
 export interface UseVirtualGridArgs<TDay, TRow> {
   dayWidth: Ref<number>
@@ -28,7 +28,15 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   const fastScrollBufferRows = ref(10)
   const rowWindowOffsetPx = computed(() => rowWindowStartIndex.value * rowHeight.value)
   const adaptiveRowPadding = computed(() => (isScrollingFast.value ? fastScrollBufferRows.value : windowPaddingRows.value))
-  const windowedRows = computed(() => rows.value.slice(rowWindowStartIndex.value, Math.min(rowWindowEndIndex.value + 1, rows.value.length)))
+  const windowedRows = computed(() => {
+    const total = rows.value.length
+    if (total === 0) return []
+    // Clamp des indices pour éviter l'état vide quand total augmente brusquement
+    const start = Math.max(0, Math.min(rowWindowStartIndex.value, total - 1))
+    const endRaw = Math.min(rowWindowEndIndex.value, total - 1)
+    const end = Math.max(start, endRaw)
+    return rows.value.slice(start, end + 1)
+  })
 
   // Stats (optional)
   const virtualizationStats = ref({
@@ -77,6 +85,30 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     rowWindowStartIndex.value = Math.min(firstRowIdx, lastRowIdx)
     rowWindowEndIndex.value = Math.max(firstRowIdx, lastRowIdx)
   }
+
+  // Réagir aux changements de longueur des lignes pour maintenir des indices valides
+  let prevTotal = rows.value.length
+  watch(() => rows.value.length, (total) => {
+    const hadNone = prevTotal === 0 && total > 0
+    prevTotal = total
+    if (total === 0) {
+      rowWindowStartIndex.value = 0
+      rowWindowEndIndex.value = -1
+      return
+    }
+    // Si on vient d'avoir des données ou si les indices sont hors bornes, re-clamper
+    const start = Math.max(0, Math.min(rowWindowStartIndex.value, total - 1))
+    const end = Math.max(start, Math.min(rowWindowEndIndex.value, total - 1))
+    const needReset = hadNone || end < start || rowWindowEndIndex.value < 0
+    if (needReset) {
+      rowWindowStartIndex.value = 0
+      // Afficher un petit buffer par défaut (10 lignes)
+      rowWindowEndIndex.value = Math.min(total - 1, 9)
+    } else if (start !== rowWindowStartIndex.value || end !== rowWindowEndIndex.value) {
+      rowWindowStartIndex.value = start
+      rowWindowEndIndex.value = end
+    }
+  })
 
   function recomputeWindow(scroller?: HTMLElement | null) {
     const el = scroller
