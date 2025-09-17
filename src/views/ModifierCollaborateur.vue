@@ -1,45 +1,49 @@
 <template>
   <div class="modifier-collaborateur">
-    <!-- En-tête -->
-    <header class="page-header">
-      <div class="header-content">
-        <div class="header-left">
-          <va-button 
-            preset="plain" 
-            icon="arrow_back" 
-            @click="retourListe"
-            class="back-button"
-          >
-            Retour
-          </va-button>
-          <div class="header-info">
-            <h1 class="page-title">
-              <va-icon name="edit" class="title-icon" />
+    <!-- Header Élégant -->
+    <header class="collaborateur-header">
+      <div class="header-top">
+        <div class="header-brand">
+          <div class="brand-icon">
+            <va-icon :name="isCreation ? 'person_add' : 'edit'" />
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title">
               {{ isCreation ? 'Nouveau collaborateur' : 'Modifier collaborateur' }}
             </h1>
-            <p class="page-subtitle">
-              {{ isCreation ? 'Ajoutez un nouveau collaborateur à votre équipe' : 'Modifiez les informations du collaborateur' }}
+            <p class="brand-subtitle">
+              {{ isCreation ? 'Ajoutez un nouveau membre à votre équipe' : 'Modifiez les informations du collaborateur' }}
             </p>
           </div>
         </div>
+        
         <div class="header-actions">
+          <va-button 
+            preset="outline" 
+            icon="arrow_back" 
+            @click="retourListe"
+            class="action-button"
+          >
+            Retour
+          </va-button>
           <va-button
             v-if="!isCreation"
-            color="primary"
             preset="outline"
             icon="visibility"
             @click="voirDetail"
+            class="action-button"
           >
             Voir détail
           </va-button>
           <va-button
             v-if="!isCreation"
-            color="danger"
             preset="outline"
+            icon="delete"
             @click="confirmerSuppression"
             :loading="loading"
+            class="action-button"
+            color="danger"
           >
-            <va-icon name="delete" class="mr-2" />
             Supprimer
           </va-button>
         </div>
@@ -47,91 +51,67 @@
     </header>
 
     <!-- Contenu principal -->
-    <div class="page-content">
-      <div class="form-container">
-        <!-- Formulaire de modification -->
-        <va-card class="form-card">
-          <va-card-title>
-            <va-icon :name="isCreation ? 'person_add' : 'edit'" class="mr-2" />
-            Informations personnelles
-          </va-card-title>
-          
-          <va-card-content>
-            <form @submit.prevent="sauvegarder" class="collaborateur-form">
-              <div class="form-grid">
-                <!-- Nom -->
-                <div class="form-field">
-                  <va-input
-                    v-model="form.nom"
-                    label="Nom *"
-                    :rules="[required]"
-                    class="w-full"
-                    :error="!!errors.nom"
-                    :error-messages="errors.nom"
-                  >
-                    <template #prependInner>
-                      <va-icon name="person" />
-                    </template>
-                  </va-input>
+    <div class="collaborateur-container">
+      <!-- Formulaire Moderne -->
+      <div class="form-card">
+        <div class="form-header">
+          <div class="form-header-icon">
+            <va-icon :name="isCreation ? 'person_add' : 'edit'" />
+          </div>
+          <div class="form-header-text">
+            <h2 class="form-title">Informations personnelles</h2>
+            <p class="form-subtitle">Saisissez les informations du collaborateur</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="sauvegarder" class="collaborateur-form">
+          <div class="form-grid">
+            <!-- Informations de base -->
+            <div class="form-section">
+              <h3 class="section-title">
+                <va-icon name="person" class="section-icon" />
+                Identité
+              </h3>
+              
+              <div class="section-fields">
+                <div class="field-row">
+                  <div class="form-field">
+                    <va-input
+                      v-model="form.nom"
+                      label="Nom *"
+                      :rules="[required]"
+                      class="modern-input"
+                      :error="!!errors.nom"
+                      :error-messages="errors.nom"
+                    >
+                      <template #prependInner>
+                        <va-icon name="person" />
+                      </template>
+                    </va-input>
+                  </div>
+
+                  <div class="form-field">
+                    <va-input
+                      v-model="form.prenom"
+                      label="Prénom *"
+                      :rules="[required]"
+                      class="modern-input"
+                      :error="!!errors.prenom"
+                      :error-messages="errors.prenom"
+                    >
+                      <template #prependInner>
+                        <va-icon name="person" />
+                      </template>
+                    </va-input>
+                  </div>
                 </div>
 
-                <!-- Prénom -->
-                <div class="form-field">
-                  <va-input
-                    v-model="form.prenom"
-                    label="Prénom *"
-                    :rules="[required]"
-                    class="w-full"
-                    :error="!!errors.prenom"
-                    :error-messages="errors.prenom"
-                  >
-                    <template #prependInner>
-                      <va-icon name="person" />
-                    </template>
-                  </va-input>
-                </div>
-
-                <!-- Email -->
-                <div class="form-field">
-                  <va-input
-                    v-model="form.email"
-                    label="Email"
-                    type="email"
-                    :rules="[emailRule]"
-                    class="w-full"
-                    :error="!!errors.email"
-                    :error-messages="errors.email"
-                  >
-                    <template #prependInner>
-                      <va-icon name="email" />
-                    </template>
-                  </va-input>
-                </div>
-
-                <!-- Téléphone -->
-                <div class="form-field">
-                  <va-input
-                    v-model="form.phone"
-                    label="Téléphone"
-                    type="tel"
-                    class="w-full"
-                    :rules="[phoneRule]"
-                    :error="!!errors.phone"
-                    :error-messages="errors.phone"
-                  >
-                    <template #prependInner>
-                      <va-icon name="phone" />
-                    </template>
-                  </va-input>
-                </div>
-
-                <!-- Métier -->
                 <div class="form-field">
                   <va-input
                     v-model="form.metier"
                     label="Métier *"
                     :rules="[required]"
-                    class="w-full"
+                    class="modern-input"
                     :error="!!errors.metier"
                     :error-messages="errors.metier"
                     placeholder="Tapez ou sélectionnez un métier..."
@@ -166,13 +146,64 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <!-- Note -->
+            <!-- Contact -->
+            <div class="form-section">
+              <h3 class="section-title">
+                <va-icon name="contact_mail" class="section-icon" />
+                Contact
+              </h3>
+              
+              <div class="section-fields">
+                <div class="form-field">
+                  <va-input
+                    v-model="form.email"
+                    label="Email"
+                    type="email"
+                    :rules="[emailRule]"
+                    class="modern-input"
+                    :error="!!errors.email"
+                    :error-messages="errors.email"
+                  >
+                    <template #prependInner>
+                      <va-icon name="email" />
+                    </template>
+                  </va-input>
+                </div>
+
+                <div class="form-field">
+                  <va-input
+                    v-model="form.phone"
+                    label="Téléphone"
+                    type="tel"
+                    class="modern-input"
+                    :rules="[phoneRule]"
+                    :error="!!errors.phone"
+                    :error-messages="errors.phone"
+                  >
+                    <template #prependInner>
+                      <va-icon name="phone" />
+                    </template>
+                  </va-input>
+                </div>
+              </div>
+            </div>
+
+            <!-- Note et apparence -->
+            <div class="form-section full-width">
+              <h3 class="section-title">
+                <va-icon name="description" class="section-icon" />
+                Informations complémentaires
+              </h3>
+              
+              <div class="section-fields">
                 <div class="form-field">
                   <va-textarea
                     v-model="form.note"
                     label="Note"
-                    class="w-full"
+                    class="modern-textarea"
                     :error="!!errors.note"
                     :error-messages="errors.note"
                     placeholder="Note ou commentaire sur le collaborateur..."
@@ -186,10 +217,10 @@
                   </va-textarea>
                 </div>
 
-                <!-- Couleur -->
-                <div class="form-field color-field">
+                <!-- Couleur d'identification -->
+                <div class="color-selection">
                   <label class="color-label">
-                    <va-icon name="palette" class="mr-2" />
+                    <va-icon name="palette" class="label-icon" />
                     Couleur d'identification
                   </label>
                   <div class="color-selector">
@@ -229,30 +260,32 @@
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <!-- Actions du formulaire -->
-              <div class="form-actions">
-                <va-button
-                  color="danger"
-                  preset="outline"
-                  @click="annuler"
-                >
-                  Annuler
-                </va-button>
-                
-                <va-button
-                  type="submit"
-                  color="primary"
-                  :loading="loading"
-                  :disabled="!isFormValid"
-                >
-                  <va-icon :name="isCreation ? 'add' : 'save'" class="mr-2" />
-                  {{ isCreation ? 'Créer' : 'Sauvegarder' }}
-                </va-button>
-              </div>
-            </form>
-          </va-card-content>
-        </va-card>
+          <!-- Actions du formulaire -->
+          <div class="form-actions">
+            <va-button
+              preset="outline"
+              @click="annuler"
+              class="action-btn secondary"
+            >
+              <va-icon name="close" />
+              Annuler
+            </va-button>
+            
+            <va-button
+              type="submit"
+              color="primary"
+              :loading="loading"
+              :disabled="!isFormValid"
+              class="action-btn primary"
+            >
+              <va-icon :name="isCreation ? 'add' : 'save'" />
+              {{ isCreation ? 'Créer' : 'Sauvegarder' }}
+            </va-button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -730,117 +763,199 @@ watch(() => route.params.id, () => {
 
 <style scoped>
 .modifier-collaborateur {
+  --surface-light: #ffffff;
+  --border-light: #e2e8f0;
+  --text-light: #334155;
+  --text-muted: #64748b;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  font-family: var(--va-font-family, 'Inter', sans-serif);
+  background: #f8fafc;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: var(--va-background-primary);
 }
 
-.page-header {
-  background: var(--va-background-secondary);
-  border-bottom: 1px solid var(--va-background-border);
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Header Élégant */
+.collaborateur-header {
+  background: var(--surface-light);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  z-index: 10;
 }
 
-.header-content {
+.header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  margin: 0;
-  gap: 2rem;
+  height: 80px;
+  padding: 16px 24px;
+  background: var(--primary-gradient);
+  color: white;
 }
 
-.header-left {
+.header-brand {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
 }
 
-.back-button {
-  color: var(--va-text-primary) !important;
-  background: var(--va-background-element) !important;
-  border: 1px solid var(--va-background-border) !important;
-  transition: all 0.2s ease;
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.back-button:hover {
-  background: var(--va-background-secondary) !important;
-  transform: translateX(-2px);
+.brand-icon :deep(.va-icon) {
+  font-size: 22px;
+  color: white;
 }
 
-.header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1.5rem;
-  font-weight: 600;
+.brand-title {
   margin: 0;
-  color: var(--va-text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.title-icon {
-  font-size: 1.5rem;
-}
-
-.page-subtitle {
-  color: var(--va-text-secondary);
-  font-size: 0.875rem;
-  margin: 0;
+.brand-subtitle {
+  margin: 2px 0 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.page-content {
-  padding: 0;
-  background: var(--va-background-primary);
+.action-button {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
+  transition: all 0.3s ease !important;
 }
 
-.form-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  max-width: 800px;
+.action-button:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Conteneur Principal */
+.collaborateur-container {
+  flex: 1;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 24px;
-  gap: 24px;
+  padding: 2rem 24px;
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  background: #f8fafc;
 }
 
+/* Carte de Formulaire */
 .form-card {
-  background: var(--va-background-secondary);
+  background: var(--surface-light);
   border-radius: 16px;
-  border: 1px solid var(--va-background-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
 }
 
-.form-card .va-card-title {
-  padding: 24px 24px 8px;
-  margin-bottom: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--va-text-primary);
-}
-
-.form-card .va-card-content {
-  padding: 0 24px 24px;
-}
-
-.collaborateur-form {
+.form-header {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.form-header-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.form-header-icon :deep(.va-icon) {
+  font-size: 22px;
+}
+
+.form-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-light);
+  line-height: 1.2;
+}
+
+.form-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+/* Formulaire */
+.collaborateur-form {
+  padding: 32px;
 }
 
 .form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-section.full-width {
+  grid-column: 1 / -1;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-light);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.section-icon {
+  color: #6366f1;
+}
+
+.section-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
@@ -849,36 +964,118 @@ watch(() => route.params.id, () => {
 .form-field {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
-.form-field .va-input,
-.form-field .va-textarea {
-  --va-input-border-radius: 12px;
-  --va-input-padding: 16px;
+/* Inputs Modernisés */
+.modern-input :deep(.va-input__container),
+.modern-textarea :deep(.va-input__container) {
+  border-radius: 12px !important;
+  border: 2px solid var(--border-light) !important;
+  background: var(--surface-light) !important;
+  transition: all 0.3s ease !important;
 }
 
+.modern-input :deep(.va-input__container):hover,
+.modern-textarea :deep(.va-input__container):hover {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.modern-input :deep(.va-input__container.va-input__container--focused),
+.modern-textarea :deep(.va-input__container.va-input__container--focused) {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.modern-input :deep(.va-input__content__input),
+.modern-textarea :deep(.va-input__content__input) {
+  padding: 16px !important;
+  font-size: 1rem !important;
+  color: #000000 !important;
+}
+
+.modern-input :deep(.va-input__label),
+.modern-textarea :deep(.va-input__label) {
+  font-weight: 500 !important;
+  color: #4a5568 !important;
+}
+
+/* Icônes des inputs */
+.modern-input :deep(.va-input__container .va-icon),
+.modern-textarea :deep(.va-input__container .va-icon) {
+  color: #000000 !important;
+}
+
+/* Placeholder text */
+.modern-input :deep(.va-input__content__input::placeholder),
+.modern-textarea :deep(.va-input__content__input::placeholder) {
+  color: #a0aec0 !important;
+}
+
+/* Actions du Formulaire */
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--va-background-border);
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.action-btn {
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px) !important;
+}
+
+.action-btn.primary {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+}
+
+.action-btn.primary:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+}
+
+.action-btn.secondary {
+  background: #f8fafc !important;
+  border: 2px solid var(--border-light) !important;
+  color: var(--text-light) !important;
+}
+
+.action-btn.secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #a5b4fc !important;
 }
 
 .delete-modal-content {
   text-align: center;
-  padding: 1rem;
+  padding: 24px;
 }
 
 .delete-title {
-  color: var(--va-danger);
-  margin-bottom: 1rem;
+  color: #ef4444;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 16px 0 8px;
 }
 
 .delete-text {
-  color: var(--va-text-secondary);
-  margin-bottom: 2rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
   line-height: 1.6;
+  margin-bottom: 24px;
 }
 
 .delete-actions {
@@ -929,45 +1126,82 @@ watch(() => route.params.id, () => {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .header-controls {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .page-content {
-    padding: 12px;
-  }
-
-  .header-left {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-content {
+  .header-top {
     padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    height: auto;
+    min-height: 120px;
   }
-
-  .form-container {
-    grid-template-columns: 1fr;
+  
+  .header-brand {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
-
+  
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+  
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .brand-icon :deep(.va-icon) {
+    font-size: 20px;
+  }
+  
+  .brand-title {
+    font-size: 1.2rem;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .collaborateur-container {
+    padding: 1.5rem 1rem;
+  }
+  
+  .form-card {
+    border-radius: 12px;
+  }
+  
+  .form-header {
+    padding: 1.5rem;
+  }
+  
+  .collaborateur-form {
+    padding: 1.5rem;
+  }
+  
   .form-grid {
     grid-template-columns: 1fr;
   }
-
+  
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
   .form-actions {
     flex-direction: column-reverse;
+    gap: 1rem;
+  }
+  
+  .action-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  
+  .color-selector {
+    gap: 0.8rem;
+    justify-content: center;
   }
 }
 
@@ -1059,14 +1293,76 @@ watch(() => route.params.id, () => {
   font-style: italic;
 }
 
+/* Responsive Design Optimisé - règles consolidées ci-dessus */
+
 @media (max-width: 480px) {
+  .header-top {
+    padding: 0.8rem;
+  }
+  
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .brand-icon :deep(.va-icon) {
+    font-size: 16px;
+  }
+  
+  .brand-title {
+    font-size: 1rem;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .collaborateur-container {
+    padding: 0.8rem;
+  }
+  
+  .form-card {
+    border-radius: 10px;
+  }
+  
+  .form-header {
+    padding: 1rem;
+  }
+  
+  .collaborateur-form {
+    padding: 1rem;
+  }
+  
+  .form-header-icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .form-title {
+    font-size: 1.2rem;
+  }
+  
+  .section-title {
+    font-size: 0.95rem;
+  }
+  
   .color-selector {
-    gap: 12px;
+    gap: 0.8rem;
+    justify-content: center;
   }
 
   .color-option {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .field-row {
+    gap: 0.8rem;
+  }
+  
+  .modern-input,
+  .modern-textarea {
+    margin-bottom: 0.8rem;
   }
 }
 </style>

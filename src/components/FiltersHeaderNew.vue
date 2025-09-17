@@ -215,10 +215,17 @@ const filtersCollapsed = ref(false)
 
 // Détection mobile
 const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-  // Filtres visibles par défaut sur mobile
-  if (isMobile.value) {
-    filtersCollapsed.value = false // Afficher par défaut
+  const w = window.innerWidth
+  const h = window.innerHeight
+  
+  // Mobile si largeur <= 768px OU mode paysage mobile (hauteur <= 500px)
+  isMobile.value = w <= 768 || (h < w && h <= 500)
+  
+  // En mode paysage mobile, masquer les filtres par défaut pour libérer de l'espace
+  if (isMobile.value && h < w && h <= 500) {
+    filtersCollapsed.value = true // Masquer en paysage
+  } else if (isMobile.value) {
+    filtersCollapsed.value = false // Afficher par défaut en portrait
   }
 }
 
@@ -463,19 +470,19 @@ watch(
 .mobile-toggle { display: none }
 
 /* Panel compact */
-.compact-panel { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px }
+.compact-panel { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 16px } /* Padding réduit */
 .filters-inner { max-width: 1400px; margin: 0 auto }
 
 /* Recherche pleine largeur */
-.search-full-row { margin-bottom: 16px; position: relative }
-.search-full-wrapper { position: relative; display: flex; align-items: center; background: white; border-radius: 12px; padding: 0 16px; box-shadow: 0 2px 8px rgba(0,0,0,.1); transition: all 0.2s ease }
+.search-full-row { margin-bottom: 12px; position: relative } /* Marge réduite */
+.search-full-wrapper { position: relative; display: flex; align-items: center; background: white; border-radius: 10px; padding: 0 12px; box-shadow: 0 2px 8px rgba(0,0,0,.1); transition: all 0.2s ease } /* Padding et border-radius réduits */
 .search-full-wrapper:focus-within { box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15); transform: translateY(-1px) }
-.search-icon { color: #9ca3af; font-size: 20px !important; margin-right: 12px }
-.search-full-input { flex: 1; border: none; outline: none; padding: 16px 0; font-size: 16px; background: transparent; color: #1e293b }
+.search-icon { color: #9ca3af; font-size: 18px !important; margin-right: 10px } /* Taille et marge réduites */
+.search-full-input { flex: 1; border: none; outline: none; padding: 12px 0; font-size: 14px; background: transparent; color: #1e293b } /* Padding réduit */
 .search-full-input::placeholder { color: #9ca3af }
-.search-clear { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: #9ca3af; display: grid; place-items: center; transition: all 0.2s ease }
+.search-clear { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: #9ca3af; display: grid; place-items: center; transition: all 0.2s ease } /* Padding et border-radius réduits */
 .search-clear:hover { background: #f3f4f6; color: #6b7280 }
-.search-clear .material-icons { font-size: 18px }
+.search-clear .material-icons { font-size: 16px }
 
 /* Suggestions pleine largeur */
 .search-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.12); z-index: 10; max-height: 250px; overflow-y: auto; margin-top: 0 }
@@ -517,12 +524,12 @@ watch(
   grid-template-areas: 
     "periode metier"
     "statut lieu";
-  column-gap: 20px;
-  row-gap: 16px;
+  column-gap: 12px; /* Réduit de 16px → 12px */
+  row-gap: 8px; /* Réduit de 12px → 8px */
   align-items: center;
   background: rgba(255, 255, 255, 0.98);
-  padding: 18px 20px;
-  border-radius: 12px;
+  padding: 10px 12px; /* Réduit de 14px 16px → 10px 12px */
+  border-radius: 8px; /* Réduit de 10px → 8px */
   box-shadow: 0 2px 12px rgba(31,41,55,0.04);
   position: relative;
   width: 100%;
@@ -555,26 +562,26 @@ watch(
 .compact-label { 
   display: flex; 
   align-items: center; 
-  gap: 8px; 
-  font-size: 12px; 
+  gap: 4px; /* Réduit de 6px → 4px */
+  font-size: 10px; /* Réduit de 11px → 10px */
   font-weight: 700; 
   color: #4a5568; 
   text-transform: uppercase; 
-  letter-spacing: .5px; 
-  margin-bottom: 4px;
-  height: 20px; /* Hauteur fixe pour aligner les labels */
+  letter-spacing: .3px; /* Réduit de .4px → .3px */
+  margin-bottom: 2px; /* Réduit de 3px → 2px */
+  height: 16px; /* Réduit de 18px → 16px */
 }
-.compact-label .material-icons { font-size: 16px; color: #667eea }
+.compact-label .material-icons { font-size: 12px; color: #667eea } /* Réduit de 14px → 12px */
 
 /* Sélecteurs compacts - TEXTE NOIR FORCÉ */
 .compact-select { 
-  min-height: 42px !important; 
+  min-height: 30px !important; /* Réduit encore de 32px → 30px */
   color: #000 !important;
 }
 .compact-select :deep(.va-input-wrapper) { 
-  min-height: 42px !important; 
-  padding: 6px 12px !important; 
-  border-radius: 8px !important; 
+  min-height: 30px !important; /* Réduit de 36px → 30px */
+  padding: 3px 7px !important; /* Réduit de 5px 10px → 3px 7px */
+  border-radius: 5px !important; /* Réduit de 6px → 5px */
   border: 1px solid #d8e0ea !important; 
   background: #fff !important;
   box-shadow: none !important;
@@ -583,8 +590,8 @@ watch(
   color: #000 !important;
 }
 .compact-select :deep(.va-input-wrapper__field) { 
-  min-height: 28px !important; 
-  font-size: 14px !important;
+  min-height: 22px !important; /* Réduit de 28px → 22px */
+  font-size: 12.5px !important; /* Réduit de 14px → 12.5px */
   color: #000 !important;
   display: flex !important;
   align-items: center !important;
@@ -613,15 +620,15 @@ watch(
 
 /* Date inputs compacts - TEXTE NOIR FORCÉ */
 .compact-date-input { 
-  min-height: 42px !important; 
+  min-height: 34px !important; /* Réduit de 42px → 34px */
   flex: 1;
   width: 100%;
   color: #000 !important;
 }
 .compact-date-input :deep(.va-input-wrapper) { 
-  min-height: 42px !important; 
-  padding: 6px 12px !important; 
-  border-radius: 8px !important; 
+  min-height: 34px !important; /* Réduit de 42px → 34px */
+  padding: 4px 8px !important; /* Réduit de 6px 12px → 4px 8px */
+  border-radius: 6px !important; /* Réduit de 8px → 6px */
   border: 1px solid #d8e0ea !important;
   background: #fff !important;
   width: 100%;
@@ -631,8 +638,8 @@ watch(
   color: #000 !important;
 }
 .compact-date-input :deep(.va-input-wrapper__field) { 
-  min-height: 28px !important; 
-  font-size: 14px !important;
+  min-height: 22px !important; /* Réduit de 28px → 22px */
+  font-size: 12.5px !important; /* Réduit de 14px → 12.5px */
   align-items: center !important;
   display: flex !important;
   width: 100%;
@@ -678,8 +685,8 @@ watch(
   display: grid; 
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
+  gap: 6px; /* Réduit de 10px → 6px */
+  min-height: 34px; /* Réduit de 42px → 34px */
 }
 .date-separator { 
   color: #667eea; 
@@ -807,4 +814,34 @@ watch(
 .compact-period-indicator { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; background: rgba(255,255,255,.92); border-radius: 8px; font-size: 13px; color: #4a5568 }
 .compact-period-indicator .material-icons { font-size: 16px; color: #667eea }
 .period-text { font-weight: 600 }
+
+/* Optimisations ultra-compactes pour mode paysage mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .compact-filters-row {
+  padding: 4px 6px !important; /* Encore plus compact en paysage */
+  row-gap: 3px !important;
+  column-gap: 6px !important;
+    border-radius: 6px !important;
+  }
+  
+  .compact-label {
+  font-size: 9px !important; /* Encore un peu plus petit */
+  height: 12px !important;
+  margin-bottom: 1px !important;
+  }
+  
+  .compact-select {
+  min-height: 26px !important; /* Très compact */
+  }
+  
+  .compact-select :deep(.va-input-wrapper) {
+  min-height: 26px !important;
+  padding: 2px 5px !important; /* Très compact */
+  font-size: 10.5px !important;
+  }
+  
+  .compact-label .material-icons {
+    font-size: 10px !important;
+  }
+}
 </style>

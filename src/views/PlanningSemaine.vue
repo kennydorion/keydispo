@@ -9,8 +9,6 @@
 
   <!-- Contenu principal -->
   <div class="main-content">
-
-  <!-- Modale de chargement moderne -->
   <PlanningLoadingModal
     :show-modal="showLoadingModal"
     :loading-collaborateurs="loadingCollaborateurs"
@@ -184,33 +182,9 @@
       </div>
     </div>
 
-    <!-- Barre de statut de sélection améliorée - ADMIN UNIQUEMENT -->
-    <div v-if="!isCollaborateurInterface && (selectedCells.size > 0 || isSelectionMode || isDraggingSelection)" class="selection-status-bar">
-      <div class="selection-content">
-        <va-icon name="touch_app" size="16px" class="selection-icon" />
-        <span v-if="!selectedCells.size && isSelectionMode" class="selection-text">
-          Mode sélection activé - glissez sur les cellules
-        </span>
-        <span v-else-if="isDraggingSelection" class="selection-text">
-          Sélection en cours... <strong>{{selectedCells.size}}</strong> cellule{{ selectedCells.size > 1 ? 's' : '' }}
-        </span>
-        <span v-else class="selection-text">
-          <strong>{{selectedCells.size}}</strong> cellule{{ selectedCells.size > 1 ? 's' : '' }} sélectionnée{{ selectedCells.size > 1 ? 's' : '' }}
-        </span>
-        <va-button 
-          v-if="selectedCells.size > 0"
-          size="small" 
-          preset="plain" 
-          icon="clear"
-          class="clear-selection-btn"
-          @click="clearSelection"
-        />
-      </div>
-    </div>
-    
     <!-- Aide contextuelle discrète -->
     <!-- Tooltip d'aide pour la sélection - ADMIN UNIQUEMENT -->
-    <div v-if="!isCollaborateurInterface && !selectedCells.size && !isSelectionMode && !isDraggingSelection" class="selection-help-tooltip">
+    <div v-if="!isCollaborateurInterface && !selectedCells.size && !isSelectionMode && !isDraggingSelection && !isMobileView" class="selection-help-tooltip">
       <va-icon name="info" size="14px" />
       <kbd>Ctrl</kbd>+glisser pour sélectionner
     </div>
@@ -221,26 +195,24 @@
   
   <!-- Bouton flottant pour la sélection par lot - ADMIN UNIQUEMENT -->
   <div v-if="!isCollaborateurInterface && selectedCells.size > 0" class="batch-action-fab">
-    <va-button 
-      preset="primary" 
-      icon="edit_calendar"
-      @click="batchModalOpen = true"
-      :style="{ '--va-button-content-px': '12px' }"
-    >
-      Créer {{ selectedCells.size }} disponibilité{{ selectedCells.size > 1 ? 's' : '' }}
-    </va-button>
-    <va-button 
-      preset="secondary" 
-      icon="clear"
-      @click="clearSelection"
-      size="small"
-      class="ml-2"
-    />
-  </div>
-
-  <!-- Indicateur mois actuel -->
-  <div class="current-month-indicator" v-if="currentVisibleMonth">
-    {{ currentVisibleMonth }}
+    <div class="fab-content">
+      <va-button
+        color="primary"
+        icon="bolt"
+        @click="batchModalOpen = true"
+        :size="isMobileView ? 'small' : 'medium'"
+      >
+        {{ isMobileView ? `Ajouter des dispos (${selectedCells.size})` : `Ajouter des dispos (${selectedCells.size})` }}
+      </va-button>
+      <va-button
+        preset="secondary"
+        size="small"
+        icon="clear"
+        class="ml-2"
+        title="Tout désélectionner"
+        @click="clearSelection"
+      />
+    </div>
   </div>
 
   <div class="excel-scroll" ref="planningScroll" :class="{ 
@@ -255,12 +227,12 @@
           <!-- <div class="column-hover-overlay-header" aria-hidden="true" ref="colHoverHeaderEl"></div> -->
           <!-- <div class="today-overlay-header" aria-hidden="true"></div> -->
           <!-- Séparateurs hebdo du header (mois+semaines+jours) -->
-          <div class="week-separators-header" aria-hidden="true">
+      <div class="week-separators-header" aria-hidden="true">
             <template v-for="(day, idx) in visibleDays" :key="'sep-'+day.date">
               <div
                 v-if="isWeekBoundary(day.date)"
                 class="week-sep"
-                :style="{ left: `calc(var(--grid-left-header, calc(var(--sticky-left, 260px) + 1px)) + (${idx} + 1) * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
+        :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + (${idx} + 1) * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
               ></div>
             </template>
           </div>
@@ -441,7 +413,7 @@
                         :style="getDispoCardStyle(dispo)"
                         aria-label="Détail disponibilité"
                         :title="getDispoBarTitle(dispo as any, day.date)"
-                        @click.stop="editDispo(dispo, day.date)"
+                        @click="onInnerDispoClick(dispo, collaborateur.id, day.date, $event)"
                       >
                         <!-- Affichage uniforme simplifié -->
                         <div class="dispo-unified-content">
@@ -470,7 +442,7 @@
                       v-if="getCellDisposSorted(collaborateur.id, day.date).length === 0"
                       class="dispo-add-card"
                       :class="{ 'dragging-mode': isDraggingSelection }"
-                      @click.stop="() => openModalForCollaborateur(collaborateur.id, day.date)"
+                      @click="onInnerAddClick(collaborateur.id, day.date, $event)"
                       aria-label="Ajouter une disponibilité"
                     >
                       <va-icon name="add" size="20px" class="add-icon" />
@@ -577,6 +549,24 @@
       <va-icon name="edit" size="12px" />
       <span class="editing-user">{{ user.displayName }} édite</span>
     </div>
+  </div>
+
+  <!-- FAB sélection multiple mobile -->
+  <div 
+    v-if="isMobileView && InterfaceManager.canAccessAdminFeatures.value && !batchModalOpen"
+    class="selection-mode-fab"
+    :class="{ 'active': isSelectionMode }"
+  >
+    <va-button
+      @click="toggleSelectionMode"
+      :color="isSelectionMode ? 'warning' : 'info'"
+      :icon="isSelectionMode ? 'check_circle' : 'checklist'"
+      size="medium"
+      round
+      class="selection-toggle-btn"
+    >
+      {{ isSelectionMode ? 'Terminer' : 'Sélectionner' }}
+    </va-button>
   </div>
 </template>
 <script setup lang="ts">
@@ -769,7 +759,9 @@ const dragStartCell = ref<string | null>(null)
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.ctrlKey || e.metaKey) {
+  // Sur desktop, activer le mode sélection avec Ctrl/Cmd
+  // Sur mobile, laisser le FAB gérer le mode sélection
+  if ((e.ctrlKey || e.metaKey) && !isMobileView.value) {
     isSelectionMode.value = true
   }
   
@@ -787,7 +779,9 @@ const handleKeyDown = (e: KeyboardEvent) => {
 }
 
 const handleKeyUp = (e: KeyboardEvent) => {
-  if (!e.ctrlKey && !e.metaKey) {
+  // Sur desktop, désactiver le mode sélection quand on relâche Ctrl/Cmd
+  // Sur mobile, laisser le FAB gérer le mode sélection
+  if (!e.ctrlKey && !e.metaKey && !isMobileView.value) {
     isSelectionMode.value = false
   }
 }
@@ -1190,7 +1184,11 @@ const rowPitchRef = computed(() => rowHeightRef.value + 1)
 
 function computeResponsive() {
   const w = window.innerWidth
-  isMobileView.value = w <= 900
+  const h = window.innerHeight
+  
+  // Activer le style mobile si largeur <= 900px OU si c'est un écran mobile en paysage
+  // (hauteur < largeur ET hauteur <= 500px pour détecter les mobiles en paysage)
+  isMobileView.value = w <= 900 || (h < w && h <= 500)
   
   // Sauvegarder la position de scroll actuelle pour la restaurer après redimensionnement
   const scroller = planningScroll.value
@@ -1207,19 +1205,19 @@ function computeResponsive() {
   }
   
   // Calculer les nouvelles dimensions selon la taille d'écran
-  let sticky = 260
+  let sticky = 310
   let day = 124
   let rowH = 65 // Réduit à 65px pour une meilleure proportion
   if (w <= 390) { // iPhone 12 width
-    sticky = 140; day = Math.max(35, Math.min(45, Math.floor((w - sticky - 8)/7))); rowH = 60 // Largeur collaborateurs augmentée
+  sticky = 100; day = Math.max(54, Math.min(74, Math.floor((w - sticky - 8)/5))); rowH = 60 // Colonne plus large sur très petit écran
   } else if (w <= 430) {
-    sticky = 150; day = Math.max(40, Math.min(50, Math.floor((w - sticky - 10)/7))); rowH = 62 // Largeur collaborateurs augmentée
+  sticky = 115; day = Math.max(59, Math.min(79, Math.floor((w - sticky - 10)/5))); rowH = 62 // Colonne plus large
   } else if (w <= 520) {
-    sticky = 160; day = Math.max(45, Math.min(55, Math.floor((w - sticky - 12)/7))); rowH = 64 // Largeur collaborateurs augmentée
+  sticky = 130; day = Math.max(69, Math.min(89, Math.floor((w - sticky - 12)/5))); rowH = 64 // Colonne plus large
   } else if (w <= 640) {
-    sticky = 180; day = Math.max(50, Math.min(65, Math.floor((w - sticky - 16)/7))); rowH = 66 // Largeur collaborateurs augmentée
+  sticky = 145; day = Math.max(79, Math.min(99, Math.floor((w - sticky - 16)/5))); rowH = 66 // Colonne plus large
   } else if (w <= 900) {
-    sticky = 200; day = Math.max(60, Math.min(80, Math.floor((w - sticky - 20)/7))); rowH = 68 // Largeur collaborateurs augmentée
+  sticky = 170; day = Math.max(89, Math.min(109, Math.floor((w - sticky - 20)/5))); rowH = 68 // Colonne plus large
   }
   
   dayWidthRef.value = day
@@ -4828,7 +4826,7 @@ function updateCurrentVisibleMonth(scroller: HTMLElement) {
   if (!visibleDays.value.length) return
   
   const scrollLeft = scroller.scrollLeft
-  const gridLeft = stickyLeftWidth.value + 1
+  const gridLeft = stickyLeftWidth.value
   const pitch = dayWidth.value + 1
   const viewportWidth = scroller.clientWidth
   
@@ -4857,7 +4855,7 @@ function updateHoverOnScroll(scroller: HTMLElement) {
   if (!_cachedGridValues || (now - _cachedGridValues.timestamp) > 100) {
     const rowsEl = rowsRef.value
     _cachedGridValues = {
-      gridLeft: gridLeftBodyPx.value || (stickyLeftWidth.value + 1),
+      gridLeft: gridLeftBodyPx.value || (stickyLeftWidth.value),
       pitch: dayPitchBodyPx.value || (dayWidth.value + 1),
       rowsOffset: rowsEl ? rowsEl.offsetTop : 0,
       nRows: paginatedCollaborateurs.value.length,
@@ -5128,12 +5126,13 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
     }
   }
   
-  // Si Ctrl/Cmd est maintenu (mode sélection multiple) - AUCUNE modale ne doit s'ouvrir
-  if (event.ctrlKey || event.metaKey) {
+  // Si Ctrl/Cmd est maintenu (mode sélection multiple) OU mode sélection mobile activé - AUCUNE modale ne doit s'ouvrir
+  if (event.ctrlKey || event.metaKey || (isMobileView.value && isSelectionMode.value)) {
     event.preventDefault()
     event.stopPropagation()
     
     console.log('=== MODE MULTISELECT - AUCUNE MODALE ===')
+    console.log('Mode:', event.ctrlKey || event.metaKey ? 'DESKTOP CTRL/CMD' : 'MOBILE FAB')
     console.log('Clic sur:', cellId)
     console.log('Selection avant:', Array.from(selectedCells.value))
     
@@ -5188,6 +5187,29 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
   }
 }
 
+// Gestion des clics sur éléments internes (cartes/boutons) pour respecter le multisélection
+function onInnerDispoClick(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'end' }), collaborateurId: string, date: string, event: MouseEvent) {
+  // Si on est en mode multisélection (desktop Ctrl/Cmd ou mobile FAB), laisser l'événement remonter vers la cellule parent
+  if (event.ctrlKey || event.metaKey || (isMobileView.value && isSelectionMode.value)) {
+    // Ne pas arrêter la propagation - l'événement remonte vers handleCellClickNew de la cellule parent
+    return
+  }
+  // Comportement normal: empêcher la propagation et ouvrir l'édition de la dispo
+  event.stopPropagation()
+  editDispo(dispo as any, date)
+}
+
+function onInnerAddClick(collaborateurId: string, date: string, event: MouseEvent) {
+  // En mode multisélection, laisser l'événement remonter vers la cellule parent
+  if (event.ctrlKey || event.metaKey || (isMobileView.value && isSelectionMode.value)) {
+    // Ne pas arrêter la propagation - l'événement remonte vers handleCellClickNew de la cellule parent
+    return
+  }
+  // Sinon, empêcher la propagation et ouvrir la modale d'ajout
+  event.stopPropagation()
+  openModalForCollaborateur(collaborateurId, date)
+}
+
 // Vider la sélection
 function clearSelection() {
   selectedCells.value.clear()
@@ -5199,6 +5221,18 @@ function clearSelection() {
   }
   
   console.log('🧹 Sélection vidée')
+}
+
+// Fonction pour toggler le mode sélection sur mobile
+function toggleSelectionMode() {
+  isSelectionMode.value = !isSelectionMode.value
+  
+  // Si on sort du mode sélection MANUELLEMENT, vider les sélections
+  if (!isSelectionMode.value) {
+    clearSelection()
+  }
+  
+  console.log('📱 Mode sélection mobile:', isSelectionMode.value ? 'ACTIVÉ' : 'DÉSACTIVÉ')
 }
 
 // Obtenir le collaborateur actuellement sélectionné (s'il y en a un)
@@ -6374,40 +6408,118 @@ onUnmounted(() => {
 
 // Pan mobile à deux doigts (n'altère pas le scroll à un doigt)
 let panTouchStart: { x: number; y: number; scrollLeft: number; scrollTop: number } | null = null
+// Tap simple pour sélection en mode mobile (admin)
+let singleTouchStart: { x: number; y: number; time: number; targetCellId?: string } | null = null
+const TAP_MAX_MOVEMENT = 8 // px
+const TAP_MAX_DURATION = 350 // ms
 
 function onTouchStart(e: TouchEvent) {
-  if (e.touches.length !== 2) return
   const scroller = planningScroll.value
   if (!scroller) return
-  // point moyen entre les deux doigts
-  const x = (e.touches[0].clientX + e.touches[1].clientX) / 2
-  const y = (e.touches[0].clientY + e.touches[1].clientY) / 2
-  panTouchStart = { x, y, scrollLeft: scroller.scrollLeft, scrollTop: scroller.scrollTop }
 
-  const onMove = (ev: TouchEvent) => {
-    if (!panTouchStart) return
-    if (ev.touches.length !== 2) return
-    const x2 = (ev.touches[0].clientX + ev.touches[1].clientX) / 2
-    const y2 = (ev.touches[0].clientY + ev.touches[1].clientY) / 2
-    const dx = x2 - panTouchStart.x
-    const dy = y2 - panTouchStart.y
-  scroller.scrollLeft = panTouchStart.scrollLeft - dx
-  scroller.scrollTop = panTouchStart.scrollTop - dy
-  // maintenir le hover à jour pendant le pan tactile
-  updateHoverOnScroll(scroller)
-    ev.preventDefault()
+  // 1) Pan à deux doigts
+  if (e.touches.length === 2) {
+    // point moyen entre les deux doigts
+    const x = (e.touches[0].clientX + e.touches[1].clientX) / 2
+    const y = (e.touches[0].clientY + e.touches[1].clientY) / 2
+    panTouchStart = { x, y, scrollLeft: scroller.scrollLeft, scrollTop: scroller.scrollTop }
+
+    const onMove = (ev: TouchEvent) => {
+      if (!panTouchStart) return
+      if (ev.touches.length !== 2) return
+      const x2 = (ev.touches[0].clientX + ev.touches[1].clientX) / 2
+      const y2 = (ev.touches[0].clientY + ev.touches[1].clientY) / 2
+      const dx = x2 - panTouchStart.x
+      const dy = y2 - panTouchStart.y
+      scroller.scrollLeft = panTouchStart.scrollLeft - dx
+      scroller.scrollTop = panTouchStart.scrollTop - dy
+      // maintenir le hover à jour pendant le pan tactile
+      updateHoverOnScroll(scroller)
+      ev.preventDefault()
+    }
+
+    const onEnd = () => {
+      window.removeEventListener('touchmove', onMove as any)
+      window.removeEventListener('touchend', onEnd as any)
+      window.removeEventListener('touchcancel', onEnd as any)
+      panTouchStart = null
+    }
+
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onEnd)
+    window.addEventListener('touchcancel', onEnd)
+    return
   }
 
-  const onEnd = () => {
-    window.removeEventListener('touchmove', onMove as any)
-    window.removeEventListener('touchend', onEnd as any)
-    window.removeEventListener('touchcancel', onEnd as any)
-    panTouchStart = null
-  }
+  // 2) Tap simple (un doigt) en mode sélection mobile (admin uniquement)
+  if (e.touches.length === 1 && isMobileView.value && !isCollaborateurInterface.value) {
+    const touch = e.touches[0]
+    singleTouchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    // Capturer la cellule sous le doigt
+    const target = e.target as HTMLElement
+    const cell = target.closest?.('.excel-cell') as HTMLElement | null
+    if (cell) {
+      singleTouchStart.targetCellId = cell.getAttribute('data-cell-id') || undefined
+    }
 
-  window.addEventListener('touchmove', onMove, { passive: false })
-  window.addEventListener('touchend', onEnd)
-  window.addEventListener('touchcancel', onEnd)
+    const onSingleMove = (ev: TouchEvent) => {
+      if (!singleTouchStart) return
+      const t = ev.touches[0]
+      const dx = Math.abs(t.clientX - singleTouchStart.x)
+      const dy = Math.abs(t.clientY - singleTouchStart.y)
+      if (dx > TAP_MAX_MOVEMENT || dy > TAP_MAX_MOVEMENT) {
+        // Trop de mouvement: ce n'est plus un tap
+        singleTouchStart = null
+        window.removeEventListener('touchmove', onSingleMove as any)
+        window.removeEventListener('touchend', onSingleEnd as any)
+        window.removeEventListener('touchcancel', onSingleEnd as any)
+      }
+    }
+
+    const onSingleEnd = () => {
+      if (!singleTouchStart) return
+      const duration = Date.now() - singleTouchStart.time
+      const tappedCellId = singleTouchStart.targetCellId
+      singleTouchStart = null
+      window.removeEventListener('touchmove', onSingleMove as any)
+      window.removeEventListener('touchend', onSingleEnd as any)
+      window.removeEventListener('touchcancel', onSingleEnd as any)
+
+      // Si on est en mode sélection et que le tap est court, toggler la cellule
+      if (isSelectionMode.value && duration <= TAP_MAX_DURATION && tappedCellId) {
+        // Extraire collaborateurId et date depuis data attribs pour respecter la règle mono-collaborateur
+        const cellEl = planningScroll.value?.querySelector(`[data-cell-id="${tappedCellId}"]`) as HTMLElement | null
+        const collaborateurId = cellEl?.getAttribute('data-row-index')
+        const date = cellEl?.getAttribute('data-day-date')
+        // Fallback sur l'ID composé
+        let collabIdFinal = ''
+        let dateFinal = ''
+        if (tappedCellId.includes('_')) {
+          const parts = tappedCellId.split('_')
+          collabIdFinal = parts[0]
+          dateFinal = parts[1]
+        }
+        if (!collabIdFinal && collaborateurId && date) {
+          collabIdFinal = collaborateurId
+          dateFinal = date
+        }
+        if (collabIdFinal && dateFinal) {
+          const fakeEvent = { ctrlKey: true, metaKey: false } as unknown as MouseEvent
+          handleCellClickNew(collabIdFinal, dateFinal, fakeEvent)
+          // Empêcher le clic qui suivra le touchend de re-déclencher la logique
+          const cancelClick = (ce: MouseEvent) => {
+            ce.stopImmediatePropagation()
+            ce.preventDefault()
+          }
+          scroller.addEventListener('click', cancelClick, { capture: true, once: true })
+        }
+      }
+    }
+
+    window.addEventListener('touchmove', onSingleMove)
+    window.addEventListener('touchend', onSingleEnd)
+    window.addEventListener('touchcancel', onSingleEnd)
+  }
 }
 
 // Cleanup des listeners de collaboration lors du démontage du composant
@@ -7952,42 +8064,6 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-/* Barre de statut de sélection moderne */
-.selection-status-bar {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(14, 131, 136, 0.95);
-  backdrop-filter: blur(8px);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 24px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 999;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  animation: slideInDown 0.3s ease-out;
-  max-width: 90vw;
-}
-
-.selection-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.selection-icon {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.selection-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Aide contextuelle discrète */
 .selection-help-tooltip {
   position: fixed;
@@ -8147,24 +8223,6 @@ onUnmounted(() => {
   }
 }
 
-/* Indicateur mois actuel */
-.current-month-indicator {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #333;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000; /* Augmenté pour être au-dessus de tout */
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-}
-
 /* Ligne d'en-tête sticky (top:0) */
 .sticky-header-row {
   position: sticky;
@@ -8185,7 +8243,11 @@ onUnmounted(() => {
   min-width: var(--sticky-left, 260px);
   flex: 0 0 var(--sticky-left, 260px); /* fixe, aligne avec collab-sticky */
   background: #f5f5f5;
-  padding: 6px 8px;
+  padding: 6px 10px; /* Aligné avec collaborateur-content: 6px 10px */
+  border-right: 1px solid #e5e7eb; /* Même bordure que collab-sticky */
+  box-shadow: 
+    2px 0 8px rgba(0,0,0,0.06),
+    inset -1px 0 0 rgba(255,255,255,0.8); /* Même shadow que collab-sticky */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -8194,19 +8256,20 @@ onUnmounted(() => {
   left: 0;
   top: 0;
   z-index: 153; /* au-dessus des éléments du header */
+  box-sizing: border-box; /* S'assurer que padding/border sont inclus dans width */
 }
 
 .excel-corner .today-btn {
   background: #3B82F6;
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 4px; /* Réduit de 5px → 4px */
+  padding: 4px 6px; /* Réduit de 6px 8px → 4px 6px */
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 3px; /* Réduit de 4px → 3px */
+  font-size: 11px; /* Réduit de 12px → 11px */
   font-weight: 500;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -8221,7 +8284,7 @@ onUnmounted(() => {
 }
 
 .excel-corner .today-btn .material-icons {
-  font-size: 16px;
+  font-size: 14px; /* Réduit de 16px → 14px */
 }
 
 .excel-corner .corner-separator {
@@ -8244,7 +8307,7 @@ onUnmounted(() => {
 .today-overlay-header {
   position: absolute;
   top: 0;
-  left: calc(var(--grid-left-header, calc(var(--sticky-left, 260px) + 1px)) + var(--today-x-local, -9999px));
+  left: calc(var(--grid-left-header, var(--sticky-left, 260px)) + var(--today-x-local, -9999px));
   width: var(--day-width, 100px);
   height: 100%;
   pointer-events: none;
@@ -8273,12 +8336,12 @@ onUnmounted(() => {
 
 .corner-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px; /* Réduit de 14px → 12px */
   color: #333;
 }
 
 .corner-count {
-  font-size: 12px;
+  font-size: 10px; /* Réduit de 12px → 10px */
   color: #666;
   margin-top: 2px;
 }
@@ -8445,7 +8508,7 @@ onUnmounted(() => {
 .grid-overlay-clip {
   position: absolute;
   top: 0;
-  left: var(--grid-left-body, calc(var(--sticky-left, 260px) + 1px)); /* origine mesurée, repli sticky+1 */
+  left: var(--grid-left-body, var(--sticky-left, 260px)); /* origine mesurée, repli sticky */
   right: 0;
   bottom: 0;
   pointer-events: none;
@@ -8630,7 +8693,7 @@ onUnmounted(() => {
   min-width: 0;
   position: relative;
   background: #ffffff;
-  border-left: 1px solid #e5e7eb;
+  /* border-left supprimée car collab-sticky a déjà border-right */
 }
 
 /* === PARTIE GAUCHE: INFOS === */
@@ -8652,22 +8715,22 @@ onUnmounted(() => {
 
 .collaborateur-nom-complet .nom {
   font-weight: 600;
-  font-size: 14px; /* Augmenté de 13px → 14px */
+  font-size: 12px; /* Réduit encore pour colonne plus compacte */
   color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  letter-spacing: -0.01em; /* Optimisé pour mobile */
+  letter-spacing: -0.02em; /* Condensé pour plus de caractères */
 }
 
 .collaborateur-nom-complet .prenom {
   font-weight: 500; /* Augmenté de 400 → 500 */
-  font-size: 13px; /* Augmenté de 12px → 13px */
+  font-size: 11px; /* Réduit encore pour colonne plus compacte */
   color: #374151; /* Couleur plus foncée pour meilleur contraste */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  letter-spacing: -0.01em; /* Optimisé pour mobile */
+  letter-spacing: -0.02em; /* Condensé pour plus de caractères */
 }
 
 .collaborateur-nom-complet.clickable-name {
@@ -8694,11 +8757,11 @@ onUnmounted(() => {
   background: #eef2ff; /* Couleur plus douce et lisible */
   color: #374151; /* Texte plus foncé pour meilleur contraste */
   border: 1px solid #c7d2fe; /* Bordure plus douce */
-  padding: 2px 6px; /* Padding augmenté pour plus d'espace */
-  border-radius: 4px; /* Coins légèrement plus arrondis */
-  font-size: 11px; /* Augmenté de 10px → 11px */
+  padding: 1px 4px; /* Padding très compact */
+  border-radius: 3px; /* Coins plus petits */
+  font-size: 9px; /* Très petit pour économiser l'espace */
   font-weight: 600; /* Augmenté de 500 → 600 */
-  line-height: 1.2;
+  line-height: 1.1;
   max-width: fit-content;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8769,6 +8832,7 @@ onUnmounted(() => {
   transition: box-shadow 0.2s ease;
   display: flex;
   overflow: hidden; /* Éviter tout débordement */
+  box-sizing: border-box; /* S'assurer que padding/border sont inclus dans width */
 }
 
 .collab-sticky:hover {
@@ -10104,6 +10168,11 @@ body.dragging-selection .excel-cell {
   animation: slideInUp 0.3s ease-out;
 }
 
+.batch-action-fab .fab-content {
+  display: flex;
+  align-items: center;
+}
+
 .go-to-today-fab {
   position: fixed;
   top: 180px;
@@ -10126,7 +10195,7 @@ body.dragging-selection .excel-cell {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
   .batch-action-fab {
     bottom: 80px; /* Au-dessus de la navigation mobile éventuelle */
     right: 10px;
@@ -10141,20 +10210,22 @@ body.dragging-selection .excel-cell {
 
   /* Amélioration du bouton Aujourd'hui sur mobile */
   .excel-corner .today-btn {
-    padding: 12px 16px;
-    font-size: 14px;
-    min-height: 44px; /* Taille de touch-target recommandée */
-    border-radius: 8px;
+    padding: 6px 8px; /* Réduit de 8px 10px → 6px 8px */
+    font-size: 11px; /* Réduit de 12px → 11px */
+    min-height: 32px; /* Réduit de 36px → 32px */
+    border-radius: 4px; /* Réduit de 6px → 4px */
   }
   
   .excel-corner .today-btn .material-icons {
-    font-size: 18px;
+    font-size: 12px; /* Réduit de 14px → 12px */
   }
   
   /* Corner plus compact sur mobile */
   .excel-corner {
-    min-width: 120px;
-    max-width: 140px;
+  width: var(--sticky-left, 260px);
+  min-width: var(--sticky-left, 260px);
+  flex: 0 0 var(--sticky-left, 260px);
+    padding: 4px 5px; /* Même padding que collaborateur-content sur mobile */
   }
   
   /* Header plus compact sur mobile */
@@ -10947,54 +11018,119 @@ body.dragging-selection .excel-cell {
    ================================================= */
 
 /* Styles spécifiques mobile pour améliorer la lisibilité */
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 500px) and (orientation: landscape) {
   .collaborateur-content {
-    padding: 6px 8px; /* Plus d'espace interne */
+    padding: 4px 5px; /* Padding très compact pour colonne étroite */
   }
   
   .collaborateur-nom-complet .nom {
-    font-size: 15px !important; /* Encore plus gros sur très petit écran */
+    font-size: 12px !important; /* Compact mais lisible */
     font-weight: 700 !important; /* Plus gras pour meilleur contraste */
   }
   
   .collaborateur-nom-complet .prenom {
-    font-size: 14px !important; /* Encore plus gros sur très petit écran */
+    font-size: 11px !important; /* Compact mais lisible */
     font-weight: 600 !important; /* Plus gras pour meilleur contraste */
   }
   
   .collaborateur-metier {
-    font-size: 12px !important; /* Plus gros sur mobile */
-    padding: 3px 8px !important; /* Plus d'espace */
+    font-size: 9px !important; /* Très compact */
+    padding: 1px 3px !important; /* Padding minimal */
     font-weight: 700 !important; /* Plus gras */
     background: #ddd6fe !important; /* Couleur plus contrastée */
     color: #1f2937 !important; /* Texte plus foncé */
   }
   
   .collaborateur-actions .contact-icon {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 16px !important;
+    width: 16px !important; /* Très compact */
+    height: 16px !important;
+    font-size: 12px !important;
   }
 }
 
 /* Encore plus d'optimisations pour très petits écrans */
 @media (max-width: 430px) {
   .collaborateur-nom-complet .nom {
-    font-size: 16px !important; /* Maximum pour iPhone */
+    font-size: 11px !important; /* Maximum compacité sur iPhone */
   }
   
   .collaborateur-nom-complet .prenom {
-    font-size: 15px !important; /* Maximum pour iPhone */
+    font-size: 10px !important; /* Maximum compacité sur iPhone */
   }
   
   .collaborateur-metier {
-    font-size: 13px !important;
-    padding: 4px 10px !important;
+    font-size: 8px !important; /* Ultra compact sur iPhone */
+    padding: 1px 2px !important;
   }
   
-  /* Augmenter légèrement la hauteur des lignes sur très petit écran */
+  /* Hauteur des lignes optimisée pour le nouvel équilibre ultra-compact */
   .collab-sticky {
-    min-height: 70px;
+    min-height: 58px;
+  }
+}
+
+/* FAB Mode Sélection Mobile */
+.selection-mode-fab {
+  position: fixed;
+  bottom: 20px;
+  left: 16px;
+  z-index: 1000;
+  animation: fabSlideIn 0.3s ease-out;
+}
+
+.selection-mode-fab.active {
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 50px;
+  padding: 4px;
+}
+
+.selection-toggle-btn {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap !important;
+}
+
+@keyframes fabSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optimisations spécifiques mode paysage mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .planning-header {
+    padding: 4px 8px !important; /* Réduire la hauteur du header */
+  }
+  
+  .excel-corner {
+    padding: 2px 4px !important; /* Ultra-compact en paysage */
+  }
+  
+  .excel-corner .today-btn {
+    padding: 3px 5px !important;
+    font-size: 10px !important;
+    min-height: 26px !important;
+  }
+  
+  .corner-title {
+    font-size: 10px !important;
+  }
+  
+  .corner-count {
+    font-size: 8px !important;
+  }
+  
+  .collaborateur-content {
+    padding: 2px 4px !important; /* Ultra-compact en paysage */
+  }
+  
+  .collab-sticky {
+    min-height: 45px !important; /* Réduire hauteur des lignes */
   }
 }
 

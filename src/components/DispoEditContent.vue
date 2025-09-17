@@ -519,7 +519,7 @@ const sortedSelectedCellDispos = computed(() => {
 .header-section {
   position: relative;
   background: linear-gradient(135deg, var(--collaborateur-color, var(--primary-color)) 0%, color-mix(in srgb, var(--collaborateur-color, var(--primary-color)) 80%, #8b5cf6) 100%);
-  padding: 1.25rem 1.5rem;
+  padding: 1.1rem 1.25rem; /* Légère réduction générale */
   color: white;
   overflow: hidden;
   flex-shrink: 0; /* Header fixe */
@@ -1099,7 +1099,7 @@ const sortedSelectedCellDispos = computed(() => {
   }
   
   .header-section {
-    padding: 1rem 0.75rem;
+  padding: 0.65rem 0.6rem; /* Header plus compact sur mobile */
     flex-shrink: 0;
   }
   
@@ -1110,9 +1110,19 @@ const sortedSelectedCellDispos = computed(() => {
   }
   
   .collaborateur-avatar {
-    width: 42px;
-    height: 42px;
-    font-size: 1.125rem;
+    width: 38px; /* avatar plus compact */
+    height: 38px;
+    font-size: 1.05rem;
+  }
+
+  .collaborateur-name {
+    font-size: 1.1rem; /* Titre légèrement réduit */
+    line-height: 1.2;
+  }
+
+  .stat-badge {
+    padding: 0.4rem 0.6rem; /* badges plus compacts */
+    min-width: 56px;
   }
   
   .scrollable-content {

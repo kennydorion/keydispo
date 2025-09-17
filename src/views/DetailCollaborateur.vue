@@ -1,243 +1,264 @@
 <template>
   <div class="detail-collaborateur">
-    <!-- En-tête -->
-    <header class="page-header">
-      <div class="header-content">
-        <div class="header-left">
-          <va-button 
-            preset="plain" 
-            icon="arrow_back" 
-            @click="retourListe"
-            class="back-button"
-          >
-            Retour
-          </va-button>
-          <div class="header-info">
-            <h1 class="page-title">
-              <va-icon name="person" class="title-icon" />
-              {{ collaborateur?.prenom }} {{ collaborateur?.nom }}
-            </h1>
-            <p class="page-subtitle">
-              Détails du collaborateur
-            </p>
+    <!-- En-tête élégant moderne -->
+    <header class="elegant-header">
+      <div class="header-backdrop"></div>
+      <div class="header-container">
+        <div class="header-main">
+          <div class="header-content">
+            <div class="header-navigation">
+              <va-button 
+                preset="plain" 
+                icon="arrow_back" 
+                @click="retourListe"
+                class="back-button"
+              >
+                <span class="back-text">Retour</span>
+              </va-button>
+            </div>
+            
+            <div class="header-title-section">
+              <div class="title-icon-wrapper">
+                <va-icon name="person" class="header-icon" />
+              </div>
+              <div class="title-content">
+                <h1 class="page-title">
+                  {{ collaborateur?.prenom }} {{ collaborateur?.nom }}
+                </h1>
+                <div class="header-meta" v-if="collaborateur">
+                  <va-chip color="primary" size="small" class="metier-chip">
+                    <va-icon name="work" size="small" />
+                    {{ collaborateur.metier }}
+                  </va-chip>
+                  <span class="page-subtitle">Détails du collaborateur</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="header-actions">
-          <va-button
-            color="primary"
-            preset="outline"
-            icon="edit"
-            @click="editCollaborateur"
-          >
-            Modifier
-          </va-button>
-          <va-button
-            color="danger"
-            preset="outline"
-            @click="confirmerSuppression"
-          >
-            <va-icon name="delete" class="mr-2" />
-            Supprimer
-          </va-button>
+          
+          <div class="header-actions">
+            <va-button
+              color="primary"
+              preset="outline"
+              icon="edit"
+              @click="editCollaborateur"
+              class="header-button"
+            >
+              Modifier
+            </va-button>
+            <va-button
+              color="danger"
+              preset="outline"
+              @click="confirmerSuppression"
+              class="header-button"
+            >
+              <va-icon name="delete" />
+              Supprimer
+            </va-button>
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- Contenu principal -->
-    <div class="page-content" v-if="collaborateur">
-      <div class="detail-container">
-        <!-- Informations principales -->
-        <va-card class="main-info-card">
-          <va-card-content>
-            <div class="collaborateur-header">
-              <div 
-                class="collaborateur-avatar-large"
-                :style="{ backgroundColor: collaborateur.color || DEFAULT_COLOR }"
-              >
-                {{ getInitials(collaborateur) }}
+    <!-- Contenu principal compact -->
+    <div class="main-content" v-if="collaborateur">
+      <div class="content-container">
+        
+        <!-- Grille des informations compacte -->
+        <div class="info-grid">
+          <!-- Contact -->
+          <va-card class="info-card">
+            <va-card-title class="card-title">
+              <div class="title-with-icon">
+                <div class="card-icon-wrapper">
+                  <va-icon name="contact_mail" />
+                </div>
+                <span>Informations de contact</span>
               </div>
-              <div class="collaborateur-info">
-                <h2 class="collaborateur-name">{{ collaborateur.prenom }} {{ collaborateur.nom }}</h2>
-                <va-chip color="primary" size="large" class="metier-chip">
-                  <va-icon name="work" size="small" class="mr-2" />
-                  {{ collaborateur.metier }}
-                </va-chip>
-              </div>
-            </div>
-          </va-card-content>
-        </va-card>
+            </va-card-title>
+            <va-card-content>
+              <div class="contact-list">
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <va-icon name="email" size="small" />
+                  </div>
+                  <div class="contact-details">
+                    <div class="contact-label">Email</div>
+                    <div class="contact-value">
+                      <a v-if="collaborateur.email" :href="`mailto:${collaborateur.email}`" class="contact-link">
+                        {{ collaborateur.email }}
+                      </a>
+                      <span v-else class="no-data">Pas d'email</span>
+                    </div>
+                  </div>
+                </div>
 
-        <!-- Détails des contacts -->
-        <va-card class="contact-card">
-          <va-card-title>
-            <va-icon name="contact_mail" class="mr-2" />
-            Informations de contact
-          </va-card-title>
-          <va-card-content>
-            <div class="contact-grid">
-              <div class="contact-item">
-                <div class="contact-label">
-                  <va-icon name="email" class="contact-icon" />
-                  Email
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <va-icon name="phone" size="small" />
+                  </div>
+                  <div class="contact-details">
+                    <div class="contact-label">Téléphone</div>
+                    <div class="contact-value">
+                      <a v-if="collaborateur.phone" :href="`tel:${collaborateur.phone}`" class="contact-link">
+                        {{ formatPhone(collaborateur.phone) }}
+                      </a>
+                      <span v-else class="no-data">Pas de téléphone</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="contact-value">
-                  <a v-if="collaborateur.email" :href="`mailto:${collaborateur.email}`" class="email-link">
-                    {{ collaborateur.email }}
-                  </a>
-                  <span v-else class="no-data">Pas d'email</span>
-                </div>
-              </div>
 
-              <div class="contact-item">
-                <div class="contact-label">
-                  <va-icon name="phone" class="contact-icon" />
-                  Téléphone
-                </div>
-                <div class="contact-value">
-                  <a v-if="collaborateur.phone" :href="`tel:${collaborateur.phone}`" class="phone-link">
-                    {{ formatPhone(collaborateur.phone) }}
-                  </a>
-                  <span v-else class="no-data">Pas de téléphone</span>
-                </div>
-              </div>
-
-              <div class="contact-item">
-                <div class="contact-label">
-                  <va-icon name="palette" class="contact-icon" />
-                  Couleur
-                </div>
-                <div class="contact-value">
-                  <div class="color-indicator">
-                    <div 
-                      class="color-swatch" 
-                      :style="{ backgroundColor: collaborateur.color || DEFAULT_COLOR }"
-                    ></div>
-                    <span class="color-text">Couleur d'identification</span>
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <va-icon name="palette" size="small" />
+                  </div>
+                  <div class="contact-details">
+                    <div class="contact-label">Couleur</div>
+                    <div class="contact-value">
+                      <div class="color-indicator">
+                        <div 
+                          class="color-swatch" 
+                          :style="{ backgroundColor: collaborateur.color || DEFAULT_COLOR }"
+                        ></div>
+                        <span class="color-text">Couleur d'identification</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </va-card-content>
-        </va-card>
+            </va-card-content>
+          </va-card>
 
-        <!-- Note -->
-        <va-card v-if="collaborateur.note" class="note-card">
-          <va-card-title>
-            <va-icon name="note" class="mr-2" />
-            Note
-          </va-card-title>
-          <va-card-content>
-            <p class="note-text">{{ collaborateur.note }}</p>
-          </va-card-content>
-        </va-card>
-
-        <!-- Statistiques -->
-        <va-card class="stats-card">
-          <va-card-title>
-            <va-icon name="analytics" class="mr-2" />
-            Statistiques
-          </va-card-title>
-          <va-card-content>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <div class="stat-value">{{ disponibilitesCount }}</div>
-                <div class="stat-label">Disponibilités</div>
+          <!-- Note -->
+          <va-card v-if="collaborateur.note" class="info-card">
+            <va-card-title class="card-title">
+              <div class="title-with-icon">
+                <div class="card-icon-wrapper">
+                  <va-icon name="note" />
+                </div>
+                <span>Note</span>
               </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ formatDate(collaborateur.createdAt) }}</div>
-                <div class="stat-label">Créé le</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ formatDate(collaborateur.updatedAt) }}</div>
-                <div class="stat-label">Dernière modification</div>
-              </div>
-            </div>
-          </va-card-content>
-        </va-card>
+            </va-card-title>
+            <va-card-content>
+              <p class="note-text">{{ collaborateur.note }}</p>
+            </va-card-content>
+          </va-card>
 
-        <!-- Actions rapides -->
-        <va-card class="actions-card">
-          <va-card-title>
-            <va-icon name="flash_on" class="mr-2" />
-            Actions rapides
-          </va-card-title>
-          <va-card-content>
-            <div class="quick-actions">
-              <va-button
-                preset="outline"
-                icon="calendar_month"
-                @click="voirDisponibilites"
-                size="large"
-                class="action-button"
-              >
-                Voir les disponibilités
-              </va-button>
-              <va-button
-                preset="outline"
-                icon="email"
-                @click="envoyerEmail"
-                size="large"
-                class="action-button"
-                :disabled="!collaborateur.email"
-              >
-                Envoyer un email
-              </va-button>
-            </div>
-          </va-card-content>
-        </va-card>
-
-        <!-- Codes d'inscription -->
-        <va-card class="registration-card">
-          <va-card-title>
-            <va-icon name="vpn_key" class="mr-2" />
-            Code d'inscription collaborateur
-          </va-card-title>
-          <va-card-content>
-            <div class="registration-grid">
-              <div class="registration-row">
-                <div class="registration-label">Code actuel</div>
-                <div class="registration-value">
-                  <span v-if="registrationCode">{{ registrationCode }}</span>
-                  <span v-else class="no-data">Aucun</span>
+          <!-- Statistiques -->
+          <va-card class="info-card">
+            <va-card-title class="card-title">
+              <div class="title-with-icon">
+                <div class="card-icon-wrapper">
+                  <va-icon name="analytics" />
+                </div>
+                <span>Statistiques</span>
+              </div>
+            </va-card-title>
+            <va-card-content>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-value">{{ disponibilitesCount }}</div>
+                  <div class="stat-label">Disponibilités</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{ formatDate(collaborateur.createdAt) }}</div>
+                  <div class="stat-label">Créé le</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{ formatDate(collaborateur.updatedAt) }}</div>
+                  <div class="stat-label">Dernière modification</div>
                 </div>
               </div>
-              <div class="registration-row">
-                <div class="registration-label">Statut</div>
-                <div class="registration-value">
-                  <va-chip :color="statusColor" size="small">{{ registrationStatusDisplay }}</va-chip>
+            </va-card-content>
+          </va-card>
+
+          <!-- Actions rapides -->
+          <va-card class="info-card">
+            <va-card-title class="card-title">
+              <div class="title-with-icon">
+                <div class="card-icon-wrapper">
+                  <va-icon name="flash_on" />
+                </div>
+                <span>Actions rapides</span>
+              </div>
+            </va-card-title>
+            <va-card-content>
+              <div class="actions-list">
+                <va-button
+                  preset="outline"
+                  icon="calendar_month"
+                  @click="voirDisponibilites"
+                  size="large"
+                  class="action-button"
+                >
+                  Voir les disponibilités
+                </va-button>
+                <va-button
+                  preset="outline"
+                  icon="email"
+                  @click="envoyerEmail"
+                  size="large"
+                  class="action-button"
+                  :disabled="!collaborateur.email"
+                >
+                  Envoyer un email
+                </va-button>
+              </div>
+            </va-card-content>
+          </va-card>
+
+          <!-- Codes d'inscription -->
+          <va-card class="info-card">
+            <va-card-title class="card-title">
+              <div class="title-with-icon">
+                <div class="card-icon-wrapper">
+                  <va-icon name="vpn_key" />
+                </div>
+                <span>Code d'inscription collaborateur</span>
+              </div>
+            </va-card-title>
+            <va-card-content>
+              <div class="registration-section">
+                <div class="registration-info">
+                  <div class="registration-row">
+                    <div class="registration-label">Code actuel</div>
+                    <div class="registration-value">
+                      <span v-if="registrationCode">{{ registrationCode }}</span>
+                      <span v-else class="no-data">Aucun</span>
+                    </div>
+                  </div>
+                  <div class="registration-row">
+                    <div class="registration-label">Statut</div>
+                    <div class="registration-value">
+                      <va-chip :color="statusColor" size="small">{{ registrationStatusDisplay }}</va-chip>
+                    </div>
+                  </div>
+                  <div class="registration-row" v-if="registrationExpiresAt">
+                    <div class="registration-label">Expire le</div>
+                    <div class="registration-value">{{ formatTimestamp(registrationExpiresAt) }}</div>
+                  </div>
+                </div>
+
+                <div class="registration-actions">
+                  <va-button color="primary" :loading="regLoading" @click="generateCode">
+                    <va-icon name="auto_fix_high" />
+                    Générer un code
+                  </va-button>
+                  <va-button preset="outline" :disabled="!registrationCode" @click="copyCode">
+                    <va-icon name="content_copy" />
+                    Copier
+                  </va-button>
+                  <va-button color="danger" preset="outline" :disabled="!registrationCode || registrationStatus !== 'active'" :loading="regLoading" @click="revokeCode">
+                    <va-icon name="block" />
+                    Révoquer
+                  </va-button>
                 </div>
               </div>
-              <div class="registration-row" v-if="registrationExpiresAt">
-                <div class="registration-label">Expire le</div>
-                <div class="registration-value">{{ formatTimestamp(registrationExpiresAt) }}</div>
-              </div>
-            </div>
-
-            <div class="registration-actions">
-              <va-button color="primary" :loading="regLoading" @click="generateCode">
-                <va-icon name="auto_fix_high" class="mr-2" />
-                Générer un code
-              </va-button>
-              <va-button preset="outline" :disabled="!registrationCode" @click="copyCode">
-                <va-icon name="content_copy" class="mr-2" />
-                Copier
-              </va-button>
-              <va-button color="danger" preset="outline" :disabled="!registrationCode || registrationStatus !== 'active'" :loading="regLoading" @click="revokeCode">
-                <va-icon name="block" class="mr-2" />
-                Révoquer
-              </va-button>
-            </div>
-          </va-card-content>
-        </va-card>
+            </va-card-content>
+          </va-card>
+        </div>
       </div>
     </div>
-
-    <!-- Loading state -->
-    <va-inner-loading :loading="loading" class="loading-container">
-      <div class="loading-content">
-        <p>Chargement du collaborateur...</p>
-      </div>
-    </va-inner-loading>
 
     <!-- Modal de confirmation de suppression -->
     <va-modal
@@ -281,7 +302,6 @@ import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
 import { auth } from '../services/firebase'
 import { formatPhone } from '../utils/phoneFormatter'
-import { getUserInitials } from '../services/avatarUtils'
 import { DEFAULT_COLOR } from '../utils/collaborateurColors'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -338,14 +358,6 @@ const editCollaborateur = () => {
 
 const confirmerSuppression = () => {
   showDeleteModal.value = true
-}
-
-const getInitials = (collab: Collaborateur) => {
-  return getUserInitials({
-    nom: collab.nom,
-    prenom: collab.prenom,
-    email: collab.email || ''
-  })
 }
 
 const formatDate = (date: any) => {
@@ -558,351 +570,672 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Variables et design moderne */
 .detail-collaborateur {
-  display: flex;
-  flex-direction: column;
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --surface-light: #ffffff;
+  --surface-secondary: #f8fafc;
+  --border-light: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  
   min-height: 100vh;
-  background: var(--va-background-primary);
+  background: #f8fafc;
 }
 
-.page-header {
-  background: var(--va-background-secondary);
-  border-bottom: 1px solid var(--va-background-border);
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Header élégant avec gradient */
+.elegant-header {
+  position: relative;
+  background: var(--primary-gradient);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.header-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+}
+
+.header-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  z-index: 1;
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
 }
 
 .header-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
-  margin: 0;
-  gap: 1rem;
+  gap: 2rem;
+  flex: 1;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.header-navigation {
+  flex-shrink: 0;
 }
 
 .back-button {
-  color: var(--va-primary);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
-.header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.page-title {
+.back-text {
+  margin-left: 0.5rem;
+}
+
+.header-title-section {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--va-text-primary);
+  gap: 1rem;
+  flex: 1;
 }
 
-.title-icon {
-  font-size: 1.5rem;
+.title-icon-wrapper {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 1rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.page-subtitle {
-  color: var(--va-text-secondary);
-  font-size: 0.875rem;
+.header-icon {
+  font-size: 2rem;
+  color: white;
+}
+
+.title-content h1.page-title {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
   margin: 0;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.title-content .page-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  margin: 0.25rem 0 0 0;
+  font-weight: 400;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 1rem;
+  flex-shrink: 0;
 }
 
-.page-content {
-  padding: 16px;
-  width: 100%;
+.header-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
-.detail-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.header-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.main-info-card {
-  grid-column: 1 / -1;
-  background: var(--va-background-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--va-background-border);
+/* Contenu principal compact */
+.main-content {
+  position: relative;
+  background: #f8fafc;
+  min-height: calc(100vh - 200px);
 }
 
-.collaborateur-header {
+.content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.profile-section {
+  margin-bottom: 2rem;
+}
+
+.profile-card {
+  background: var(--surface-light);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.profile-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  gap: 2rem;
+  padding: 2rem;
 }
 
-.collaborateur-avatar-large {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
+.avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
   flex-shrink: 0;
+  box-shadow: var(--shadow-md);
 }
 
-.collaborateur-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.profile-info {
+  flex: 1;
 }
 
 .collaborateur-name {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--va-text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
 }
 
 .metier-chip {
-  align-self: flex-start;
+  font-weight: 600;
 }
 
-.contact-card,
-.note-card,
-.stats-card,
-.actions-card {
-  background: var(--va-background-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--va-background-border);
+.page-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  margin: 0;
+  font-weight: 400;
 }
 
-.contact-card .va-card-content,
-.note-card .va-card-content,
-.stats-card .va-card-content,
-.actions-card .va-card-content {
-  padding: 16px;
+/* Grille des informations compacte */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.2rem;
 }
 
-.contact-card .va-card-title,
-.note-card .va-card-title,
-.stats-card .va-card-title,
-.actions-card .va-card-title {
-  padding: 16px 16px 8px;
-  margin-bottom: 0;
+@media (max-width: 600px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
-.contact-grid {
+.info-card {
+  background: var(--surface-light);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.info-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.card-title {
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--border-light);
+  padding: 1rem 1.2rem;
+  margin: 0;
+}
+
+.title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.card-icon-wrapper {
+  background: var(--primary-gradient);
+  border-radius: 10px;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  min-width: 2rem;
+  min-height: 2rem;
+}
+
+/* Contenu des cartes compact */
+.contact-list,
+.actions-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1rem;
+  padding: 1.2rem;
 }
 
 .contact-item {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.contact-label {
-  display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  color: var(--va-text-secondary);
-  font-size: 0.875rem;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
 }
 
 .contact-icon {
-  font-size: 1rem;
+  background: var(--primary-gradient);
+  border-radius: 10px;
+  padding: 0.5rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+}
+
+.contact-details {
+  flex: 1;
+  min-width: 0; /* Permet la réduction de la flex item */
+  overflow: hidden;
+}
+
+.contact-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
 }
 
 .contact-value {
   font-size: 1rem;
+  color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
-.email-link,
-.phone-link {
-  color: var(--va-primary);
+.contact-link {
+  color: #667eea;
   text-decoration: none;
+  font-weight: 500;
   transition: color 0.2s ease;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: inline-block;
+  max-width: 100%;
 }
 
-.email-link:hover,
-.phone-link:hover {
+.contact-link:hover {
+  color: #764ba2;
   text-decoration: underline;
 }
 
 .no-data {
-  color: var(--va-text-secondary);
+  color: var(--text-muted);
   font-style: italic;
-}
-
-.note-text {
-  margin: 0;
-  line-height: 1.6;
-  color: var(--va-text-primary);
-  white-space: pre-wrap;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 16px;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--va-primary);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--va-text-secondary);
-}
-
-.quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.action-button {
-  justify-content: flex-start;
-  width: 100%;
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
-}
-
-.loading-content {
-  text-align: center;
-  color: var(--va-text-secondary);
-}
-
-.delete-modal-content {
-  text-align: center;
-  padding: 16px;
-}
-
-.delete-title {
-  font-size: 1.25rem;
-  margin: 16px 0;
-  color: var(--va-text-primary);
-}
-
-.delete-text {
-  color: var(--va-text-secondary);
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
-.delete-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .page-content {
-    padding: 12px;
-  }
-
-  .detail-container {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .collaborateur-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .collaborateur-avatar-large {
-    width: 48px;
-    height: 48px;
-    font-size: 1.25rem;
-  }
-
-  .collaborateur-name {
-    font-size: 1.25rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
 }
 
 /* Indicateur de couleur */
 .color-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.75rem;
 }
 
 .color-swatch {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 6px;
-  border: 2px solid var(--va-background-secondary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid white;
 }
 
 .color-text {
-  font-size: 0.9rem;
-  color: var(--va-text-secondary);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Note */
+.note-text {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  padding: 1.5rem;
+  background: var(--surface-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+/* Statistiques compactes */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+  padding: 1.2rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1rem;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.3;
+}
+
+/* Actions */
+.action-button {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Section d'inscription compacte */
+.registration-section {
+  padding: 1.2rem;
+}
+
+.registration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.registration-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+.registration-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 0;
+}
+
+.registration-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: right;
+  min-width: 0;
+}
+
+.registration-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.registration-actions .va-button {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Responsive Design - Mobile First et optimisé */
+@media (max-width: 768px) {
+  .elegant-header {
+    min-height: 160px;
+  }
+  
+  .header-container {
+    padding: 1.5rem;
+  }
+  
+  .header-main {
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  
+  .header-content {
+    width: 100%;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .header-navigation {
+    width: 100%;
+  }
+  
+  .header-title-section {
+    width: 100%;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.8rem;
+  }
+  
+  .content-container {
+    padding: 1.5rem 1rem;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .card-title {
+    padding: 1rem;
+  }
+}
+
+/* Modal de suppression compact */
+.delete-modal-content {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.delete-title {
+  font-size: 1.3rem;
+  margin: 1rem 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.delete-text {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.delete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
 }
 
 @media (max-width: 480px) {
-  .page-title {
-    font-size: 1.25rem;
+  .elegant-header {
+    min-height: 140px;
   }
-
-  .collaborateur-name {
-    font-size: 1rem;
+  
+  .header-container {
+    padding: 1rem;
   }
-
-  .page-content {
-    padding: 8px;
+  
+  .header-main {
+    gap: 1rem;
   }
-
-  .stats-section,
-  .filters-section,
-  .collaborateurs-section {
-    padding: 8px;
+  
+  .header-content {
+    gap: 0.8rem;
+  }
+  
+  .title-content h1.page-title {
+    font-size: 1.3rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+  }
+  
+  .header-meta {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .page-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .metier-chip {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.8rem;
+  }
+  
+  .header-actions {
+    gap: 0.6rem;
+  }
+  
+  .header-button {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .content-container {
+    padding: 1rem 0.8rem;
+  }
+  
+  .info-grid {
+    gap: 0.8rem;
+  }
+  
+  .card-title {
+    padding: 0.8rem 1rem;
+  }
+  
+  .contact-list,
+  .actions-list {
+    padding: 1rem;
+    gap: 0.8rem;
+  }
+  
+  .stats-grid {
+    padding: 1rem;
+    gap: 0.8rem;
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-item {
+    padding: 0.8rem;
+  }
+  
+  .title-with-icon {
+    font-size: 0.9rem;
+    gap: 0.8rem;
+  }
+  
+  .contact-item {
+    padding: 0.8rem;
+  }
+  
+  .action-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .registration-section {
+    padding: 1rem;
+  }
+  
+  .registration-row {
+    padding: 0.6rem;
+  }
+  
+  .delete-actions {
+    flex-direction: column;
+    gap: 0.6rem;
   }
 }
 </style>

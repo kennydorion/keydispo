@@ -22,20 +22,6 @@
 
     <!-- Conteneur principal avec thème blanc -->
     <div class="planning-container-collaborateur">
-      
-      <!-- Indicateur mode sélection mobile -->
-      <div v-if="isMobile && isSelectionMode" class="selection-mode-indicator">
-        <va-icon name="checklist" color="warning" size="18px" />
-        <span>Mode sélection actif - Tapez sur les dates à sélectionner</span>
-        <va-button
-          @click="toggleSelectionMode"
-          color="warning"
-          size="small"
-          icon="close"
-          round
-          style="margin-left: auto;"
-        />
-      </div>
 
       <!-- Bandeau statut et actions retiré pour interface épurée côté collaborateur -->
 
@@ -288,7 +274,7 @@ const showBatchModal = ref(false)
 // Variables pour la gestion du long press mobile
 const longPressTimer = ref<number | null>(null)
 const isLongPressing = ref(false)
-const LONG_PRESS_DURATION = 500 // 500ms
+const LONG_PRESS_DURATION = 420 // Abaisse légèrement pour une réactivité perçue meilleure
 
 // Référence au composant calendrier pour forcer les mises à jour
 const calendarRef = ref<any>(null)
@@ -2627,38 +2613,6 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Indicateur Mode Sélection */
-.selection-mode-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 1px solid #f59e0b;
-  border-radius: 12px;
-  margin: 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #92400e;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-  animation: slideDown 0.3s ease-out;
-}
-
-.selection-mode-indicator span {
-  flex: 1;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (max-width: 480px) {
   .batch-action-fab {
     bottom: 12px;
@@ -2703,9 +2657,11 @@ onBeforeUnmount(() => {
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100vh !important; /* Fallback pour navigateurs anciens */
+  height: 100dvh !important; /* Utiliser dvh pour une hauteur dynamique */
   max-width: 100vw !important;
-  max-height: 100vh !important;
+  max-height: 100vh !important; /* Fallback pour navigateurs anciens */
+  max-height: 100dvh !important;
   margin: 0 !important;
   border-radius: 0 !important;
   z-index: 1001 !important;
@@ -2716,9 +2672,11 @@ onBeforeUnmount(() => {
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100vh !important; /* Fallback pour navigateurs anciens */
+  height: 100dvh !important; /* Utiliser dvh pour une hauteur dynamique */
   max-width: 100vw !important;
-  max-height: 100vh !important;
+  max-height: 100vh !important; /* Fallback pour navigateurs anciens */
+  max-height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
   display: flex !important;
@@ -2729,9 +2687,11 @@ onBeforeUnmount(() => {
 
 :deep(.collab-modal--fullscreen .va-modal__dialog) {
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100vh !important; /* Fallback pour navigateurs anciens */
+  height: 100dvh !important; /* Utiliser dvh pour une hauteur dynamique */
   max-width: 100vw !important;
-  max-height: 100vh !important;
+  max-height: 100vh !important; /* Fallback pour navigateurs anciens */
+  max-height: 100dvh !important;
   margin: 0 !important;
   border-radius: 0 !important;
   display: flex !important;
@@ -2753,19 +2713,24 @@ onBeforeUnmount(() => {
 
 /* S'assurer que DispoEditContent prend toute la hauteur */
 :deep(.collab-modal--fullscreen .dispo-modal-redesigned) {
-  height: 100vh !important;
-  max-height: 100vh !important;
-  min-height: 100vh !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
-/* Garantir que le footer reste en bas */
+/* Garantir que le footer reste en bas et est visible */
 :deep(.collab-modal--fullscreen .footer-actions) {
-  position: sticky !important;
-  bottom: 0 !important;
+  position: relative !important; /* Changé de sticky à relative */
+  bottom: auto !important;
   margin-top: auto !important;
   flex-shrink: 0 !important;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)) 1rem !important;
+  background: white !important;
+  border-top: 1px solid #e5e7eb !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1) !important;
+  z-index: 20 !important;
 }
 
 /* Assurer que la zone de contenu scrollable prend tout l'espace disponible */
@@ -2773,5 +2738,23 @@ onBeforeUnmount(() => {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
+  padding-bottom: 0 !important; /* Retirer le padding bottom pour éviter l'espace en trop */
+}
+
+/* Media query pour très petits écrans (iPhone SE, etc.) */
+@media (max-height: 568px) {
+  :deep(.collab-modal--fullscreen .footer-actions) {
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem !important;
+  }
+  
+  :deep(.collab-modal--fullscreen .header-section) {
+    min-height: auto !important;
+    padding: 0.75rem !important;
+  }
+  
+  :deep(.collab-modal--fullscreen .dispo-modal-redesigned) {
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
 }
 </style>

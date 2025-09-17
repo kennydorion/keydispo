@@ -287,15 +287,10 @@ function updateCellContent(dayEl: HTMLElement, dateStr: string) {
 
     // Cellule avec disponibilités - ajouter un gestionnaire de clic général
     dispoBars.addEventListener('click', (e: Event) => {
-      const me = e as MouseEvent
-      // Si Cmd/Ctrl est enfoncé (prop) ou qu'on est en mode sélection, ne rien faire (priorité à la sélection)
-      if (props.shortcutActive || me.ctrlKey || me.metaKey || props.isSelectionMode) {
-        me.preventDefault()
-        e.stopPropagation()
-        return
-      }
-      // Si on clique en dehors d'une carte spécifique, émettre cellClick
-      if ((e.target as HTMLElement).closest('.dispo-card') === null) {
+      // Si on clique en dehors d'une carte spécifique, émettre cellClick (ouverture modale côté parent ou sélection si en mode sélection)
+      if ((e.target as HTMLElement).closest('.dispo-card') === null && 
+          (e.target as HTMLElement).closest('.dispo-add-more') === null &&
+          (e.target as HTMLElement).closest('.dispo-add-card') === null) {
         e.stopPropagation()
         // Vérifier si la cellule est verrouillée avant d'autoriser le clic
         if (props.collaborateur?.id && props.isLockedByOthers?.(props.collaborateur.id, dateStr)) {
@@ -368,8 +363,10 @@ function updateCellContent(dayEl: HTMLElement, dateStr: string) {
       dispoCard.addEventListener('click', (e: Event) => {
         const me = e as MouseEvent
         if (props.shortcutActive || me.ctrlKey || me.metaKey || props.isSelectionMode) {
+          // Toggle sélection pour cette cellule
           me.preventDefault()
           e.stopPropagation()
+          emit('cellClick', dateStr, dayDispos)
           return
         }
         e.stopPropagation()
@@ -392,8 +389,10 @@ function updateCellContent(dayEl: HTMLElement, dateStr: string) {
     addMoreButton.addEventListener('click', (e: Event) => {
       const me = e as MouseEvent
       if (props.shortcutActive || me.ctrlKey || me.metaKey || props.isSelectionMode) {
+        // Toggle sélection via cellClick dans la même cellule
         me.preventDefault()
         e.stopPropagation()
+        emit('cellClick', dateStr, dayDispos)
         return
       }
       e.stopPropagation()
@@ -412,8 +411,10 @@ function updateCellContent(dayEl: HTMLElement, dateStr: string) {
     addButton.addEventListener('click', (e: Event) => {
       const me = e as MouseEvent
       if (props.shortcutActive || me.ctrlKey || me.metaKey || props.isSelectionMode) {
+        // Toggle sélection via cellClick
         me.preventDefault()
         e.stopPropagation()
+        emit('cellClick', dateStr, dayDispos)
         return
       }
       e.stopPropagation()

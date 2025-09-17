@@ -363,6 +363,27 @@ defineExpose({
   border-top: 1px solid var(--va-background-border);
 }
 
+/* Correction des couleurs des inputs pour être en noir */
+:deep(.va-input__content__input) {
+  color: #000000 !important;
+}
+
+:deep(.va-textarea__content__input) {
+  color: #000000 !important;
+}
+
+:deep(.va-input__container .va-icon) {
+  color: #000000 !important;
+}
+
+:deep(.va-input__content__input::placeholder) {
+  color: #a0aec0 !important;
+}
+
+:deep(.va-textarea__content__input::placeholder) {
+  color: #a0aec0 !important;
+}
+
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;

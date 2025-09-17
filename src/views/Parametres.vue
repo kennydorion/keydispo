@@ -1,69 +1,73 @@
 <template>
   <div class="parametres">
-      <div class="parametres-header">
-        <h1>Paramètres</h1>
-        <p>Configuration et préférences de l'application</p>
-      </div>
-      
-      <div class="parametres-grid">
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">person</span>
-              <h3>Profil utilisateur</h3>
-            </div>
+    <!-- Header élégant similaire au planning -->
+    <div class="parametres-header">
+      <div class="header-top">
+        <div class="header-brand">
+          <div class="brand-icon">
+            <va-icon name="settings" />
           </div>
-          <div class="parametre-content">
-            <div class="form-group">
-              <label>Nom complet</label>
-              <input 
-                type="text" 
-                :value="userDisplayName" 
-                readonly
-                class="readonly-field"
-              />
-            </div>
-            <div class="form-group">
-              <label>Email</label>
-              <input 
-                type="email" 
-                :value="userEmail" 
-                readonly
-                class="readonly-field"
-              />
-            </div>
-            <div class="form-group">
-              <label>Rôle</label>
-              <select disabled>
-                <option>{{ userRole }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Tenant ID</label>
-              <input 
-                type="text" 
-                :value="currentTenantId" 
-                readonly
-                class="readonly-field"
-              />
-            </div>
-            <button class="btn-secondary" disabled>Modifier le profil</button>
+          <div class="brand-content">
+            <h1 class="brand-title">Paramètres</h1>
+            <p class="brand-subtitle">Configuration et préférences</p>
           </div>
         </div>
-
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">palette</span>
-              <h3>Collaboration en temps réel</h3>
+      </div>
+    </div>
+    
+    <!-- Conteneur principal -->
+    <div class="parametres-container">
+      <div class="parametres-grid">
+        <!-- Profil utilisateur -->
+        <va-card class="parametre-card" elevation="2">
+          <va-card-title class="parametre-title">
+            <va-icon name="person" class="parametre-icon" />
+            Profil utilisateur
+          </va-card-title>
+          <va-card-content class="parametre-content">
+            <div class="form-grid">
+              <va-input
+                v-model="userDisplayName"
+                label="Nom complet"
+                readonly
+                class="readonly-input"
+              />
+              <va-input
+                v-model="userEmail"
+                label="Email"
+                readonly
+                class="readonly-input"
+              />
+              <va-input
+                v-model="userRole"
+                label="Rôle"
+                readonly
+                class="readonly-input"
+              />
+              <va-input
+                v-model="currentTenantId"
+                label="Tenant ID"
+                readonly
+                class="readonly-input"
+              />
             </div>
-          </div>
-          <div class="parametre-content">
-            <div class="form-group">
-              <label>Couleur de présence</label>
-              <p class="form-description">
-                Cette couleur représente votre présence lors de la collaboration en temps réel
-              </p>
+          </va-card-content>
+        </va-card>
+
+        <!-- Collaboration en temps réel -->
+        <va-card class="parametre-card" elevation="2">
+          <va-card-title class="parametre-title">
+            <va-icon name="palette" class="parametre-icon" />
+            Collaboration en temps réel
+          </va-card-title>
+          <va-card-content class="parametre-content">
+            <div class="color-section">
+              <div class="color-label-section">
+                <label class="color-main-label">Couleur de présence</label>
+                <p class="color-description">
+                  Cette couleur représente votre présence lors de la collaboration en temps réel
+                </p>
+              </div>
               
               <!-- Aperçu des couleurs -->
               <div class="color-preview">
@@ -135,212 +139,28 @@
               </div>
 
               <div class="action-buttons">
-                <button 
-                  class="btn-primary"
+                <va-button 
+                  color="primary"
                   @click="saveColorChoice"
-                  :disabled="saving || !selectedColor || selectedColor === preferences.presenceColor"
+                  :loading="saving"
+                  :disabled="!selectedColor || selectedColor === preferences.presenceColor"
                 >
                   {{ saving ? 'Sauvegarde...' : 'Appliquer la couleur' }}
-                </button>
-                <button 
-                  class="btn-outline"
+                </va-button>
+                <va-button 
+                  preset="secondary"
                   @click="resetToDefault"
                   :disabled="saving || !hasSelectedColor"
                 >
                   Couleur automatique
-                </button>
+                </va-button>
               </div>
             </div>
-          </div>
-        </div>
-        
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">notifications</span>
-              <h3>Notifications</h3>
-            </div>
-          </div>
-          <div class="parametre-content">
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Nouvelles disponibilités</div>
-                <div class="setting-desc">Recevoir une notification lors de nouvelles disponibilités</div>
-              </div>
-              <div class="toggle">
-                <input 
-                  type="checkbox" 
-                  id="notif-dispo" 
-                  :checked="preferences.notifications?.newAvailabilities"
-                  @change="saveNotificationPreference('newAvailabilities', ($event.target as HTMLInputElement).checked)"
-                />
-                <label for="notif-dispo"></label>
-              </div>
-            </div>
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Modifications</div>
-                <div class="setting-desc">Être alerté des modifications de planning</div>
-              </div>
-              <div class="toggle">
-                <input 
-                  type="checkbox" 
-                  id="notif-modif" 
-                  :checked="preferences.notifications?.modifications"
-                  @change="saveNotificationPreference('modifications', ($event.target as HTMLInputElement).checked)"
-                />
-                <label for="notif-modif"></label>
-              </div>
-            </div>
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Rappels quotidiens</div>
-                <div class="setting-desc">Résumé quotidien des disponibilités du jour</div>
-              </div>
-              <div class="toggle">
-                <input 
-                  type="checkbox" 
-                  id="notif-rappel" 
-                  :checked="preferences.notifications?.dailyReminders"
-                  @change="saveNotificationPreference('dailyReminders', ($event.target as HTMLInputElement).checked)"
-                />
-                <label for="notif-rappel"></label>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">palette</span>
-              <h3>Préférences d'affichage</h3>
-            </div>
-          </div>
-          <div class="parametre-content">
-            <div class="form-group">
-              <label>Format de date</label>
-              <select 
-                :value="preferences.dateFormat"
-                @change="saveDisplayPreference('dateFormat', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Format d'heure</label>
-              <select 
-                :value="preferences.timeFormat"
-                @change="saveDisplayPreference('timeFormat', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="24h">24 heures</option>
-                <option value="12h">12 heures (AM/PM)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Langue</label>
-              <select 
-                :value="preferences.language"
-                @change="saveDisplayPreference('language', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-                <option value="es">Español</option>
-              </select>
-            </div>
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Mode sombre</div>
-                <div class="setting-desc">Interface avec thème sombre</div>
-              </div>
-              <div class="toggle">
-                <input 
-                  type="checkbox" 
-                  id="dark-mode" 
-                  :checked="preferences.darkMode"
-                  @change="saveDisplayPreference('darkMode', ($event.target as HTMLInputElement).checked)"
-                />
-                <label for="dark-mode"></label>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">security</span>
-              <h3>Sécurité</h3>
-            </div>
-          </div>
-          <div class="parametre-content">
-            <button class="btn-outline">Changer le mot de passe</button>
-            <button class="btn-outline">Sessions actives</button>
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Authentification à deux facteurs</div>
-                <div class="setting-desc">Sécurité renforcée pour votre compte</div>
-              </div>
-              <div class="toggle">
-                <input type="checkbox" id="two-factor" />
-                <label for="two-factor"></label>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">group</span>
-              <h3>Gestion de l'équipe</h3>
-            </div>
-          </div>
-          <div class="parametre-content">
-            <div class="team-stats">
-              <div class="stat-item">
-                <div class="stat-value">{{ teamStats.collaborators || '—' }}</div>
-                <div class="stat-label">Collaborateurs</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ teamStats.admins || '—' }}</div>
-                <div class="stat-label">Administrateurs</div>
-              </div>
-            </div>
-            <button class="btn-primary">Inviter un collaborateur</button>
-            <button class="btn-outline">Gérer les rôles</button>
-          </div>
-        </div>
-        
-        <div class="parametre-card">
-          <div class="parametre-header">
-            <div class="parametre-title">
-              <span class="parametre-icon material-symbols-outlined">download</span>
-              <h3>Données et export</h3>
-            </div>
-          </div>
-          <div class="parametre-content">
-            <div class="export-item">
-              <div class="export-info">
-                <div class="export-title">Export complet</div>
-                <div class="export-desc">Télécharger toutes les données</div>
-              </div>
-              <button class="btn-outline small">CSV</button>
-            </div>
-            <div class="export-item">
-              <div class="export-info">
-                <div class="export-title">Sauvegarde mensuelle</div>
-                <div class="export-desc">Archive des données du mois</div>
-              </div>
-              <button class="btn-outline small">ZIP</button>
-            </div>
-            <button class="btn-danger">Supprimer toutes les données</button>
-          </div>
-        </div>
+          </va-card-content>
+        </va-card>
       </div>
       
+      <!-- Footer avec statut -->
       <div class="parametres-footer">
         <div class="save-status">
           <va-icon 
@@ -354,11 +174,16 @@
           </span>
         </div>
         <div class="footer-actions">
-          <button class="btn-outline large" @click="resetAllToDefaults">
+          <va-button 
+            preset="secondary"
+            size="large" 
+            @click="resetAllToDefaults"
+          >
             Réinitialiser
-          </button>
+          </va-button>
         </div>
       </div>
+    </div>
   </div>
 </template>
 
@@ -376,7 +201,6 @@ const { preferences, loadPreferences, savePreferences, updatePresenceColor } = u
 // État utilisateur
 const user = ref<User | null>(null)
 const userRole = ref('—')
-const teamStats = ref({ collaborators: 0, admins: 0 })
 
 // État pour la couleur de présence
 const selectedColor = ref('')
@@ -539,45 +363,6 @@ async function resetToDefault() {
 }
 
 /**
- * Sauvegarder une préférence de notification
- */
-async function saveNotificationPreference(key: string, value: boolean) {
-  if (!user.value) return
-  
-  try {
-    const newNotifications = { ...preferences.value.notifications, [key]: value }
-    await savePreferences(user.value.uid, { notifications: newNotifications })
-    lastSaved.value = new Date()
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde des notifications:', error)
-    toast({
-      message: 'Erreur lors de la sauvegarde des notifications',
-      color: 'danger',
-      duration: 3000
-    })
-  }
-}
-
-/**
- * Sauvegarder une préférence d'affichage
- */
-async function saveDisplayPreference(key: string, value: any) {
-  if (!user.value) return
-  
-  try {
-    await savePreferences(user.value.uid, { [key]: value })
-    lastSaved.value = new Date()
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde des préférences d\'affichage:', error)
-    toast({
-      message: 'Erreur lors de la sauvegarde des préférences',
-      color: 'danger',
-      duration: 3000
-    })
-  }
-}
-
-/**
  * Réinitialiser toutes les préférences
  */
 async function resetAllToDefaults() {
@@ -666,223 +451,372 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ===============================
+   VARIABLES GLOBALES
+   =============================== */
 .parametres {
-  padding: 0;
-  font-family: 'Inter', 'Roboto', system-ui, sans-serif;
+  /* Variables CSS inspirées du planning */
+  --surface-light: #ffffff;
+  --border-light: #e2e8f0;
+  --text-light: #334155;
+  --text-muted: #64748b;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  
+  font-family: var(--va-font-family, 'Inter', sans-serif);
+  background: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
+
+/* ===============================
+   HEADER ÉLÉGANT (inspiré du planning)
+   =============================== */
 .parametres-header {
-  margin-bottom: 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--surface-light);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
+  height: 80px;
+  min-height: 80px;
 }
-.parametres-header h1 {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 8px 0;
-  line-height: 1.2;
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 16px 24px;
+  background: var(--primary-gradient);
+  color: white;
 }
-.parametres-header p {
-  font-size: 1.1rem;
-  color: #6B7280;
-  margin: 0;
-}
-.parametres-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-.parametre-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 4px 20px 0 #2563eb0d;
-  border: 1.5px solid #f1f5f9;
-}
-.parametre-header {
-  margin-bottom: 20px;
-}
-.parametre-title {
+
+.header-brand {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.parametre-icon {
-  color: #2563EB;
-  font-size: 24px;
-}
-.parametre-title h3 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-.parametre-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.form-group label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
-}
-.form-group input,
-.form-group select {
-  padding: 10px 12px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
-  color: #374151;
-  font-size: 0.95rem;
-  outline: none;
-}
-.form-group input:focus,
-.form-group select:focus {
-  border-color: #2563EB;
-}
-.form-group select:disabled {
-  background: #f9fafb;
-  color: #6B7280;
-  cursor: not-allowed;
-}
-.readonly-field {
-  background: #f9fafb !important;
-  color: #6B7280 !important;
-  cursor: not-allowed !important;
-}
-.form-description {
-  font-size: 0.85rem;
-  color: #6B7280;
-  margin: 8px 0 16px 0;
-  line-height: 1.4;
+
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Styles pour le sélecteur de couleur */
-.color-preview {
-  margin-bottom: 24px;
+.brand-icon :deep(.va-icon) {
+  font-size: 22px;
+  color: white;
 }
+
+.brand-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  margin: 2px 0 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+/* ===============================
+   CONTENEUR PRINCIPAL
+   =============================== */
+.parametres-container {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  width: 100%;
+}
+
+/* ===============================
+   GRID ET CARTES
+   =============================== */
+.parametres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.parametre-card {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--surface-light) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  box-shadow: var(--shadow-card) !important;
+  overflow: hidden !important;
+}
+
+.parametre-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/* ===============================
+   TITRES DE CARTES
+   =============================== */
+.parametre-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  color: var(--text-light) !important;
+  margin-bottom: 0 !important;
+  padding: 20px 24px 16px 24px !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+}
+
+.parametre-icon {
+  color: #667eea !important;
+  font-size: 24px !important;
+}
+
+/* ===============================
+   CONTENU DES CARTES
+   =============================== */
+.parametre-content {
+  padding: 24px !important;
+}
+
+.form-grid {
+  display: grid;
+  gap: 20px;
+}
+
+/* ===============================
+   INPUTS RAFFINÉS
+   =============================== */
+.readonly-input :deep(.va-input-wrapper) {
+  background: #f8fafc !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.readonly-input :deep(.va-input-wrapper:hover) {
+  border-color: #667eea !important;
+}
+
+.readonly-input :deep(.va-input-wrapper__field) {
+  padding: 12px 16px !important;
+  font-size: 0.95rem !important;
+  color: #000000 !important;
+  font-weight: 500 !important;
+}
+
+.readonly-input :deep(.va-input-wrapper__label) {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: #667eea !important;
+  margin-bottom: 6px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Correction des couleurs des inputs en général pour cette page */
+:deep(.va-input__content__input) {
+  color: #000000 !important;
+}
+
+:deep(.va-input__container .va-icon) {
+  color: #000000 !important;
+}
+
+:deep(.va-input__content__input::placeholder) {
+  color: #a0aec0 !important;
+}
+
+/* ===============================
+   SECTION COULEUR RAFFINÉE
+   =============================== */
+.color-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.color-label-section {
+  text-align: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.color-main-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-light);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.color-description {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Aperçu des couleurs */
+.color-preview {
+  margin-bottom: 20px;
+}
+
 .color-comparison {
   display: flex;
   align-items: flex-start;
   gap: 20px;
   flex-wrap: wrap;
 }
+
 .color-display-section {
   flex: 1;
-  min-width: 250px;
+  min-width: 260px;
 }
+
 .color-display-section h5 {
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
 .current-color-display {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: #f8fafc;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-light);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-}
-.current-color-display.preview {
-  background: #fefce8;
-  border-color: #eab308;
+  border: 1px solid var(--border-light);
+  transition: all 0.3s ease;
 }
 
-/* Version mobile de la comparaison */
-@media (max-width: 640px) {
-  .color-comparison {
-    flex-direction: column;
-  }
-  .color-display-section {
-    width: 100%;
-    min-width: unset;
-  }
+.current-color-display.preview {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.2);
 }
+
 .color-circle {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
+
 .color-info {
   flex: 1;
 }
+
 .color-label {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-light);
+  margin-bottom: 4px;
 }
+
 .color-value {
   font-size: 0.8rem;
-  color: #6B7280;
+  color: var(--text-muted);
   font-family: 'Monaco', 'Menlo', monospace;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
 }
+
 .user-initials-preview {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
+/* ===============================
+   PALETTE DE COULEURS MODERNE
+   =============================== */
 .color-palette h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 12px;
+  color: var(--text-light);
+  margin-bottom: 16px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
 .color-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 12px;
   margin-bottom: 24px;
 }
+
 .color-option {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 12px 8px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid transparent;
+  background: var(--surface-light);
 }
+
 .color-option:hover {
   background: #f8fafc;
   transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
+
 .color-option.selected {
-  border-color: #2563EB;
-  background: #eff6ff;
+  border-color: #667eea;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
 }
+
 .color-option.saved {
   border-color: #10b981;
-  background: #f0fdf4;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
 }
-.color-option.selected.saved {
-  border-color: #2563EB;
-  background: linear-gradient(135deg, #eff6ff 50%, #f0fdf4 50%);
-}
+
 .saved-indicator {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   background: #10b981;
   color: white;
   border-radius: 50%;
@@ -893,209 +827,208 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 10px;
   font-weight: bold;
-}
-.color-swatch {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-.color-name {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #374151;
-  text-align: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
+.color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.color-option:hover .color-swatch {
+  transform: scale(1.1);
+}
+
+.color-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-light);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ===============================
+   BOUTONS MODERNES
+   =============================== */
 .action-buttons {
   display: flex;
   gap: 12px;
-  margin-top: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+:deep(.va-button) {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  padding: 10px 20px !important;
+  font-size: 0.9rem !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  text-transform: none !important;
+}
+
+:deep(.va-button:hover) {
+  transform: translateY(-1px) !important;
+}
+
+:deep(.va-button--primary) {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+}
+
+:deep(.va-button--primary:hover) {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+}
+
+:deep(.va-button--secondary) {
+  background: var(--surface-light) !important;
+  border: 1px solid var(--border-light) !important;
+  color: var(--text-light) !important;
+}
+
+:deep(.va-button--secondary:hover) {
+  border-color: #667eea !important;
+  color: #667eea !important;
+  background: #f8fafc !important;
+}
+
+/* ===============================
+   FOOTER ÉLÉGANT
+   =============================== */
+.parametres-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-light);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .save-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
+
 .save-text {
   color: #10b981;
+  font-weight: 500;
 }
+
 .footer-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
-}
-.setting-item:last-child {
-  border-bottom: none;
-}
-.setting-info {
-  flex: 1;
-}
-.setting-label {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 4px;
-}
-.setting-desc {
-  font-size: 0.9rem;
-  color: #6B7280;
-}
-.toggle {
-  position: relative;
-}
-.toggle input {
-  display: none;
-}
-.toggle label {
-  width: 44px;
-  height: 24px;
-  background: #e5e7eb;
-  border-radius: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-  display: block;
-}
-.toggle label::after {
-  content: '';
-  width: 20px;
-  height: 20px;
-  background: #fff;
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s;
-}
-.toggle input:checked + label {
-  background: #2563EB;
-}
-.toggle input:checked + label::after {
-  transform: translateX(20px);
-}
-.btn-primary,
-.btn-secondary,
-.btn-outline,
-.btn-danger {
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s;
-  border: none;
-  outline: none;
-}
-.btn-primary {
-  background: #2563EB;
-  color: #fff;
-}
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-.btn-secondary {
-  background: #f1f5f9;
-  color: #374151;
-}
-.btn-secondary:hover {
-  background: #e2e8f0;
-}
-.btn-outline {
-  background: transparent;
-  color: #374151;
-  border: 1.5px solid #e5e7eb;
-}
-.btn-outline:hover {
-  background: #f9fafb;
-  border-color: #2563EB;
-  color: #2563EB;
-}
-.btn-danger {
-  background: #ef4444;
-  color: #fff;
-}
-.btn-danger:hover {
-  background: #dc2626;
-}
-.btn-outline.small {
-  padding: 6px 12px;
-  font-size: 0.85rem;
-}
-.team-stats {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
-}
-.stat-item {
-  text-align: center;
-}
-.stat-value {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #2563EB;
-  line-height: 1;
-}
-.stat-label {
-  font-size: 0.9rem;
-  color: #6B7280;
-  margin-top: 4px;
-}
-.export-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
-}
-.export-item:last-child {
-  border-bottom: none;
-  margin-bottom: 16px;
-}
-.export-info {
-  flex: 1;
-}
-.export-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 2px;
-}
-.export-desc {
-  font-size: 0.9rem;
-  color: #6B7280;
-}
-.parametres-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 24px;
-  border-top: 1.5px solid #f1f5f9;
-}
-.btn-primary.large,
-.btn-outline.large {
-  padding: 12px 24px;
-  font-size: 1rem;
-}
+
+/* ===============================
+   RESPONSIVE DESIGN
+   =============================== */
 @media (max-width: 768px) {
+  .header-top {
+    padding: 12px 16px;
+  }
+  
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .brand-icon :deep(.va-icon) {
+    font-size: 20px;
+  }
+  
+  .brand-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .parametres-container {
+    padding: 20px 16px;
+  }
+  
   .parametres-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
+  
   .parametres-footer {
     flex-direction: column;
+    gap: 16px;
+    padding: 20px 16px;
   }
-  .team-stats {
-    justify-content: center;
+  
+  .color-comparison {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .color-display-section {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  :deep(.va-button) {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-top {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+  }
+  
+  .brand-icon :deep(.va-icon) {
+    font-size: 18px;
+  }
+  
+  .brand-title {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+  
+  .parametres-container {
+    padding: 16px 12px;
+  }
+  
+  .color-grid {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+  }
+  
+  .parametre-content {
+    padding: 20px !important;
+  }
+  
+  .parametre-title {
+    padding: 16px 20px 12px 20px !important;
+    font-size: 1.1rem !important;
   }
 }
 </style>

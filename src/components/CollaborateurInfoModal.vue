@@ -684,6 +684,15 @@ const cancelNotesEdit = () => {
   font-size: 12px;
 }
 
+/* Correction des couleurs des inputs pour être en noir */
+.notes-textarea :deep(.va-textarea__content__input) {
+  color: #000000 !important;
+}
+
+.notes-textarea :deep(.va-textarea__content__input::placeholder) {
+  color: #a0aec0 !important;
+}
+
 .notes-actions {
   display: flex;
   gap: 6px;
@@ -733,11 +742,16 @@ const cancelNotesEdit = () => {
   .collaborateur-info-compact {
     padding: 6px;
     font-size: 12px;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
   
   .collaborateur-header-compact {
     padding: 10px;
     margin-bottom: 6px;
+    flex-shrink: 0;
   }
   
   .collaborateur-main-info {
@@ -774,10 +788,31 @@ const cancelNotesEdit = () => {
   
   .modal-actions {
     flex-direction: column;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    border-top: 1px solid var(--va-color-border);
+    margin-top: auto;
+    flex-shrink: 0;
+    padding: 1rem;
+    z-index: 10;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   }
   
   .modal-actions .va-button {
     width: 100%;
+  }
+}
+
+/* Styles spécifiques pour très petits écrans */
+@media (max-width: 480px) {
+  :deep(.va-modal__dialog) {
+    max-height: 95vh !important;
+    margin: 2.5vh auto !important;
+  }
+  
+  .collaborateur-info-compact {
+    max-height: calc(95vh - 1rem);
   }
 }
 </style>
