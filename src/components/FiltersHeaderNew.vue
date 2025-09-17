@@ -212,6 +212,7 @@ defineEmits<{
 // État mobile et filtres rétractables
 const isMobile = ref(false)
 const filtersCollapsed = ref(false)
+const userManuallyToggled = ref(false) // Tracker les actions manuelles
 
 // Détection mobile
 const checkMobile = () => {
@@ -223,7 +224,8 @@ const checkMobile = () => {
   isMobile.value = w <= 768 || (h < w && h <= 500)
   
   // Ne changer l'état des filtres que lors du premier chargement ou changement mobile/desktop
-  if (wasMobile !== isMobile.value) {
+  // ET seulement si l'utilisateur n'a pas fait d'action manuelle récemment
+  if (wasMobile !== isMobile.value && !userManuallyToggled.value) {
     // En mode paysage mobile, masquer les filtres par défaut pour libérer de l'espace
     if (isMobile.value && h < w && h <= 500) {
       filtersCollapsed.value = true // Masquer en paysage
@@ -247,6 +249,12 @@ onUnmounted(() => {
 // Toggle des filtres mobile
 const toggleFilters = () => {
   filtersCollapsed.value = !filtersCollapsed.value
+  userManuallyToggled.value = true
+  
+  // Reset après 3 secondes pour permettre les changements automatiques futurs
+  setTimeout(() => {
+    userManuallyToggled.value = false
+  }, 3000)
 }
 
 // Composables
