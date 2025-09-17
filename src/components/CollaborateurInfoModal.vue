@@ -433,10 +433,15 @@ const closeModal = () => {
 
 const editCollaborateur = () => {
   if (props.collaborateur) {
+    console.log('Navigating to edit collaborateur:', props.collaborateur.id)
     // Fermer la modale
     closeModal()
     // Naviguer vers la page de modification
-    router.push(`/collaborateurs/${props.collaborateur.id}/modifier`)
+    if (props.collaborateur.id) {
+      router.push(`/collaborateurs/${props.collaborateur.id}`)
+    } else {
+      console.error('Collaborateur ID manquant:', props.collaborateur)
+    }
   }
 }
 

@@ -58,10 +58,13 @@ export function usePlanningData() {
       return baseCollaborateurs.value
     }
 
-    // Si ni statut ni lieu ne sont appliqués, montrer tous les collaborateurs
-    // (on restreint la liste si AU MOINS l'un des deux est actif)
+    // Si ni statut ni lieu ne sont appliqués, montrer les collaborateurs de base
+    // sans restriction par disponibilités (mais en gardant les filtres de recherche/métier)
     const hasStatut = !!planningFilters.filterState.statut
     const hasLieu = !!planningFilters.filterState.lieu
+    
+    // NOUVEAU: Si on a seulement des filtres de base (recherche/métier) sans filtres de dispo,
+    // retourner baseCollaborateurs (qui contient déjà le filtrage recherche/métier)
     if (!hasStatut && !hasLieu) {
       return baseCollaborateurs.value
     }
@@ -97,6 +100,7 @@ export function usePlanningData() {
       .toLowerCase()
     const makeNameKey = (nom: string, prenom: string) => `${normalize(nom)}|${normalize(prenom)}`
 
+    // Collecte de tous les identifiants des disponibilités filtrées
     const idsWithMatchingDispo = new Set<string>(
       filteredDisponibilites.value
         .map(d => d.collaborateurId)
@@ -109,29 +113,50 @@ export function usePlanningData() {
       filteredDisponibilites.value.map(d => makeNameKey(d.nom, d.prenom))
     )
 
+    // Matching amélioré avec plus de tolérance
     const result = baseCollaborateurs.value.filter(c => {
+      // Match par ID
       const byId = c.id ? idsWithMatchingDispo.has(c.id) : false
-      const byEmail = ((c.email || '').toString().trim().toLowerCase()) ? emailsWithMatchingDispo.has((c.email || '').toString().trim().toLowerCase()) : false
+      
+      // Match par email (normalisé)
+      const collabEmail = (c.email || '').toString().trim().toLowerCase()
+      const byEmail = collabEmail ? emailsWithMatchingDispo.has(collabEmail) : false
+      
+      // Match par nom/prénom (normalisé)
       const byName = namesWithMatchingDispo.has(makeNameKey(c.nom, c.prenom))
-      return byId || byEmail || byName
+      
+      // Match par nom/prénom inversé (au cas où)
+      const byNameReversed = namesWithMatchingDispo.has(makeNameKey(c.prenom, c.nom))
+      
+      // Match partiel par nom OU prénom seul si les sets de noms ne sont pas trop grands
+      let byPartialName = false
+      if (namesWithMatchingDispo.size < 50) { // Éviter les faux positifs sur de gros volumes
+        const collabNom = normalize(c.nom)
+        const collabPrenom = normalize(c.prenom)
+        for (const nameKey of namesWithMatchingDispo) {
+          if (nameKey.includes(collabNom) || nameKey.includes(collabPrenom)) {
+            byPartialName = true
+            break
+          }
+        }
+      }
+      
+      return byId || byEmail || byName || byNameReversed || byPartialName
     })
 
   // Debug: Log pour tracer le filtrage
   /*console.log('🔍 [FILTRAGE COLLABORATEURS FINAL]', {
     baseCollaborateurs: baseCollaborateurs.value.length,
     filteredDisponibilites: filteredDisponibilites.value.length,
-idsWithMatchingDispo: idsWithMatchingDispo.size,
-namesWithMatchingDispo: namesWithMatchingDispo.size,
+    idsWithMatchingDispo: idsWithMatchingDispo.size,
+    namesWithMatchingDispo: namesWithMatchingDispo.size,
     finalResult: result.length,
     hasDateRange: planningFilters.hasDateRange.value,
-    statutFilter: planningFilters.filterState.statut,
-    filters: {
-      metier: planningFilters.filterState.metier,
-      dateFrom: planningFilters.filterState.dateFrom,
-      dateTo: planningFilters.filterState.dateTo,
-      lieu: planningFilters.filterState.lieu,
-      statut: planningFilters.filterState.statut
-    }
+    hasStatut,
+    hasLieu,
+    filterState: planningFilters.filterState,
+    sampleBaseCollaborateurs: baseCollaborateurs.value.slice(0, 3).map(c => ({ id: c.id, nom: c.nom, prenom: c.prenom })),
+    sampleFilteredDispos: filteredDisponibilites.value.slice(0, 3).map(d => ({ collaborateurId: d.collaborateurId, nom: d.nom, prenom: d.prenom, email: d.email }))
   })*/
 
   // Debug supplémentaire: lister quelques exemples de filtrage
