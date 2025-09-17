@@ -33,11 +33,6 @@
 
     <!-- User Avatar & Actions -->
     <div class="navbar-actions">
-      <button class="navbar-btn" aria-label="Notifications">
-        <i class="material-icons">notifications</i>
-        <span class="navbar-badge">3</span>
-      </button>
-      
       <div class="navbar-user" ref="userMenuRef">
         <button 
           class="navbar-avatar" 
