@@ -997,6 +997,8 @@ const isEmulatorMode = computed(() => {
 
 const loadingDisponibilites = ref(false)
 const fetchingRanges = ref(false)
+const extending = ref(false) // Déclaration déplacée ici pour éviter l'erreur "before initialization"
+
 // Busy state: quand on charge des plages ou qu'on étend
 const isBusy = computed(() => {
   const localBusy = loadingCollaborateurs.value || loadingDisponibilites.value || fetchingRanges.value || extending.value
@@ -4691,7 +4693,6 @@ function generateInitialDays() {
 }
 
 // Extension dynamique lors du scroll
-const extending = ref(false)
 let scrollDebounceTimer: number | null = null
 let scrollEndTimer: number | null = null
 
