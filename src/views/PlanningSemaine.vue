@@ -9871,9 +9871,9 @@ body.dragging-selection .excel-cell {
   background: #fef3c7;
   color: #92400e;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: 10px;
   text-align: center;
   border: 1px solid #f59e0b;
 }

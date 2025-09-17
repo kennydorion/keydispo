@@ -3,6 +3,7 @@
     v-model="isVisible" 
     :hide-default-actions="true"
     :fullscreen="false"
+    :mobile-fullscreen="true"
     max-width="600px"
     no-padding
   @before-open="modalA11y.onBeforeOpen"
@@ -739,13 +740,28 @@ const cancelNotesEdit = () => {
 
 /* Responsive mobile ultra-compact */
 @media (max-width: 640px) {
+  :deep(.va-modal__dialog) {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    height: 100vh !important; /* Fallback */
+    max-height: 100vh !important; /* Fallback */
+    margin: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   .collaborateur-info-compact {
     padding: 6px;
     font-size: 12px;
-    max-height: calc(100vh - 2rem);
+    height: 100dvh;
+    height: 100vh; /* Fallback */
+    max-height: 100dvh;
+    max-height: 100vh; /* Fallback */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
   }
   
   .collaborateur-header-compact {

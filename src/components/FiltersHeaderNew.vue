@@ -219,13 +219,19 @@ const checkMobile = () => {
   const h = window.innerHeight
   
   // Mobile si largeur <= 768px OU mode paysage mobile (hauteur <= 500px)
+  const wasMobile = isMobile.value
   isMobile.value = w <= 768 || (h < w && h <= 500)
   
-  // En mode paysage mobile, masquer les filtres par défaut pour libérer de l'espace
-  if (isMobile.value && h < w && h <= 500) {
-    filtersCollapsed.value = true // Masquer en paysage
-  } else if (isMobile.value) {
-    filtersCollapsed.value = false // Afficher par défaut en portrait
+  // Ne changer l'état des filtres que lors du premier chargement ou changement mobile/desktop
+  if (wasMobile !== isMobile.value) {
+    // En mode paysage mobile, masquer les filtres par défaut pour libérer de l'espace
+    if (isMobile.value && h < w && h <= 500) {
+      filtersCollapsed.value = true // Masquer en paysage
+    } else if (isMobile.value) {
+      filtersCollapsed.value = true // Masquer par défaut sur mobile
+    } else {
+      filtersCollapsed.value = false // Afficher sur desktop
+    }
   }
 }
 
