@@ -303,7 +303,15 @@ async function handleCreatePassword() {
     }
 
     // Sinon: créer le compte puis lier le code si présent
-    const user = await AuthService.signUpWithEmail(email.value, password.value, displayName.value)
+    let user
+    if (!code && route.path === '/register') {
+      // Création d'un compte admin via le processus d'inscription admin
+      user = await AuthService.signUpAdminWithEmail(email.value, password.value, displayName.value)
+    } else {
+      // Création d'un compte collaborateur ou compte admin avec code collaborateur
+      user = await AuthService.signUpWithEmail(email.value, password.value, displayName.value)
+    }
+    
     if (code) {
       try {
         await registrationCodesService.consumeAndLink(AuthService.currentTenantId || 'keydispo', code, user.uid)

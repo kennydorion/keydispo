@@ -45,6 +45,20 @@ export class AuthService {
     }
   }
 
+  /**
+   * Créer un compte administrateur avec le rôle 'admin' directement attribué
+   */
+  static async signUpAdminWithEmail(email: string, password: string, displayName?: string) {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password)
+      await this.ensureUserInTenant(result.user, 'admin', displayName)
+      return result.user
+    } catch (error) {
+      console.error('Error signing up admin with email:', error)
+      throw error
+    }
+  }
+
   static async signInWithGoogle() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
@@ -84,10 +98,17 @@ export class AuthService {
     if (!userSnapshot.exists()) {
       // Construire les données utilisateur sans displayName si undefined
       const email = (user.email || '').toLowerCase()
-      const elevatedRole = this.adminEmails.includes(email) ? 'admin' : defaultRole
+      
+      // Priorité 1: Utiliser le rôle par défaut explicitement fourni (pour les créations admin)
+      // Priorité 2: Vérifier si l'email est dans la liste des admins (fallback)
+      let finalRole = defaultRole
+      if (defaultRole === 'viewer' && this.adminEmails.includes(email)) {
+        finalRole = 'admin'
+      }
+      
       const tenantData: any = {
         uid: user.uid,
-        role: elevatedRole,
+        role: finalRole,
         email: user.email!,
         createdAt: Date.now(),
         lastAccess: Date.now()
@@ -98,6 +119,8 @@ export class AuthService {
         tenantData.displayName = name
       }
       await set(userRef, tenantData)
+      
+      console.log(`✅ Utilisateur créé avec rôle: ${finalRole} (email: ${email})`)
     } else {
       // Update last access
       await update(userRef, { lastAccess: Date.now() })
