@@ -883,15 +883,8 @@ onMounted(() => {
 }
 
 :deep(.va-data-table__table) {
-  min-width: 850px !important;
-  width: 850px !important;
-  table-layout: fixed !important;
-}
-
-:deep(.va-data-table__table) {
-  min-width: 850px !important;
-  width: 850px !important;
-  table-layout: fixed !important;
+  width: 100% !important;
+  table-layout: auto !important;
 }
 
 :deep(.va-data-table__table-tr:hover) {

@@ -4,6 +4,8 @@ import { CollaborateursServiceV2 } from './collaborateursV2'
 import { disponibilitesRTDBService, type DisponibiliteRTDB } from './disponibilitesRTDBService'
 import { canonicalizeLieu, normalizeDispo } from './normalization'
 import { deriveTimeKindFromData } from '../utils/timeKindDerivation'
+import { ref as rtdbRef, update } from 'firebase/database'
+import { rtdb } from './firebase'
 
 export interface CollaborateurDisponibilite {
   id?: string
@@ -30,29 +32,55 @@ export interface CollaborateurProfilLight {
   color?: string | null
 }
 
-function ensureUser() {
-  const user = auth.currentUser
-  if (!user) throw new Error('Utilisateur non authentifié')
-  return user
-}
-
 async function resolveMyCollaborateur(): Promise<CollaborateurProfilLight> {
-  const user = ensureUser()
-  const tenantId = AuthService.currentTenantId || 'default'
+  const user = auth.currentUser
+  if (!user) throw new Error('Utilisateur non connecté')
 
-  // Charger tous les collaborateurs depuis RTDB (rapide et trié)
-  const collaborateurs = await CollaborateursServiceV2.loadCollaborateursFromRTDB(tenantId)
+  const tenantId = AuthService.currentTenantId || 'keydispo'
+  const collaborateurs = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
 
-  // 1) Essayer par userId direct
-  let me = collaborateurs.find((c: any) => (c as any).userId === user.uid)
+  // Recherche par userId d'abord (propriété optionnelle dans RTDB)
+  let me = collaborateurs.find(c => (c as any).userId === user.uid)
 
-  // 2) Fallback par email (case-insensitive)
+  // Si non trouvé, recherche par email  
   if (!me && user.email) {
     const emailLc = user.email.toLowerCase()
-  me = collaborateurs.find((c: any) => (c.email || '').toLowerCase() === emailLc)
+    me = collaborateurs.find((c: any) => (c.email || '').toLowerCase() === emailLc)
+    
+    // Si trouvé par email mais pas lié, on peut proposer de lier automatiquement
+    if (me && !(me as any).userId) {
+      console.log('🔗 Collaborateur trouvé par email mais non lié, tentative de liaison automatique...')
+      try {
+        await linkUserToCollaborateur(tenantId, user.uid, me.id!, user.email)
+        console.log('✅ Liaison automatique réussie')
+        // Recharger pour avoir les données à jour
+        const updatedCollabs = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
+        me = updatedCollabs.find(c => (c as any).userId === user.uid)
+      } catch (error) {
+        console.error('❌ Erreur lors de la liaison automatique:', error)
+      }
+    }
   }
 
-  if (!me) throw new Error('Profil collaborateur introuvable pour cet utilisateur')
+  if (!me) {
+    // Diagnostic détaillé pour aider au debug
+    console.error('❌ Profil collaborateur introuvable:', {
+      userId: user.uid,
+      email: user.email,
+      tenantId: tenantId,
+      collaborateursCount: collaborateurs.length,
+      collaborateursWithEmail: collaborateurs.filter(c => c.email === user.email).length,
+      collaborateursWithUserId: collaborateurs.filter(c => (c as any).userId === user.uid).length
+    })
+    
+    throw new Error(`Profil collaborateur introuvable pour cet utilisateur. 
+    Vérifiez que :
+    1. Vous avez bien utilisé un code d'inscription valide
+    2. Votre email (${user.email}) correspond à un collaborateur existant
+    3. Contactez votre administrateur si le problème persiste
+    
+    URL de debug: ${window.location.origin}/debug-user-profile.html`)
+  }
 
   const result = {
     id: me.id!,
@@ -67,6 +95,29 @@ async function resolveMyCollaborateur(): Promise<CollaborateurProfilLight> {
   }
   
   return result
+}
+
+/**
+ * Lie un utilisateur authentifié à un collaborateur existant
+ */
+async function linkUserToCollaborateur(tenantId: string, userId: string, collaborateurId: string, email: string): Promise<void> {
+  // Mettre à jour le collaborateur avec l'userId
+  const collabRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
+  await update(collabRef, {
+    userId: userId,
+    updatedAt: Date.now()
+  })
+
+  // Mettre à jour les données utilisateur dans le tenant
+  const userRef = rtdbRef(rtdb, `tenants/${tenantId}/users/${userId}`)
+  await update(userRef, {
+    collaborateurId: collaborateurId,
+    role: 'viewer', // Rôle par défaut pour un collaborateur
+    updatedAt: Date.now(),
+    email: email
+  })
+
+  console.log(`✅ Liaison créée entre utilisateur ${userId} et collaborateur ${collaborateurId}`)
 }
 
 function mapRTDBToSelf(d: DisponibiliteRTDB): CollaborateurDisponibilite {

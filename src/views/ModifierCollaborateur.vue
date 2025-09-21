@@ -1013,6 +1013,17 @@ watch(() => route.params.id, () => {
   color: #a0aec0 !important;
 }
 
+/* Correction des couleurs des inputs pour être en noir */
+.modern-input :deep(.va-input__content__input),
+.modern-textarea :deep(.va-textarea__content__input) {
+  color: #000000 !important;
+}
+
+.modern-input :deep(.va-input__container .va-icon),
+.modern-textarea :deep(.va-textarea__container .va-icon) {
+  color: #666666 !important;
+}
+
 /* Actions du Formulaire */
 .form-actions {
   display: flex;

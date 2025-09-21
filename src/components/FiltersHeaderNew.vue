@@ -694,6 +694,128 @@ watch(
 .compact-date-input :deep(span) { color: #000 !important; }
 .compact-date-input :deep(div) { color: #000 !important; }
 
+/* STYLES POUR LE CALENDRIER QUI S'OUVRE (DATE PICKER) - VERSION MODERNE */
+.compact-date-input :deep(.va-date-picker) {
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.compact-date-input :deep(.va-date-picker *) {
+  color: #000000 !important;
+}
+
+/* Header avec dégradé subtil */
+.compact-date-input :deep(.va-date-picker .va-date-picker__header) {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 1rem !important;
+  border-radius: 16px 16px 0 0 !important;
+}
+
+/* Navigation mois/année moderne */
+.compact-date-input :deep(.va-date-picker .va-date-picker__month),
+.compact-date-input :deep(.va-date-picker .va-date-picker__year) {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-date-picker__month:hover),
+.compact-date-input :deep(.va-date-picker .va-date-picker__year:hover) {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: #6366f1 !important;
+}
+
+/* Jours individuels avec design élégant */
+.compact-date-input :deep(.va-date-picker .va-date-picker__day) {
+  color: #374151 !important;
+  background: white !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  margin: 2px !important;
+  min-height: 36px !important;
+  min-width: 36px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-date-picker__day:hover) {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  border-color: #0ea5e9 !important;
+  color: #0c4a6e !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15) !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-date-picker__day--selected) {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  color: white !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  font-weight: 600 !important;
+  transform: translateY(-1px) !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-date-picker__day--in-range) {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  color: #1e40af !important;
+  border-color: #bfdbfe !important;
+}
+
+/* Jours de la semaine avec style moderne */
+.compact-date-input :deep(.va-date-picker .va-date-picker__week-day) {
+  color: #64748b !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem 0.25rem !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+/* Contrôles avec design moderne */
+.compact-date-input :deep(.va-date-picker .va-date-picker__controls) {
+  color: #374151 !important;
+  padding: 0.75rem !important;
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  border-radius: 0 0 16px 16px !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-button) {
+  color: #4b5563 !important;
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500 !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-button:hover) {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: white !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25) !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-icon) {
+  color: #6b7280 !important;
+  transition: color 0.2s ease !important;
+}
+
+.compact-date-input :deep(.va-date-picker .va-button:hover .va-icon) {
+  color: white !important;
+}
+
 /* Dates container - Alignement vertical parfait */
 .compact-date-inputs { 
   display: grid; 

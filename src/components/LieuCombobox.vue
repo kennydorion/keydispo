@@ -93,6 +93,54 @@ const showCreate = computed(() => {
 
 function onFocus() {
   open.value = true
+  // Détecter si on doit afficher vers le haut
+  checkDropdownPosition()
+}
+
+function checkDropdownPosition() {
+  // Petite temporisation pour que le DOM soit mis à jour
+  setTimeout(() => {
+    const container = document.querySelector('.lieu-combobox')
+    if (!container) return
+    
+    const rect = container.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const dropdownHeight = 200 // max-height de la liste
+    
+    // Détecter si on est dans une modale
+    const modal = container.closest('.va-modal__dialog, .dispo-modal-redesigned')
+    let modalSpaceBelow = spaceBelow
+    let modalSpaceAbove = spaceAbove
+    
+    if (modal) {
+      const modalRect = modal.getBoundingClientRect()
+      modalSpaceBelow = modalRect.bottom - rect.bottom
+      modalSpaceAbove = rect.top - modalRect.top
+    }
+    
+    // Utiliser l'espace de la modale si on est dedans, sinon l'espace viewport
+    const effectiveSpaceBelow = modal ? modalSpaceBelow : spaceBelow
+    const effectiveSpaceAbove = modal ? modalSpaceAbove : spaceAbove
+    
+    // Si pas assez de place en bas mais plus de place en haut
+    if (effectiveSpaceBelow < Math.min(dropdownHeight, 150) && effectiveSpaceAbove > effectiveSpaceBelow) {
+      container.classList.add('flip-up')
+    } else {
+      container.classList.remove('flip-up')
+    }
+    
+    // Ajuster la hauteur max selon l'espace disponible
+    const list = container.querySelector('.cbx-list') as HTMLElement
+    if (list) {
+      const maxHeight = Math.min(
+        dropdownHeight,
+        Math.max(effectiveSpaceBelow, effectiveSpaceAbove) - 20 // Marge de 20px
+      )
+      list.style.maxHeight = `${Math.max(maxHeight, 100)}px` // Min 100px
+    }
+  }, 0)
 }
 
 function onBlur() {
@@ -109,6 +157,11 @@ function onBlur() {
 function closeList() {
   open.value = false
   highlighted.value = -1
+  // Nettoyer les classes de positionnement
+  const container = document.querySelector('.lieu-combobox')
+  if (container) {
+    container.classList.remove('flip-up')
+  }
 }
 
 function clearValue() {
@@ -151,13 +204,19 @@ function commitCurrent() {
 }
 
 function highlightNext() {
-  if (!open.value) open.value = true
+  if (!open.value) {
+    open.value = true
+    checkDropdownPosition()
+  }
   const max = filtered.value.length + (showCreate.value ? 1 : 0)
   highlighted.value = (highlighted.value + 1 + max) % max
 }
 
 function highlightPrev() {
-  if (!open.value) open.value = true
+  if (!open.value) {
+    open.value = true
+    checkDropdownPosition()
+  }
   const max = filtered.value.length + (showCreate.value ? 1 : 0)
   highlighted.value = (highlighted.value - 1 + max) % max
 }
@@ -181,9 +240,30 @@ function highlightPrev() {
   background: var(--dark-surface);
   border: 1px solid var(--dark-border);
   border-radius: 12px;
-  max-height: 220px;
+  max-height: 200px;
   overflow: auto;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  
+  /* Gestion du débordement pour les modales */
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  
+  /* Assurer que la liste reste dans les limites visuelles */
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Ajustement automatique si débordement en bas */
+  bottom: auto;
+  top: 100%;
+}
+
+/* Positionnement vers le haut si pas assez de place en bas */
+.lieu-combobox.flip-up .cbx-list {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
 }
 
 .cbx-item {

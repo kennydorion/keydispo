@@ -2,9 +2,13 @@
   <va-modal
     v-model="isVisible"
     :hide-default-actions="true"
-    :fullscreen="false"
-    max-width="800px"
+    :fullscreen="isMobile"
+    :max-width="isMobile ? '100vw' : '600px'"
+    :max-height="isMobile ? '100vh' : '85vh'"
+    :mobile-fullscreen="true"
     no-padding
+    class="collab-dispo-modal-new"
+    :class="{ 'collab-dispo-modal-new--mobile': isMobile }"
   @before-open="modalA11y.onBeforeOpen"
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
@@ -52,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useModalA11y } from '@/composables/useModalA11y'
 import { useToast } from 'vuestic-ui'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
@@ -61,6 +65,22 @@ import DispoEditContent from './DispoEditContent.vue'
 import type { Collaborateur } from '@/types/planning'
 import { InterfaceManager } from '@/services/interfaceManager'
 const canAccessAdminFeatures = InterfaceManager.canAccessAdminFeatures
+
+// Configuration responsive
+const isMobile = ref(false)
+
+const updateMobileState = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  updateMobileState()
+  window.addEventListener('resize', updateMobileState)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateMobileState)
+})
 
 interface DisponibiliteData {
   type: string
@@ -412,5 +432,73 @@ watch(() => props.collaborateur, (newCollab) => {
 </script>
 
 <style scoped>
-/* Minimal styles since we're using DispoEditContent styles */
+/* === CSS SIMPLIFIÉ POUR RESPECTER DispoEditContent === */
+
+/* Styles de base pour le modal */
+.collab-dispo-modal-new {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+/* Mobile : Plein écran comme défini dans DispoEditContent */
+@media (max-width: 768px) {
+  :deep(.collab-dispo-modal-new--mobile .va-modal__container) {
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+  }
+
+  :deep(.collab-dispo-modal-new--mobile .va-modal__dialog) {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  :deep(.collab-dispo-modal-new--mobile .va-modal__content) {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+/* Desktop : Taille normale comme défini dans DispoEditContent */
+@media (min-width: 769px) {
+  :deep(.collab-dispo-modal-new:not(.collab-dispo-modal-new--mobile) .va-modal__container) {
+    padding: 10px !important;
+  }
+
+  :deep(.collab-dispo-modal-new:not(.collab-dispo-modal-new--mobile) .va-modal__dialog) {
+    max-width: 600px !important;
+    max-height: 85vh !important;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
+
+  :deep(.collab-dispo-modal-new:not(.collab-dispo-modal-new--mobile) .va-modal__content) {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+/* Laisser DispoEditContent gérer sa propre responsivité */
+:deep(.dispo-modal-redesigned) {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+}
 </style>

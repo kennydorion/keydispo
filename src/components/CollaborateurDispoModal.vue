@@ -3,12 +3,12 @@
     v-model="isVisible"
     :hide-default-actions="true"
     :fullscreen="isMobile"
-    :max-width="isMobile ? '100vw' : '800px'"
-    :max-height="isMobile ? '100vh' : '95vh'"
+    :max-width="isMobile ? '100vw' : '600px'"
+    :max-height="isMobile ? '100vh' : '85vh'"
     :mobile-fullscreen="true"
     no-padding
     class="collab-dispo-modal"
-    :class="{ 'collab-dispo-modal--mobile': isMobile, 'collab-dispo-modal--fullscreen': isMobile }"
+    :class="{ 'collab-dispo-modal--mobile': isMobile }"
   @before-open="modalA11y.onBeforeOpen"
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
@@ -375,83 +375,73 @@ watch(() => props.collaborateur, (newCollab) => {
 </script>
 
 <style scoped>
-/* Minimal styles since we're using DispoEditContent styles */
+/* === CSS SIMPLIFIÉ POUR RESPECTER DispoEditContent === */
 
-/* Force la modale à prendre toute la hauteur en mode mobile */
-:deep(.collab-dispo-modal--fullscreen) {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-  margin: 0 !important;
+/* Styles de base pour le modal */
+.collab-dispo-modal {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+/* Mobile : Plein écran comme défini dans DispoEditContent */
+@media (max-width: 768px) {
+  :deep(.collab-dispo-modal--mobile .va-modal__container) {
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+  }
+
+  :deep(.collab-dispo-modal--mobile .va-modal__dialog) {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  :deep(.collab-dispo-modal--mobile .va-modal__content) {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+/* Desktop : Taille normale comme défini dans DispoEditContent */
+@media (min-width: 769px) {
+  :deep(.collab-dispo-modal:not(.collab-dispo-modal--mobile) .va-modal__container) {
+    padding: 10px !important;
+  }
+
+  :deep(.collab-dispo-modal:not(.collab-dispo-modal--mobile) .va-modal__dialog) {
+    max-width: 600px !important;
+    max-height: 85vh !important;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
+
+  :deep(.collab-dispo-modal:not(.collab-dispo-modal--mobile) .va-modal__content) {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+/* Laisser DispoEditContent gérer sa propre responsivité */
+:deep(.dispo-modal-redesigned) {
   border-radius: 0 !important;
-  z-index: 1001 !important;
-}
-
-:deep(.collab-dispo-modal--fullscreen .va-modal__container) {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: flex !important;
-  align-items: stretch !important;
-  justify-content: stretch !important;
-  transform: none !important;
-}
-
-:deep(.collab-dispo-modal--fullscreen .va-modal__dialog) {
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  transform: none !important;
-}
-
-:deep(.collab-dispo-modal--fullscreen .va-modal__content) {
+  box-shadow: none !important;
   width: 100% !important;
   height: 100% !important;
-  max-width: 100% !important;
   max-height: 100% !important;
-  padding: 0 !important;
   margin: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 !important;
-}
-
-/* S'assurer que DispoEditContent prend toute la hauteur */
-:deep(.collab-dispo-modal--fullscreen .dispo-modal-redesigned) {
-  height: 100vh !important;
-  max-height: 100vh !important;
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-/* Garantir que le footer reste en bas */
-:deep(.collab-dispo-modal--fullscreen .footer-actions) {
-  position: sticky !important;
-  bottom: 0 !important;
-  margin-top: auto !important;
-  flex-shrink: 0 !important;
-}
-
-/* Assurer que la zone de contenu scrollable prend tout l'espace disponible */
-:deep(.collab-dispo-modal--fullscreen .scrollable-content) {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
 }
 </style>
