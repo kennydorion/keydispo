@@ -203,6 +203,9 @@ export function parseWorkbook(file: File): Promise<ParseResult> {
 function parseAOA(aoa: any[][]): ParseResult {
   const warnings: string[] = []
   const data: NormalizedRow[] = []
+  // Accumulation des plages de lignes totalement vides (pour éviter le spam de warnings)
+  const emptyRanges: Array<{ start: number; end: number }> = []
+  let currentEmptyStart: number | null = null
   
   try {
     // 1. Détection de l'entête
@@ -229,8 +232,24 @@ function parseAOA(aoa: any[][]): ParseResult {
       const metier = String(row[colMapping.metier] || '').trim()
       
       if (!nom || !prenom) {
-        warnings.push(`Ligne ${r + 1}: Nom ou prénom manquant`)
-        continue
+        // Détection si la ligne est totalement vide (toutes cellules vides / null)
+        const isCompletelyEmpty = row.every(cell => cell == null || String(cell).trim() === '')
+        if (isCompletelyEmpty) {
+          // Étendre ou démarrer une plage vide
+          if (currentEmptyStart == null) currentEmptyStart = r + 1
+          // ne pas ajouter de warning individuel
+          continue
+        } else {
+          // Ligne avec contenu mais identifiant collaborateur incomplet => vrai warning
+            warnings.push(`Ligne ${r + 1}: Nom ou prénom manquant`)
+            continue
+        }
+      }
+
+      // Si on arrive ici et qu'on avait une plage vide en cours, on la ferme
+      if (currentEmptyStart != null) {
+        emptyRanges.push({ start: currentEmptyStart, end: r })
+        currentEmptyStart = null
       }
       
       const collaborateurBase = {
@@ -273,7 +292,18 @@ function parseAOA(aoa: any[][]): ParseResult {
       }
     }
     
-    console.log(`✅ Parse terminé: ${data.length} disponibilités, ${collaborateurs.size} collaborateurs`)
+    // Fermer une plage vide finale éventuelle
+    if (currentEmptyStart != null) {
+      emptyRanges.push({ start: currentEmptyStart, end: aoa.length })
+      currentEmptyStart = null
+    }
+
+    // Ajouter warnings agrégés pour lignes vides
+    for (const range of emptyRanges) {
+      const count = range.end - range.start + 1
+      warnings.push(`Lignes vides ignorées: ${range.start}-${range.end} (${count} lignes)`) }    
+
+    console.log(`✅ Parse terminé: ${data.length} disponibilités, ${collaborateurs.size} collaborateurs ( ${emptyRanges.length} plage(s) de lignes vides ignorées )`)
 
     // Vérification couverture temporelle (simple warning si trous majeurs)
     const datesList = data.map(d => d.date).sort()
