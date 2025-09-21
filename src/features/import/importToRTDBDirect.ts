@@ -1,5 +1,5 @@
 import { rtdb as database } from '../../services/firebase'
-import { ref, set, runTransaction, serverTimestamp } from 'firebase/database'
+import { ref, set, serverTimestamp } from 'firebase/database'
 import type { NormalizedRow } from './types'
 import { slugify } from './parseWorkbook'
 import { normalizeDispo, canonicalizeLieu } from '../../services/normalization'
@@ -74,13 +74,7 @@ export function makeDispoId(
 /**
  * Chunke un array en petits morceaux
  */
-function chunkArray<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size))
-  }
-  return chunks
-}
+// chunkArray supprimé (non utilisé après refactor écriture unique)
 
 /**
  * Délai entre les batches
@@ -324,57 +318,31 @@ async function importCollaborateursRTDB(
   stats: ImportStatsRTDB,
   onProgress?: (progress: ImportProgressRTDB) => void
 ): Promise<void> {
-  const chunkSize = 50 // Chunks plus petits pour RTDB
-  const chunks = chunkArray(collaborateurs, chunkSize)
-  
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    
-    try {
-      // Utiliser une transaction pour garantir la cohérence
-      await runTransaction(ref(database, `tenants/${tenantId}/collaborateurs`), (current) => {
-        const updates = current || {}
-        
-        for (const collab of chunk) {
-          const cleanedCollab = cleanObjectForRTDB(collab)
-          
-          if (updates[collab.id]) {
-            // Collaborateur existant - merge
-            updates[collab.id] = {
-              ...updates[collab.id],
-              ...cleanedCollab,
-              updatedAt: serverTimestamp()
-            }
-            stats.collaborateursMerged++
-          } else {
-            // Nouveau collaborateur
-            updates[collab.id] = cleanedCollab
-            stats.collaborateursCreated++
-          }
-        }
-        
-        return updates
-      })
-      
-      console.log(`✅ Chunk collaborateurs RTDB ${i + 1}/${chunks.length} (${chunk.length} items)`)
-      
-      onProgress?.({
-        phase: 'collaborateurs',
-        current: stats.collaborateursCreated + stats.collaborateursMerged,
-        total: collaborateurs.length,
-        message: `Collaborateurs: ${stats.collaborateursCreated + stats.collaborateursMerged}/${collaborateurs.length}`
-      })
-      
-      // Délai entre chunks pour éviter le throttling
-      if (i < chunks.length - 1) {
-        await delay(200)
+  // Nouvelle approche: accumulation puis écriture unique (réduit les transactions donc moins de risques de disconnect)
+  try {
+    const payload: Record<string, any> = {}
+    for (const collab of collaborateurs) {
+      const cleanedCollab = cleanObjectForRTDB(collab)
+      if (!payload[collab.id]) {
+        payload[collab.id] = cleanedCollab
+        stats.collaborateursCreated++
+      } else {
+        payload[collab.id] = { ...payload[collab.id], ...cleanedCollab, updatedAt: serverTimestamp() }
+        stats.collaborateursMerged++
       }
-      
-    } catch (error) {
-      const errorMsg = `Erreur chunk collaborateurs ${i + 1}: ${error}`
-      stats.errors.push(errorMsg)
-      console.error('❌', errorMsg)
     }
+    await writeWithRetry(ref(database, `tenants/${tenantId}/collaborateurs`), payload, 'collaborateurs')
+    onProgress?.({
+      phase: 'collaborateurs',
+      current: stats.collaborateursCreated + stats.collaborateursMerged,
+      total: collaborateurs.length,
+      message: `Collaborateurs: ${stats.collaborateursCreated + stats.collaborateursMerged}/${collaborateurs.length}`
+    })
+    console.log(`✅ Collaborateurs écrits en une passe (${collaborateurs.length})`)
+  } catch (error) {
+    const errorMsg = `Erreur écriture collaborateurs: ${error}`
+    stats.errors.push(errorMsg)
+    console.error('❌', errorMsg)
   }
 }
 
@@ -398,36 +366,21 @@ async function importDisponibilitesRTDB(
     const dispos = disposByDate.get(date)!
     
     try {
-      // Chunker les disponibilités de cette date
-      const chunks = chunkArray(dispos, 30) // Chunks plus petits pour les disponibilités
-      
-      for (const chunk of chunks) {
-        await runTransaction(ref(database, `tenants/${tenantId}/disponibilites/${date}`), (current) => {
-          const updates = current || {}
-          
-          for (const dispo of chunk) {
-            const cleanedDispo = cleanObjectForRTDB(dispo)
-            
-            if (updates[dispo.id]) {
-              // Disponibilité existante - mise à jour version
-              updates[dispo.id] = {
-                ...updates[dispo.id],
-                ...cleanedDispo,
-                version: (updates[dispo.id].version || 0) + 1,
-                updatedAt: serverTimestamp()
-              }
-              stats.disposMerged++
-            } else {
-              // Nouvelle disponibilité
-              updates[dispo.id] = cleanedDispo
-              stats.disposCreated++
-            }
-          }
-          
-          return updates
-        })
+      // Nouvelle approche: un seul set par date avec all dispos (version initiale = 1)
+      const payload: Record<string, any> = {}
+      for (const dispo of dispos) {
+        const cleanedDispo = cleanObjectForRTDB(dispo)
+        if (!payload[dispo.id]) {
+          cleanedDispo.version = 1
+          payload[dispo.id] = cleanedDispo
+          stats.disposCreated++
+        } else {
+          // fusion improbable (même id) mais on garde le last-wins
+          payload[dispo.id] = { ...payload[dispo.id], ...cleanedDispo }
+          stats.disposMerged++
+        }
       }
-      
+      await writeWithRetry(ref(database, `tenants/${tenantId}/disponibilites/${date}`), payload, `dispos:${date}`)
       console.log(`✅ Date RTDB ${i + 1}/${dates.length}: ${date} (${dispos.length} disponibilités)`)
       
       onProgress?.({
@@ -492,6 +445,29 @@ function groupByDate(dispositions: DispositionRTDB[]): Map<string, DispositionRT
   }
   
   return grouped
+}
+
+// --- Robustesse écriture ---
+async function writeWithRetry(nodeRef: any, payload: any, label: string, maxRetries = 4): Promise<void> {
+  let attempt = 0
+  const baseDelay = 200
+  while (true) {
+    try {
+      await set(nodeRef, payload)
+      return
+    } catch (err: any) {
+      const msg = err?.message || String(err)
+      const transient = /disconnect|network|timeout/i.test(msg)
+      if (!transient || attempt >= maxRetries) {
+        console.error(`❌ Echec écriture ${label} après ${attempt + 1} tentative(s):`, msg)
+        throw err
+      }
+      const wait = baseDelay * Math.pow(2, attempt) + Math.random() * 50
+      console.warn(`⚠️ Retry ${label} tentative ${attempt + 1} (attente ${wait}ms) cause: ${msg}`)
+      await delay(wait)
+      attempt++
+    }
+  }
 }
 
 /**
