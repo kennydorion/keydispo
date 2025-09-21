@@ -13,45 +13,86 @@
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
   >
-    <DispoEditContent
-      :selected-cell="selectedCell"
-      :selected-collaborateur="mockSelectedCollaborateur"
-      :collaborateur-color="avatarColor"
-      :formatted-date="formattedDate"
-      :selected-cell-dispos="mockSelectedCellDispos"
-      :editing-dispo-index="null"
-      :is-adding-new-dispo="true"
-      :editing-dispo="editingDispo"
-  :type-options="typeOptions"
-      :slot-options="slotOptions"
-      :lieux-options-strings="lieuxExistants"
-      :is-edit-form-valid="isFormValid"
-      :saving="saving"
-      :time-kind-options="timeKindOptions"
-      :time-kind-options-filtered="timeKindOptionsFiltered"
-      :is-detected-overnight="isOvernightSchedule"
-  :is-collaborator-view="!canAccessAdminFeatures"
-      :get-type-icon="getTypeIcon"
-      :get-type-text="getTypeText"
-      :get-type-color="getTypeColor"
-      :get-dispo-type-class="getDispoTypeClass"
-      :get-slot-text="getSlotText"
-      :get-time-kind-icon="getTimeKindIcon"
-      :get-user-initials="getUserInitials"
-      :is-overnight-time="isOvernightTime"
-      @cancel-modal="handleClose"
-      @save-dispos="handleSave"
-      @set-editing-type="setEditingType"
-      @set-editing-time-kind="setEditingTimeKind"
-      @toggle-editing-slot="toggleEditingSlot"
-      @update-editing-lieu="updateEditingLieu"
-      @save-edit-dispo="handleSave"
-      @cancel-edit-dispo="handleClose"
-      @add-new-dispo-line="() => {}"
-      @edit-dispo-line="() => {}"
-      @remove-dispo="() => {}"
-      @create-lieu="onCreateLieu"
-    />
+    <template v-if="mode === 'dispo'">
+      <DispoEditContent
+        :selected-cell="selectedCell"
+        :selected-collaborateur="mockSelectedCollaborateur"
+        :collaborateur-color="avatarColor"
+        :formatted-date="formattedDate"
+        :selected-cell-dispos="mockSelectedCellDispos"
+        :editing-dispo-index="null"
+        :is-adding-new-dispo="true"
+        :editing-dispo="editingDispo"
+        :type-options="typeOptions"
+        :slot-options="slotOptions"
+        :lieux-options-strings="lieuxExistants"
+        :is-edit-form-valid="isFormValid"
+        :saving="saving"
+        :time-kind-options="timeKindOptions"
+        :time-kind-options-filtered="timeKindOptionsFiltered"
+        :is-detected-overnight="isOvernightSchedule"
+        :is-collaborator-view="!canAccessAdminFeatures"
+        :get-type-icon="getTypeIcon"
+        :get-type-text="getTypeText"
+        :get-type-color="getTypeColor"
+        :get-dispo-type-class="getDispoTypeClass"
+        :get-slot-text="getSlotText"
+        :get-time-kind-icon="getTimeKindIcon"
+        :get-user-initials="getUserInitials"
+        :is-overnight-time="isOvernightTime"
+        @cancel-modal="handleClose"
+        @save-dispos="handleSave"
+        @set-editing-type="setEditingType"
+        @set-editing-time-kind="setEditingTimeKind"
+        @toggle-editing-slot="toggleEditingSlot"
+        @update-editing-lieu="updateEditingLieu"
+        @save-edit-dispo="handleSave"
+        @cancel-edit-dispo="handleClose"
+        @add-new-dispo-line="() => {}"
+        @edit-dispo-line="() => {}"
+        @remove-dispo="() => {}"
+        @create-lieu="onCreateLieu"
+      />
+    </template>
+    <template v-else>
+      <div class="collab-view-content" v-if="mockSelectedCollaborateur">
+        <div class="header-block">
+          <h3 class="name">{{ mockSelectedCollaborateur.prenom }} {{ mockSelectedCollaborateur.nom }}</h3>
+          <div class="meta-line">
+            <span v-if="mockSelectedCollaborateur.metier" class="pill">{{ mockSelectedCollaborateur.metier }}</span>
+            <span v-if="mockSelectedCollaborateur.ville" class="pill">{{ mockSelectedCollaborateur.ville }}</span>
+          </div>
+        </div>
+        <div class="contact-line" v-if="mockSelectedCollaborateur.phone || mockSelectedCollaborateur.email">
+          <a v-if="mockSelectedCollaborateur.phone" :href="`tel:${mockSelectedCollaborateur.phone}`" class="contact-link">
+            <va-icon name="phone" size="16px" /> {{ mockSelectedCollaborateur.phone }}
+          </a>
+          <a v-if="mockSelectedCollaborateur.email" :href="`mailto:${mockSelectedCollaborateur.email}`" class="contact-link">
+            <va-icon name="email" size="16px" /> {{ mockSelectedCollaborateur.email }}
+          </a>
+        </div>
+        <div class="notes-zone">
+          <div class="notes-header">
+            <span class="title">Notes</span>
+            <va-badge v-if="hasNotesChanges" color="warning" text="*" />
+          </div>
+          <div v-if="!editNotes" class="notes-display" @dblclick="startEditNotes">
+            {{ notesDisplay || '—' }}
+          </div>
+          <div v-else class="notes-edit-block">
+            <va-textarea v-model="localNotes" min-rows="3" max-rows="6" autosize placeholder="Ajouter des notes..." />
+            <div class="notes-actions">
+              <va-button size="small" color="success" icon="save" :loading="savingNotes" @click="saveNotes">Sauver</va-button>
+              <va-button size="small" color="secondary" @click="cancelNotes">Annuler</va-button>
+            </div>
+          </div>
+        </div>
+        <div class="actions-inline">
+          <va-button size="small" color="primary" icon="edit" @click="goToProfile">Modifier</va-button>
+          <va-button size="small" color="secondary" @click="handleClose">Fermer</va-button>
+        </div>
+      </div>
+    </template>
   </va-modal>
 </template>
 
@@ -110,10 +151,12 @@ interface Props {
   modelValue?: boolean
   editingDisponibilite?: any
   existingDisponibilites?: any[]
+  mode?: 'dispo' | 'collaborateur'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: false
+  modelValue: false,
+  mode: 'dispo'
 })
 
 const emit = defineEmits<{
@@ -121,6 +164,7 @@ const emit = defineEmits<{
   save: [data: DisponibiliteData]
   delete: [id: string]
   close: []
+  'save-collaborateur-notes': [collaborateur: Collaborateur, notes: string]
 }>()
 
 // State
@@ -177,6 +221,28 @@ const mockSelectedCollaborateur = computed<Collaborateur | null>(() => {
   }
   return normalized
 })
+
+// ===== Mode collaborateur : gestion notes (après déclaration collaborateur) =====
+const editNotes = ref(false)
+const localNotes = ref('')
+const savingNotes = ref(false)
+const notesDisplay = computed(() => mockSelectedCollaborateur.value?.notes || mockSelectedCollaborateur.value?.note || '')
+watch(mockSelectedCollaborateur, (c) => { if (c) localNotes.value = c.notes || c.note || '' }, { immediate: true })
+const hasNotesChanges = computed(() => localNotes.value !== (mockSelectedCollaborateur.value?.notes || mockSelectedCollaborateur.value?.note || ''))
+function startEditNotes() { editNotes.value = true }
+function cancelNotes() { localNotes.value = mockSelectedCollaborateur.value?.notes || mockSelectedCollaborateur.value?.note || ''; editNotes.value = false }
+async function saveNotes() {
+  if (!mockSelectedCollaborateur.value) return
+  savingNotes.value = true
+  try {
+    emit('save-collaborateur-notes', mockSelectedCollaborateur.value, localNotes.value)
+    editNotes.value = false
+  } finally { savingNotes.value = false }
+}
+function goToProfile() {
+  if (!mockSelectedCollaborateur.value) return
+  window.location.href = `/collaborateurs/${mockSelectedCollaborateur.value.id}`
+}
 
 const formattedDate = computed(() => {
   return new Date(props.date).toLocaleDateString('fr-FR', {
@@ -444,4 +510,20 @@ watch(() => props.collaborateur, (newCollab) => {
   max-height: 100% !important;
   margin: 0 !important;
 }
+
+/* ===== Vue Collaborateur ===== */
+.collab-view-content { padding:24px; display:flex; flex-direction:column; gap:20px; }
+.collab-view-content .header-block { display:flex; flex-direction:column; gap:10px; }
+.collab-view-content .name { margin:0; font-size:20px; font-weight:600; }
+.collab-view-content .meta-line { display:flex; gap:8px; flex-wrap:wrap; }
+.collab-view-content .pill { background:#f1f5f9; border:1px solid #e2e8f0; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:500; }
+.collab-view-content .contact-line { display:flex; gap:16px; flex-wrap:wrap; }
+.collab-view-content .contact-link { display:inline-flex; align-items:center; gap:6px; font-size:14px; color:#334155; text-decoration:none; }
+.collab-view-content .contact-link:hover { text-decoration:underline; }
+.collab-view-content .notes-zone { display:flex; flex-direction:column; gap:8px; }
+.collab-view-content .notes-header { display:flex; align-items:center; gap:8px; font-weight:600; font-size:14px; }
+.collab-view-content .notes-display { font-size:14px; line-height:1.5; background:#f8fafc; padding:12px 14px; border:1px solid #e2e8f0; border-radius:8px; min-height:54px; white-space:pre-line; cursor:text; }
+.collab-view-content .notes-edit-block { display:flex; flex-direction:column; gap:12px; }
+.collab-view-content .notes-actions { display:flex; gap:12px; }
+.collab-view-content .actions-inline { display:flex; gap:12px; }
 </style>

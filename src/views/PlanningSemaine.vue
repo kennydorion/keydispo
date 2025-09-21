@@ -461,7 +461,7 @@
           <!-- Fin du conteneur virtualisé des collaborateurs -->
     <va-modal 
       class="dispo-modal-center"
-      v-model="showDispoModal" 
+      v-model="showModal" 
       :hide-default-actions="true"
       :fullscreen="false"
       max-width="600px"
@@ -471,7 +471,7 @@
       @close="() => { modalA11y.onClose(); cancelModal() }"
     >
       <DispoEditContent
-        v-if="selectedCell"
+        v-if="selectedCell && showDispoModal"
         :selected-cell="selectedCell"
   :selected-collaborateur="getSelectedCollaborateur() || null"
         :collaborateur-color="getCollaborateurColor(getSelectedCollaborateur()?.id || '')"
@@ -510,6 +510,16 @@
         @add-new-dispo-line="addNewDispoLine"
         @update-editing-lieu="(v) => editingDispo.lieu = v"
       />
+      
+      <CollabEditContent
+        v-if="selectedCollaborateur && showCollabModal"
+        :selected-collaborateur="selectedCollaborateur"
+        :collaborateur-color="getCollaborateurColor(selectedCollaborateur.id)"
+        :get-user-initials="getUserInitials"
+        @cancel-modal="cancelModal"
+        @save-notes="handleSaveCollaborateurNotes"
+        @edit-collaborateur="handleEditCollaborateur"
+      />
     </va-modal>
 
   </div> <!-- Fin excel-planning-container -->
@@ -524,16 +534,6 @@
     :selected-dates="extractDatesFromSelection"
     :lieux-options="lieuOptions"
     @batch-created="handleBatchCreate"
-  />
-
-  <!-- Modal d'informations collaborateur -->
-  <CollaborateurInfoModal
-    v-model:visible="collaborateurInfoModal.open"
-    :collaborateur="collaborateurInfoModal.collaborateur"
-    :collaborateur-dispos="collaborateurInfoModal.dispos"
-    :collaborateur-color="collaborateurInfoModal.color"
-    @edit-collaborateur="handleEditCollaborateur"
-    @save-notes="handleSaveCollaborateurNotes"
   />
 
   <!-- Dashboard Firestore supprimé: migration vers RTDB terminée -->
@@ -577,10 +577,10 @@ import { useToast } from 'vuestic-ui'
 import FiltersHeaderNew from '../components/FiltersHeaderNew.vue'
 import { defineAsyncComponent } from 'vue'
 const BatchDisponibiliteModal = defineAsyncComponent(() => import('../components/BatchDisponibiliteModal.vue'))
-const CollaborateurInfoModal = defineAsyncComponent(() => import('../components/CollaborateurInfoModal.vue'))
 // Composant de chargement nécessaire pour l'UX
 import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
 const DispoEditContent = defineAsyncComponent(() => import('@/components/DispoEditContent.vue'))
+const CollabEditContent = defineAsyncComponent(() => import('@/components/CollabEditContent.vue'))
 // Nouveaux composants modulaires supprimés car non utilisés
 // EmergencyFirestoreDashboard supprimé: migration RTDB terminée
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
@@ -758,14 +758,6 @@ const batchModalOpen = ref(false)
 const selectedCells = ref<Set<string>>(new Set())
 // (cellLocks retiré: la grille utilise getCellLockClasses() basé sur le service)
 const lockUpdateCounter = ref(0) // Force la réactivité des verrous
-
-// Modal d'informations collaborateur
-const collaborateurInfoModal = ref({
-  open: false,
-  collaborateur: null as Collaborateur | null,
-  dispos: [] as any[],
-  color: '#3b82f6'
-})
 
 // État pour la sélection par lot
 const isSelectionMode = ref(false)
@@ -1058,9 +1050,23 @@ const typeOptions = computed(() => {
 
 // Modal & ajout états
 const showDispoModal = ref(false)
+const showCollabModal = ref(false)
 const modalA11y = useModalA11y()
 const selectedCell = ref<{ collaborateurId: string; date: string } | null>(null)
+const selectedCollaborateur = ref<Collaborateur | null>(null)
 const selectedCellDispos = ref<Disponibilite[]>([])
+const selectedCollabDispos = ref<Disponibilite[]>([])
+
+// Modal unifié : computed pour gérer l'ouverture/fermeture des deux types de modaux
+const showModal = computed({
+  get: () => showDispoModal.value || showCollabModal.value,
+  set: (value: boolean) => {
+    if (!value) {
+      showDispoModal.value = false
+      showCollabModal.value = false
+    }
+  }
+})
 
 // État d'édition de ligne
 const editingDispoIndex = ref<number | null>(null)
@@ -4757,10 +4763,13 @@ function handleEditClose() {
     console.log(`🔓 Verrou libéré pour ${cellId}`)
   }
   
-  // Fermer le modal et nettoyer l'état
+  // Fermer les modaux et nettoyer l'état
   showDispoModal.value = false
+  showCollabModal.value = false
   selectedCell.value = null
+  selectedCollaborateur.value = null
   selectedCellDispos.value = []
+  selectedCollabDispos.value = []
   
   // État nettoyé après fermeture du formulaire
 }
@@ -5792,12 +5801,10 @@ const openCollaborateurInfo = async (collaborateur: Collaborateur) => {
       dispos.push(...dayDispos)
     }
     
-    collaborateurInfoModal.value = {
-      open: true,
-      collaborateur,
-      dispos,
-      color: getCollaborateurColor(collaborateur.id)
-    }
+    // Utiliser le nouveau système modal unifié
+    selectedCollaborateur.value = collaborateur
+    selectedCollabDispos.value = dispos
+    showCollabModal.value = true
   } catch (error) {
     console.error('Erreur lors de l\'ouverture du modal collaborateur:', error)
     notify({
@@ -5836,10 +5843,10 @@ const handleSaveCollaborateurNotes = async (collaborateur: Collaborateur, notes:
       collaborateurs.value[index].notes = notes // Compatibilité
     }
     
-    // Mettre à jour aussi dans la modale si elle est ouverte
-    if (collaborateurInfoModal.value.collaborateur?.id === collaborateur.id) {
-      collaborateurInfoModal.value.collaborateur.note = notes
-      collaborateurInfoModal.value.collaborateur.notes = notes // Compatibilité
+    // Mettre à jour aussi dans la modale si elle est ouverte pour ce collaborateur
+    if (selectedCollaborateur.value?.id === collaborateur.id) {
+      selectedCollaborateur.value.note = notes
+      selectedCollaborateur.value.notes = notes // Compatibilité
     }
     
     notify({
