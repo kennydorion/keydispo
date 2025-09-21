@@ -24,15 +24,6 @@
             </p>
           </div>
         </div>
-        
-        <div class="header-stats">
-          <div class="stat-badge">
-            <span class="stat-number">{{ headerStatNumber ?? selectedCellDispos.length }}</span>
-            <span class="stat-label">
-              {{ headerStatLabel || (`Disponibilité${(headerStatNumber ?? selectedCellDispos.length) > 1 ? 's' : ''}`) }}
-            </span>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -478,15 +469,21 @@ const sortedSelectedCellDispos = computed(() => {
 /* === MODAL REDESIGNÉ === */
 .dispo-modal-redesigned {
   width: min(90vw, 550px);
-  max-height: 80vh;
+  max-height: 85vh;
   margin: auto;
   background: white;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  
+  /* Centrage vertical sur desktop */
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* === RÈGLES ANTI-DÉBORDEMENT === */
@@ -534,7 +531,6 @@ const sortedSelectedCellDispos = computed(() => {
 .header-content {
   position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
@@ -583,30 +579,6 @@ const sortedSelectedCellDispos = computed(() => {
   font-size: 0.85rem;
   margin: 0;
   opacity: 0.9;
-}
-
-.stat-badge {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  text-align: center;
-  min-width: 60px;
-  flex-shrink: 0;
-}
-
-.stat-number {
-  display: block;
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.65rem;
-  opacity: 0.8;
-  margin-top: 0.1rem;
 }
 
 /* === CONTENU PRINCIPAL OPTIMISÉ === */
@@ -1193,7 +1165,7 @@ const sortedSelectedCellDispos = computed(() => {
   position: relative;
 }
 
-/* Mobile : Plein écran, pas de scrolls */
+/* Mobile : Plein écran avec footer visible */
 @media (max-width: 768px) {
   .dispo-modal-redesigned {
     width: 100vw;
@@ -1201,6 +1173,10 @@ const sortedSelectedCellDispos = computed(() => {
     max-height: 100vh;
     border-radius: 0;
     margin: 0;
+    top: 0;
+    transform: none;
+    border: none;
+    box-shadow: none;
   }
   
   .header-section {
@@ -1218,10 +1194,6 @@ const sortedSelectedCellDispos = computed(() => {
     width: 100%;
   }
   
-  .stat-badge {
-    align-self: flex-end;
-  }
-  
   .collaborateur-avatar {
     width: 36px;
     height: 36px;
@@ -1232,9 +1204,16 @@ const sortedSelectedCellDispos = computed(() => {
     font-size: 1rem;
   }
   
+  .scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Assurer que le contenu ne déborde pas sur le footer */
+    height: calc(100vh - 160px); /* Header ~80px + Footer ~80px */
+  }
+  
   .content-section {
     padding: 1rem;
-    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -1247,6 +1226,12 @@ const sortedSelectedCellDispos = computed(() => {
     padding: 1rem;
     flex-shrink: 0;
     gap: 0.75rem;
+    /* Assurer que le footer reste collé au bas */
+    position: sticky;
+    bottom: 0;
+    background: white;
+    border-top: 2px solid var(--gray-200);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   }
   
   .cancel-button,
