@@ -460,6 +460,7 @@
 
           <!-- Fin du conteneur virtualisé des collaborateurs -->
     <va-modal 
+      class="dispo-modal-center"
       v-model="showDispoModal" 
       :hide-default-actions="true"
       :fullscreen="false"
@@ -1209,7 +1210,8 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
 
 const isMobileView = ref(false)
 const dayWidthRef = ref(124)
-const stickyLeftWidthRef = ref(260)
+// Largeur colonne collaborateurs (desktop) réduite
+const stickyLeftWidthRef = ref(190)
 const rowHeightRef = ref(65) // Réduit à 65px pour une meilleure proportion
 const rowPitchRef = computed(() => rowHeightRef.value + 1)
 
@@ -1236,7 +1238,7 @@ function computeResponsive() {
   }
   
   // Calculer les nouvelles dimensions selon la taille d'écran
-  let sticky = 310
+  let sticky = 240
   let day = 124
   let rowH = 65 // Réduit à 65px pour une meilleure proportion
   if (w <= 390) { // iPhone 12 width
@@ -1248,7 +1250,10 @@ function computeResponsive() {
   } else if (w <= 640) {
   sticky = 145; day = Math.max(79, Math.min(99, Math.floor((w - sticky - 16)/5))); rowH = 66 // Colonne plus large
   } else if (w <= 900) {
-  sticky = 170; day = Math.max(89, Math.min(109, Math.floor((w - sticky - 20)/5))); rowH = 68 // Colonne plus large
+    sticky = 160; day = Math.max(89, Math.min(109, Math.floor((w - sticky - 20)/5))); rowH = 68
+  } else {
+    // Desktop large: réduire encore si > 900
+    sticky = Math.min(240, Math.max(200, Math.floor(w * 0.16))) // approx 16% viewport, borné 200-240
   }
   
   dayWidthRef.value = day
@@ -8378,10 +8383,11 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
+/* Colonne sticky collaborateurs : largeur fortement réduite */
 .excel-corner {
-  width: var(--sticky-left, 260px);
-  min-width: var(--sticky-left, 260px);
-  flex: 0 0 var(--sticky-left, 260px); /* fixe, aligne avec collab-sticky */
+  width: var(--sticky-left, 190px);
+  min-width: var(--sticky-left, 190px);
+  flex: 0 0 var(--sticky-left, 190px);
   background: #f5f5f5;
   padding: 6px 10px; /* Aligné avec collaborateur-content: 6px 10px */
   border-right: 1px solid #e5e7eb; /* Même bordure que collab-sticky */
@@ -8403,18 +8409,31 @@ onUnmounted(() => {
   background: #3B82F6;
   color: white;
   border: none;
-  border-radius: 4px; /* Réduit de 5px → 4px */
-  padding: 4px 6px; /* Réduit de 6px 8px → 4px 6px */
+  border-radius: 4px;
+  padding: 3px 5px; /* encore plus compact */
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 3px; /* Réduit de 4px → 3px */
-  font-size: 11px; /* Réduit de 12px → 11px */
+  gap: 2px;
+  font-size: 10px; /* plus petit */
   font-weight: 500;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   width: 100%;
   justify-content: center;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 1600px) {
+  .excel-corner { width: var(--sticky-left, 210px); min-width: var(--sticky-left, 210px); flex:0 0 var(--sticky-left, 210px); }
+  .excel-corner .today-btn { font-size:11px; padding:4px 6px; }
+}
+@media (max-width: 1300px) and (min-width: 1000px) {
+  .excel-corner { width: var(--sticky-left, 180px); min-width: var(--sticky-left, 180px); flex:0 0 var(--sticky-left, 180px); }
+}
+@media (max-width: 999px) and (min-width: 769px) {
+  .excel-corner { width: var(--sticky-left, 175px); min-width: var(--sticky-left, 175px); flex:0 0 var(--sticky-left, 175px); }
+  .excel-corner .today-btn { font-size:9.5px; }
 }
 
 .excel-corner .today-btn:hover {
@@ -8447,7 +8466,7 @@ onUnmounted(() => {
 .today-overlay-header {
   position: absolute;
   top: 0;
-  left: calc(var(--grid-left-header, var(--sticky-left, 260px)) + var(--today-x-local, -9999px));
+  left: calc(var(--grid-left-header, var(--sticky-left, 220px)) + var(--today-x-local, -9999px));
   width: var(--day-width, 100px);
   height: 100%;
   pointer-events: none;
@@ -8648,7 +8667,7 @@ onUnmounted(() => {
 .grid-overlay-clip {
   position: absolute;
   top: 0;
-  left: var(--grid-left-body, var(--sticky-left, 260px)); /* origine mesurée, repli sticky */
+  left: var(--grid-left-body, var(--sticky-left, 220px)); /* origine mesurée, repli sticky */
   right: 0;
   bottom: 0;
   pointer-events: none;
@@ -8789,7 +8808,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--sticky-left, 260px);
+  width: var(--sticky-left, 220px);
   height: 100%;
   pointer-events: none;
   background: transparent;
@@ -8956,9 +8975,9 @@ onUnmounted(() => {
   position: sticky;
   left: 0;
   z-index: 1000; /* Au-dessus de tous les highlights (colonne/ligne/aujourd'hui) */
-  width: var(--sticky-left, 260px);
-  min-width: var(--sticky-left, 260px);
-  flex: 0 0 var(--sticky-left, 260px); /* ne pas rétrécir/allonger, fixe */
+  width: var(--sticky-left, 220px);
+  min-width: var(--sticky-left, 220px);
+  flex: 0 0 var(--sticky-left, 220px); /* ne pas rétrécir/allonger, fixe */
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   box-shadow: 
@@ -10362,9 +10381,9 @@ body.dragging-selection .excel-cell {
   
   /* Corner plus compact sur mobile */
   .excel-corner {
-  width: var(--sticky-left, 260px);
-  min-width: var(--sticky-left, 260px);
-  flex: 0 0 var(--sticky-left, 260px);
+  width: var(--sticky-left, 220px);
+  min-width: var(--sticky-left, 220px);
+  flex: 0 0 var(--sticky-left, 220px);
     padding: 4px 5px; /* Même padding que collaborateur-content sur mobile */
   }
   

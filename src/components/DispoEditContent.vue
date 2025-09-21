@@ -1,21 +1,15 @@
 <template>
-  <div class="dispo-modal-redesigned" v-if="selectedCell && selectedCollaborateur">
-    <!-- Header moderne avec gradient et animation -->
+  <div v-if="selectedCell && selectedCollaborateur" class="dispo-modal-redesigned" ref="modalRootRef">
+    <!-- HEADER -->
     <div class="header-section" :style="{ '--collaborateur-color': collaborateurColor }">
-      <div class="header-background">
-        <div class="gradient-overlay"></div>
-        <div class="pattern-overlay"></div>
-      </div>
-      
+      <div class="header-background"></div>
       <div class="header-content">
         <div class="collaborateur-info">
           <div class="avatar-container">
             <div class="collaborateur-avatar" :style="{ backgroundColor: collaborateurColor }">
               {{ getUserInitials(selectedCollaborateur) }}
             </div>
-            <div class="avatar-ring"></div>
           </div>
-          
           <div class="info-text">
             <h2 class="collaborateur-name">{{ selectedCollaborateur.prenom }} {{ selectedCollaborateur.nom }}</h2>
             <p class="date-info">
@@ -27,172 +21,106 @@
       </div>
     </div>
 
-    <!-- Zone de contenu scrollable unique -->
-    <div class="scrollable-content">
-      <!-- Section des disponibilités existantes -->
-      <div class="content-section">
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-title">
-              <va-icon name="event_available" color="primary" />
-              <span>Mes disponibilités</span>
-            </div>
+    <!-- CORPS SCROLLABLE -->
+  <div class="modal-body" ref="modalBodyRef">
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <va-icon name="event_available" color="primary" />
+            <span>Mes disponibilités</span>
           </div>
-
-    <div v-if="selectedCellDispos.length === 0" class="empty-state">
-            <div class="empty-illustration">
-              <va-icon name="event_busy" size="48px" color="secondary" />
-            </div>
-            <h3 class="empty-title">Aucune disponibilité</h3>
-            <p class="empty-subtitle">Commencez par ajouter votre première disponibilité pour ce jour</p>
+        </div>
+        <div v-if="selectedCellDispos.length === 0" class="empty-state">
+          <div class="empty-illustration">
+            <va-icon name="event_busy" size="48px" color="secondary" />
           </div>
-
-      <div v-else class="dispos-grid">
-      <div
-    v-for="(dispo, index) in sortedSelectedCellDispos"
-            :key="index"
-            class="dispo-card"
-            :class="[
-              `type-${dispo.type}`,
-              { 'is-editing': editingDispoIndex === index },
-              { 'is-readonly': isCollaboratorView && dispo.type === 'mission' }
-            ]"
-          >
+          <h3 class="empty-title">Aucune disponibilité</h3>
+          <p class="empty-subtitle">Ajoutez une disponibilité pour commencer</p>
+        </div>
+        <div v-else class="dispos-grid">
+          <div v-for="(dispo, index) in sortedSelectedCellDispos" :key="index" class="dispo-card" :class="[
+            `type-${dispo.type}`,
+            { 'is-editing': editingDispoIndex === index },
+            { 'is-readonly': isCollaboratorView && dispo.type === 'mission' }
+          ]">
             <div class="card-header">
               <div class="type-indicator">
                 <va-icon :name="getTypeIcon(dispo.type)" size="18px" />
                 <span class="type-text">{{ getTypeText(dispo.type) }}</span>
               </div>
-        <div v-if="dispo._cont === 'end'" class="continuation-pill" title="Suite de la veille">⤺ Suite</div>
-              
+              <div v-if="dispo._cont === 'end'" class="continuation-pill" title="Suite de la veille">⤺ Suite</div>
               <div v-if="editingDispoIndex === index" class="editing-badge">
                 <va-icon name="edit" size="12px" />
                 <span>En édition</span>
               </div>
-              
               <div v-if="isCollaboratorView && dispo.type === 'mission'" class="readonly-badge">
                 <va-icon name="visibility" size="12px" />
                 <span>Lecture seule</span>
               </div>
             </div>
-
             <div class="card-content">
               <div v-if="dispo.type === 'mission'" class="detail-row">
                 <va-icon name="place" size="14px" />
                 <span>{{ dispo.lieu || '—' }}</span>
               </div>
-              
               <div v-if="isRangeLikeDisplay(dispo)" class="detail-row">
                 <va-icon name="schedule" size="14px" />
                 <span>{{ dispo.heure_debut }} - {{ dispo.heure_fin }}</span>
                 <span v-if="isOvernightTime(dispo.heure_debut, dispo.heure_fin)" class="overnight-badge">Nuit</span>
                 <span v-if="dispo._cont === 'end'" class="continuation-badge" title="Continuation depuis la veille">⤺</span>
               </div>
-              
               <div v-else-if="isSlotDisplay(dispo)" class="detail-row">
                 <va-icon name="view_module" size="14px" />
                 <span>{{ getSlotText(slotsFor(dispo)) }}</span>
               </div>
-              
               <div v-else-if="isFullDayDisplay(dispo)" class="detail-row">
                 <va-icon name="today" size="14px" />
                 <span>Journée complète</span>
               </div>
             </div>
-
             <div v-if="!(isCollaboratorView && dispo.type === 'mission')" class="card-actions">
-              <va-button
-                @click="$emit('edit-dispo-line', index)"
-                :color="editingDispoIndex === index ? 'warning' : 'primary'"
-                :icon="editingDispoIndex === index ? 'close' : 'edit'"
-                size="small"
-                preset="plain"
-                :disabled="editingDispoIndex !== null && editingDispoIndex !== index"
-              >
+              <va-button @click="$emit('edit-dispo-line', index)" :color="editingDispoIndex === index ? 'warning' : 'primary'" :icon="editingDispoIndex === index ? 'close' : 'edit'" size="small" preset="plain" :disabled="editingDispoIndex !== null && editingDispoIndex !== index">
                 {{ editingDispoIndex === index ? 'Annuler' : 'Modifier' }}
               </va-button>
-              
-              <va-button
-                @click="$emit('remove-dispo', index)"
-                color="danger"
-                icon="delete"
-                size="small"
-                preset="plain"
-                :disabled="editingDispoIndex !== null"
-              >
+              <va-button @click="$emit('remove-dispo', index)" color="danger" icon="delete" size="small" preset="plain" :disabled="editingDispoIndex !== null">
                 Supprimer
               </va-button>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Formulaire d'édition moderne -->
-    <Transition name="form-appear" mode="out-in">
-      <div v-if="editingDispoIndex !== null || isAddingNewDispo" key="edit-form" class="content-section">
-        <div class="section-card edit-card">
+      <Transition name="form-appear" mode="out-in">
+        <div v-if="editingDispoIndex !== null || isAddingNewDispo" key="edit-form" class="section-card edit-card">
           <div class="section-header">
             <div class="section-title">
               <va-icon name="add_circle" color="success" />
               <span>{{ isAddingNewDispo ? 'Nouvelle disponibilité' : 'Modifier la disponibilité' }}</span>
             </div>
           </div>
-
           <div class="form-content">
-            <!-- Type de disponibilité -->
             <div class="form-group">
               <label class="form-label">Type de disponibilité</label>
               <div class="button-grid">
-                <button
-                  v-for="typeOpt in filteredTypeOptions"
-                  :key="typeOpt.value"
-                  :class="[
-                    'type-button',
-                    `type-${typeOpt.value}`,
-                    { 'active': editingDispo.type === typeOpt.value }
-                  ]"
-                  @click="$emit('set-editing-type', typeOpt.value)"
-                >
+                <button v-for="typeOpt in filteredTypeOptions" :key="typeOpt.value" :class="['type-button', `type-${typeOpt.value}`, { 'active': editingDispo.type === typeOpt.value }]" @click="$emit('set-editing-type', typeOpt.value)">
                   <va-icon :name="getTypeIcon(typeOpt.value)" size="20px" />
                   <span>{{ typeOpt.text }}</span>
                 </button>
               </div>
             </div>
-
-            <!-- Format horaire -->
             <div v-if="editingDispo.type !== 'indisponible'" class="form-group">
               <label class="form-label">Format horaire</label>
               <div class="button-grid">
-                <button
-                  v-for="formatOpt in timeKindOptionsFiltered"
-                  :key="formatOpt.value"
-                  :class="[
-                    'format-button',
-                    { 'active': editingDispo.timeKind === formatOpt.value }
-                  ]"
-                  @click="$emit('set-editing-time-kind', formatOpt.value)"
-                >
+                <button v-for="formatOpt in timeKindOptionsFiltered" :key="formatOpt.value" :class="['format-button', { 'active': editingDispo.timeKind === formatOpt.value }]" @click="$emit('set-editing-time-kind', formatOpt.value)">
                   <va-icon :name="getTimeKindIcon(formatOpt.value)" size="18px" />
                   <span>{{ formatOpt.text }}</span>
                 </button>
               </div>
             </div>
-
-            <!-- Lieu de mission: visible en lecture seule pour collaborateur, éditable pour admin -->
             <div v-if="editingDispo.type === 'mission'" class="form-group">
               <label class="form-label">Lieu de mission</label>
               <template v-if="!isCollaboratorView">
-                <LieuCombobox
-                  :model-value="editingDispo.lieu || ''"
-                  @update:model-value="(v: string) => $emit('update-editing-lieu', v)"
-                  :options="lieuxOptionsStrings"
-                  label=""
-                  size="large"
-                  theme="light"
-                  class="lieu-input"
-                  @create="$emit('create-lieu', $event)"
-                />
+                <LieuCombobox :model-value="editingDispo.lieu || ''" @update:model-value="(v: string) => $emit('update-editing-lieu', v)" :options="lieuxOptionsStrings" label="" size="large" theme="light" class="lieu-input" @create="$emit('create-lieu', $event)" />
               </template>
               <template v-else>
                 <div class="detail-row">
@@ -201,122 +129,49 @@
                 </div>
               </template>
             </div>
-
-            <!-- Horaires personnalisées -->
             <div v-if="editingDispo.timeKind === 'range'" class="form-group">
               <label class="form-label">Horaires</label>
               <div class="time-inputs">
                 <div class="time-field">
                   <label class="time-label">Début</label>
-                  <va-input
-                    v-model="editingDispo.heure_debut"
-                    type="time"
-                    step="900"
-                    size="large"
-                    class="time-input"
-                  />
+                  <va-input v-model="editingDispo.heure_debut" type="time" step="900" size="large" class="time-input" />
                 </div>
-                <div class="time-separator">
-                  <va-icon name="arrow_forward" size="20px" />
-                </div>
+                <div class="time-separator"><va-icon name="arrow_forward" size="20px" /></div>
                 <div class="time-field">
                   <label class="time-label">Fin</label>
-                  <va-input
-                    v-model="editingDispo.heure_fin"
-                    type="time"
-                    step="900"
-                    size="large"
-                    class="time-input"
-                    :disabled="!editingDispo.heure_debut"
-                  />
+                  <va-input v-model="editingDispo.heure_fin" type="time" step="900" size="large" class="time-input" :disabled="!editingDispo.heure_debut" />
                 </div>
               </div>
-              
-              <!-- Indication automatique pour les horaires de nuit -->
               <div v-if="isDetectedOvernight" class="form-hint">
                 <va-icon name="nightlight" size="14px" />
-                <span>Mission de nuit détectée automatiquement - sera affichée sur 2 jours ({{ editingDispo.heure_debut }} → {{ editingDispo.heure_fin }})</span>
+                <span>Mission de nuit détectée ({{ editingDispo.heure_debut }} → {{ editingDispo.heure_fin }})</span>
               </div>
             </div>
-
-            <!-- Créneaux standards -->
             <div v-if="editingDispo.timeKind === 'slot'" class="form-group">
               <label class="form-label">Créneaux disponibles</label>
               <div class="slots-grid">
-                <button
-                  v-for="slot in slotOptions"
-                  :key="slot.value"
-                  :class="[
-                    'slot-button',
-                    { 'active': editingDispo.slots?.includes(slot.value) }
-                  ]"
-                  @click="$emit('toggle-editing-slot', slot.value)"
-                >
-                  {{ slot.text }}
-                </button>
+                <button v-for="slot in slotOptions" :key="slot.value" :class="['slot-button', { 'active': editingDispo.slots?.includes(slot.value) }]" @click="$emit('toggle-editing-slot', slot.value)">{{ slot.text }}</button>
               </div>
             </div>
-
-            <!-- Actions du formulaire -->
             <div class="form-actions">
-              <va-button 
-                @click="$emit('cancel-edit-dispo')" 
-                color="secondary" 
-                size="large"
-                preset="secondary"
-              >
-                Annuler
-              </va-button>
-              <va-button 
-                @click="$emit('save-edit-dispo')" 
-                color="primary" 
-                size="large"
-                :disabled="!isEditFormValid"
-              >
-                {{ isAddingNewDispo ? 'Ajouter' : 'Sauvegarder' }}
-              </va-button>
+              <va-button @click="$emit('cancel-edit-dispo')" color="secondary" size="large" preset="secondary">Annuler</va-button>
+              <va-button @click="$emit('save-edit-dispo')" color="primary" size="large" :disabled="!isEditFormValid">{{ isAddingNewDispo ? 'Ajouter' : 'Sauvegarder' }}</va-button>
             </div>
           </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
 
-      <!-- Bouton d'ajout dans la zone scrollable -->
       <div v-if="!isAddingNewDispo" class="add-section">
-        <va-button
-          @click="$emit('add-new-dispo-line')"
-          color="success"
-          icon="add"
-          size="large"
-          :disabled="editingDispoIndex !== null"
-          class="add-button"
-        >
-          Ajouter une disponibilité
-        </va-button>
-      </div>
+        <va-button @click="$emit('add-new-dispo-line')" color="success" icon="add" size="large" :disabled="editingDispoIndex !== null" class="add-button">Ajouter une disponibilité</va-button>
       </div>
     </div>
 
-    <!-- Actions principales fixées en bas -->
-    <div class="footer-actions">
-      <va-button 
-        color="secondary" 
-        size="large"
-        @click="$emit('cancel-modal')"
-        class="cancel-button"
-      >
-        Fermer
-      </va-button>
-      <va-button 
-        color="primary" 
-        size="large"
-        :loading="saving" 
-        @click="$emit('save-dispos')"
-        class="save-button"
-      >
-        Enregistrer tout
-      </va-button>
+    <!-- FOOTER -->
+  <div class="footer-actions" ref="footerRef">
+      <va-button color="secondary" size="large" @click="$emit('cancel-modal')" class="cancel-button">Fermer</va-button>
+      <va-button color="primary" size="large" :loading="saving" @click="$emit('save-dispos')" class="save-button">Enregistrer tout</va-button>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -337,7 +192,7 @@ interface Disponibilite {
   date?: string
 }
 
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 // Récupérer les props avec définition inline pour accéder aux valeurs
 const props = defineProps<{
@@ -463,27 +318,57 @@ const sortedSelectedCellDispos = computed(() => {
     return rangeStartKey(a) - rangeStartKey(b)
   })
 })
+
+// Mesure dynamique du footer pour éviter que le contenu soit caché derrière (mobile footer fixed)
+const footerRef = ref<HTMLElement | null>(null)
+const modalRootRef = ref<HTMLElement | null>(null)
+const modalBodyRef = ref<HTMLElement | null>(null)
+
+function updateFooterHeight() {
+  if (footerRef.value && modalRootRef.value) {
+    const h = footerRef.value.offsetHeight
+    modalRootRef.value.style.setProperty('--footer-height', h + 'px')
+  }
+}
+
+onMounted(() => {
+  nextTick(() => {
+    updateFooterHeight()
+    // Détection overflow desktop pour conserver l'accessibilité
+    try {
+      const dialogEl = modalRootRef.value?.closest('.va-modal__dialog') as HTMLElement | null
+      if (dialogEl) {
+        const ro = new ResizeObserver(() => {
+          if (!dialogEl) return
+          const over = dialogEl.scrollHeight > window.innerHeight * 0.92
+          dialogEl.classList.toggle('is-overflowing', over)
+        })
+        ro.observe(dialogEl)
+      }
+    } catch {}
+  })
+  window.addEventListener('resize', updateFooterHeight)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateFooterHeight)
+})
 </script>
 
 <style scoped>
+:root { --footer-height:72px; }
 /* === MODAL REDESIGNÉ === */
 .dispo-modal-redesigned {
-  width: min(90vw, 550px);
-  max-height: 85vh;
-  margin: auto;
-  background: white;
-  border-radius: 16px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  width: min(92vw, 560px);
+  max-height: 90vh;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px -8px rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   box-sizing: border-box;
-  
-  /* Centrage vertical sur desktop */
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 /* === RÈGLES ANTI-DÉBORDEMENT === */
@@ -582,12 +467,17 @@ const sortedSelectedCellDispos = computed(() => {
 }
 
 /* === CONTENU PRINCIPAL OPTIMISÉ === */
-.scrollable-content {
+.modal-body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  padding: 1rem 1rem 0.75rem;
   background: #fafbfc;
+  scrollbar-width: thin;
 }
+
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
 
 .content-section {
   padding: 1rem;
@@ -599,15 +489,7 @@ const sortedSelectedCellDispos = computed(() => {
   max-width: 100%;
 }
 
-.section-card {
-  background: white;
-  border-radius: 8px;
-  border: 1px solid var(--gray-200);
-  margin-bottom: 1rem;
-  overflow: hidden;
-  box-sizing: border-box;
-  max-width: 100%;
-}
+.section-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; margin-bottom:1rem; overflow:hidden; }
 
 .section-header {
   padding: 0.75rem 1rem;
@@ -680,9 +562,7 @@ const sortedSelectedCellDispos = computed(() => {
   border-left: 3px solid var(--danger-color);
 }
 
-.dispo-card.type-mission {
-  border-left: 3px solid var(--primary-color);
-}
+.dispo-card.type-mission { border-left:3px solid #2196f3; }
 
 .card-header {
   display: flex;
@@ -911,21 +791,9 @@ const sortedSelectedCellDispos = computed(() => {
   box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
 }
 
-.type-button.type-mission {
-  border-color: #9c27b0;
-}
-
-.type-button.type-mission:hover {
-  border-color: #7b1fa2;
-  background: linear-gradient(135deg, rgba(156, 39, 176, 0.08) 0%, rgba(156, 39, 176, 0.04) 100%);
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.2);
-}
-
-.type-button.type-mission.active {
-  background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
-  border-color: #7b1fa2;
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
-}
+.type-button.type-mission { border-color:#2196f3; }
+.type-button.type-mission:hover { border-color:#1976d2; background:linear-gradient(135deg, rgba(33,150,243,0.09) 0%, rgba(33,150,243,0.04) 100%); box-shadow:0 4px 15px rgba(33,150,243,0.25); }
+.type-button.type-mission.active { background:linear-gradient(135deg,#2196f3 0%, #1976d2 100%); border-color:#1976d2; box-shadow:0 4px 15px rgba(33,150,243,0.35); }
 
 .form-hint {
   display: flex;
@@ -1076,18 +944,7 @@ const sortedSelectedCellDispos = computed(() => {
 }
 
 /* === FOOTER FIXE OPTIMISÉ === */
-.footer-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding: 1rem 1.5rem;
-  background: white;
-  border-top: 1px solid var(--gray-200);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0;
-  box-sizing: border-box;
-  max-width: 100%;
-}
+.footer-actions { display:flex; gap:0.75rem; justify-content:flex-end; padding:0.9rem 1.25rem; background:#fff; border-top:1px solid var(--gray-200); flex-shrink:0; box-shadow:0 -2px 6px -2px rgba(0,0,0,0.08); }
 
 .cancel-button,
 .save-button {
@@ -1158,104 +1015,53 @@ const sortedSelectedCellDispos = computed(() => {
   overflow: visible;
 }
 
-.scrollable-content {
-  overflow-x: hidden;
-  overflow-y: auto;
-  /* Position relative pour que les dropdowns se positionnent correctement */
-  position: relative;
-}
+/* .scrollable-content retiré (structure refactorisée) */
 
 /* Mobile : Plein écran avec footer visible */
 @media (max-width: 768px) {
-  .dispo-modal-redesigned {
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-    top: 0;
-    transform: none;
-    border: none;
-    box-shadow: none;
+  .dispo-modal-redesigned { 
+    width:100vw; 
+    max-width:100%; 
+    border-radius:0; 
+    height:100dvh; 
+    max-height:100dvh; 
+    height:100svh; /* si supporté */
+    max-height:100svh; 
+    display:flex; 
+    flex-direction:column; 
+    border:0; 
+    box-shadow:none; 
+    position:relative;
   }
-  
-  .header-section {
-    padding: 1rem;
-    flex-shrink: 0;
+  .header-section { position:sticky; top:0; z-index:10; }
+  .modal-body { 
+    flex:1; 
+    padding:0.85rem 0.85rem 0.5rem; 
+    overflow-y:auto; 
+    -webkit-overflow-scrolling:touch; 
+    overscroll-behavior:contain; 
+    touch-action:pan-y; 
+    min-height:0; 
+    padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom) + 1rem);
   }
-  
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+  .footer-actions { 
+    position:fixed; 
+    left:0; 
+    right:0; 
+    bottom:0; 
+    padding:0.75rem env(safe-area-inset-right) calc(0.75rem + env(safe-area-inset-bottom)) env(safe-area-inset-left); 
+    background:#fff; 
+    z-index:1000; 
+    backdrop-filter: blur(8px); 
+    -webkit-backdrop-filter: blur(8px); 
+    border-top:1px solid rgba(0,0,0,0.12);
+    box-shadow:0 -2px 10px -2px rgba(0,0,0,0.25);
+    border-radius:0; 
   }
-  
-  .collaborateur-info {
-    width: 100%;
-  }
-  
-  .collaborateur-avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-  }
-  
-  .collaborateur-name {
-    font-size: 1rem;
-  }
-  
-  .scrollable-content {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* Assurer que le contenu ne déborde pas sur le footer */
-    height: calc(100vh - 160px); /* Header ~80px + Footer ~80px */
-  }
-  
-  .content-section {
-    padding: 1rem;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  
-  .section-card {
-    margin-bottom: 1rem;
-  }
-  
-  .footer-actions {
-    padding: 1rem;
-    flex-shrink: 0;
-    gap: 0.75rem;
-    /* Assurer que le footer reste collé au bas */
-    position: sticky;
-    bottom: 0;
-    background: white;
-    border-top: 2px solid var(--gray-200);
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-  }
-  
-  .cancel-button,
-  .save-button {
-    flex: 1;
-    min-width: auto;
-  }
-
-  /* Éviter les débordements sur formulaires */
-  .form-content {
-    padding: 0.75rem;
-  }
-
-  .button-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .time-inputs {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .slots-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  .collaborateur-avatar { width:36px; height:36px; font-size:1rem; }
+  .button-grid { grid-template-columns:repeat(2,1fr); }
+  .time-inputs { flex-direction:column; gap:0.5rem; }
+  .slots-grid { grid-template-columns:repeat(2,1fr); }
+  .cancel-button, .save-button { flex:1; min-width:auto; }
 }
 </style>

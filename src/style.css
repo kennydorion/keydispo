@@ -207,6 +207,34 @@ input[type="time"]::-webkit-clear-button {
   background: transparent !important;
 }
 
+/* Centrage vertical spécifique DispoEditContent (desktop uniquement) */
+@media (min-width: 769px) {
+  .dispo-modal-center .va-modal__container {
+    display:flex !important;
+    flex-direction:column;
+    justify-content:center;
+    min-height:100vh;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+    margin:0 !important;
+  }
+  .dispo-modal-center .va-modal__dialog {
+    margin:0 auto !important;
+    max-height:90vh; /* laisse un peu d'air */
+    display:flex;
+    flex-direction:column;
+  }
+  .dispo-modal-center .va-modal__content,
+  .dispo-modal-center .va-modal__inner {
+    max-height:100%;
+  }
+  /* Si le contenu interne dépasse, on ajoute un mode overflow qui annule centrage vertical strict */
+  .dispo-modal-center .va-modal__dialog.is-overflowing {
+    align-self:center;
+    justify-content:flex-start;
+  }
+}
+
 .batch-modal.va-modal,
 .batch-modal .va-modal__container,
 .batch-modal .va-modal__dialog {
