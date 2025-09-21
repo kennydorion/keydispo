@@ -108,52 +108,50 @@ export function buildDateBlocks(aoa: any[][], headerRow: number) {
   const dateRow = headerRow - 1
   const headers = aoa[headerRow] || []
   const dates = aoa[dateRow] || []
-  
-  // Trouve la première colonne avec une date
-  let startCol = -1
+
+  // Collecte de toutes les colonnes contenant une date parseable (tolérant colonnes parasites)
+  const dateCols: Array<{ col: number; date: string }> = []
   for (let c = 0; c < dates.length; c++) {
-    if (parseFrDate(dates[c])) {
-      startCol = c
-      break
+    const d = parseFrDate(dates[c])
+    if (d) dateCols.push({ col: c, date: d })
+  }
+  if (!dateCols.length) {
+    throw new Error('❌ Aucune date détectée dans la ligne des dates (au-dessus de l\'entête).')
+  }
+
+  // Heuristique: pour chaque date trouvée, rechercher dans une fenêtre [col, col+6]
+  // les colonnes header correspondantes à Lieu / Heure DEBUT / Heure FIN (ordre quelconque)
+  const blocks: Array<{ date: string; colLieu?: number; colHd?: number; colHf?: number }> = []
+  for (const { col, date } of dateCols) {
+    const windowStart = col
+    const windowEnd = Math.min(headers.length - 1, col + 6) // limite de sécurité
+    const slice = headers.slice(windowStart, windowEnd + 1).map((x: any) => String(x || '').toLowerCase())
+
+    const local: { date: string; colLieu?: number; colHd?: number; colHf?: number } = { date }
+    for (let i = 0; i < slice.length; i++) {
+      const h = slice[i]
+      if (local.colLieu == null && /lieu/.test(h)) local.colLieu = windowStart + i
+      else if (local.colHd == null && /(debut|début)/.test(h)) local.colHd = windowStart + i
+      else if (local.colHf == null && /fin/.test(h)) local.colHf = windowStart + i
     }
+    // Même si on n'a pas les trois (certains statuts pleine journée ne fournissent que "Lieu"), on garde le bloc
+    blocks.push(local)
   }
-  
-  if (startCol < 0) {
-    throw new Error('❌ Aucune date trouvée dans la ligne au-dessus de l\'entête')
+
+  // Détection d'un éventuel tronquage: dernière date trouvée vs dernière date textuelle brute
+  const lastDetected = dateCols[dateCols.length - 1].date
+  // Recherche naïve de la dernière date brute en scannant depuis la fin
+  let lastRaw: string | null = null
+  for (let c = dates.length - 1; c >= 0; c--) {
+    const d = parseFrDate(dates[c])
+    if (d) { lastRaw = d; break }
   }
-  
-  console.log(`📅 Première date détectée en colonne ${startCol + 1}`)
-  
-  const blocks: Array<{
-    date: string
-    colLieu?: number
-    colHd?: number
-    colHf?: number
-  }> = []
-  
-  // Parse par blocs de 3 colonnes (Lieu, Heure DEBUT, Heure FIN)
-  for (let c = startCol; c < headers.length; c += 3) {
-    const dateIso = parseFrDate(dates[c])
-    if (!dateIso) continue
-    
-    const block = { date: dateIso } as any
-    const subHeaders = headers.slice(c, c + 3).map((x: any) => String(x || '').toLowerCase())
-    
-    subHeaders.forEach((header, j) => {
-      if (header.includes('lieu')) {
-        block.colLieu = c + j
-      } else if (header.includes('debut') || header.includes('début')) {
-        block.colHd = c + j
-      } else if (header.includes('fin')) {
-        block.colHf = c + j
-      }
-    })
-    
-    blocks.push(block)
+  if (lastRaw && lastRaw !== lastDetected) {
+    console.warn(`⚠️ Incohérence potentielle: dernière date détectée=${lastDetected} mais dernière date brute=${lastRaw}`)
   }
-  
-  console.log(`📊 ${blocks.length} blocs de dates détectés`)
-  return { startCol, blocks }
+
+  console.log(`📊 ${blocks.length} blocs (dynamiques) détectés sur ${dateCols.length} colonnes date.`)
+  return { startCol: dateCols[0].col, blocks }
 }
 
 /**
@@ -248,27 +246,47 @@ function parseAOA(aoa: any[][]): ParseResult {
       
       // Parse des disponibilités pour chaque date
       for (const block of blocks) {
-        const lieu = block.colLieu !== undefined ? 
-          String(row[block.colLieu] || '').trim() || null : null
-        const heureDebut = block.colHd !== undefined ? 
-          excelTimeToHHMM(row[block.colHd]) : null
-        const heureFin = block.colHf !== undefined ? 
-          excelTimeToHHMM(row[block.colHf]) : null
-        
-        // Ne créer une dispo que si au moins un champ est rempli
-        if (lieu || heureDebut || heureFin) {
+        const rawLieu = block.colLieu !== undefined ? String(row[block.colLieu] || '').trim() : ''
+        const lieu = rawLieu || null
+        const heureDebut = block.colHd !== undefined ? excelTimeToHHMM(row[block.colHd]) : null
+        const heureFin = block.colHf !== undefined ? excelTimeToHHMM(row[block.colHf]) : null
+
+        // Interprétation des statuts textuels pleines journées dans la colonne "Lieu"
+        const upperLieu = (rawLieu || '').toUpperCase()
+        let interpreted = { lieu: lieu as string | null, heure_debut: heureDebut, heure_fin: heureFin }
+        if (upperLieu === 'DISPO JOURNEE' || upperLieu === 'DISPO' || upperLieu === 'DISPONIBLE') {
+          interpreted = { lieu: '', heure_debut: null, heure_fin: null }
+        } else if (upperLieu === 'INDISPONIBLE') {
+          interpreted = { lieu: 'INDISPONIBLE', heure_debut: null, heure_fin: null }
+        }
+
+        // Créer l'enregistrement si un des éléments est renseigné ou si statut interprété
+        if (interpreted.lieu || interpreted.heure_debut || interpreted.heure_fin || upperLieu === 'INDISPONIBLE' || upperLieu.startsWith('DISPO')) {
           data.push({
             ...collaborateurBase,
             date: block.date,
-            lieu: lieu || undefined,
-            heure_debut: heureDebut || undefined,
-            heure_fin: heureFin || undefined
+            lieu: interpreted.lieu || undefined,
+            heure_debut: interpreted.heure_debut || undefined,
+            heure_fin: interpreted.heure_fin || undefined
           })
         }
       }
     }
     
     console.log(`✅ Parse terminé: ${data.length} disponibilités, ${collaborateurs.size} collaborateurs`)
+
+    // Vérification couverture temporelle (simple warning si trous majeurs)
+    const datesList = data.map(d => d.date).sort()
+    if (datesList.length) {
+      const first = datesList[0]
+      const last = datesList[datesList.length - 1]
+      const spanDays = (new Date(last).getTime() - new Date(first).getTime()) / 86400000
+      // Si plus de 180 jours entre first & last mais moins de 60 dates distinctes => suspicion de trous
+      const distinct = new Set(datesList).size
+      if (spanDays > 180 && distinct < 60) {
+        warnings.push('Couverture de dates clairsemée: de ' + first + ' à ' + last + ' mais seulement ' + distinct + ' jours distincts. Vérifier l\'alignement des colonnes dans Excel.')
+      }
+    }
     
     return {
       data,
