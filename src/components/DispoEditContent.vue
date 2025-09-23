@@ -166,15 +166,16 @@
   <div class="footer-actions" ref="footerRef">
       <va-button color="secondary" size="large" @click="$emit('cancel-modal')" class="cancel-button">Fermer</va-button>
       
-      <!-- Bouton intelligent d'enregistrement -->
+      <!-- Bouton intelligent d'enregistrement SIMPLIFIÉ -->
       <va-button 
-        v-if="isEditFormValid && !isAddingNewDispo && selectedCellDispos.length === 0"
+        v-if="!isAddingNewDispo && selectedCellDispos.length === 0"
         color="primary" 
         size="large" 
         :loading="saving" 
         @click="$emit('save-dispos')" 
         class="save-button-direct"
         icon="save"
+        :disabled="!isEditFormValid"
       >
         Enregistrer la disponibilité
       </va-button>
