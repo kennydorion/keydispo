@@ -160,16 +160,50 @@
           </div>
         </div>
       </Transition>
-
-      <div v-if="!isAddingNewDispo" class="add-section">
-        <va-button @click="$emit('add-new-dispo-line')" color="success" icon="add" size="large" :disabled="editingDispoIndex !== null" class="add-button">Ajouter une disponibilité</va-button>
-      </div>
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER OPTIMISÉ -->
   <div class="footer-actions" ref="footerRef">
       <va-button color="secondary" size="large" @click="$emit('cancel-modal')" class="cancel-button">Fermer</va-button>
-      <va-button color="primary" size="large" :loading="saving" @click="$emit('save-dispos')" class="save-button">Enregistrer tout</va-button>
+      
+      <!-- Bouton intelligent d'enregistrement -->
+      <va-button 
+        v-if="isEditFormValid && !isAddingNewDispo && selectedCellDispos.length === 0"
+        color="primary" 
+        size="large" 
+        :loading="saving" 
+        @click="$emit('save-dispos')" 
+        class="save-button-direct"
+        icon="save"
+      >
+        Enregistrer la disponibilité
+      </va-button>
+      
+      <!-- Bouton pour ajouter puis enregistrer (workflow classique) -->
+      <template v-else>
+        <va-button 
+          v-if="!isAddingNewDispo && selectedCellDispos.length === 0" 
+          @click="$emit('add-new-dispo-line')" 
+          color="success" 
+          icon="add" 
+          size="large" 
+          :disabled="editingDispoIndex !== null" 
+          class="add-button-compact"
+        >
+          Ajouter
+        </va-button>
+        
+        <va-button 
+          color="primary" 
+          size="large" 
+          :loading="saving" 
+          @click="$emit('save-dispos')" 
+          class="save-button"
+          :disabled="selectedCellDispos.length === 0 && !isAddingNewDispo"
+        >
+          Enregistrer tout
+        </va-button>
+      </template>
     </div>
   </div>
 </template>
@@ -1018,6 +1052,26 @@ onBeforeUnmount(() => {
 /* .scrollable-content retiré (structure refactorisée) */
 
 /* Mobile : Plein écran avec footer visible */
+/* Styles pour boutons optimisés */
+.save-button-direct {
+  background: linear-gradient(135deg, var(--va-success) 0%, color-mix(in srgb, var(--va-success) 85%, var(--va-primary)) 100%);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.save-button-direct:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--va-success-rgb), 0.3);
+}
+
+.add-button-compact {
+  min-width: 100px;
+  margin-right: 8px;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .dispo-modal-redesigned { 
     width:100vw; 
