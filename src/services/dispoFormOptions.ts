@@ -15,12 +15,11 @@ export interface DispoDraft {
 }
 
 export const slotOptions = [
-  { value: 'morning', text: 'Matin (06:00–12:00)' },
-  { value: 'lunch', text: 'Midi (12:00–14:00)' },
-  { value: 'afternoon', text: 'Après-midi (14:00–18:00)' },
-  { value: 'evening', text: 'Soir (18:00–22:00)' },
-  { value: 'late_evening', text: 'Fin de soirée (22:00–02:00)' },
-  { value: 'night', text: 'Nuit (22:00–06:00)' },
+  { value: 'journee', text: 'Journée' },
+  { value: 'morning', text: 'Matin' },
+  { value: 'afternoon', text: 'Après-midi' },
+  { value: 'late_evening', text: 'Fin de soirée' },
+  { value: 'night', text: 'Nuit' },
 ]
 
 export const timeKindOptions = [

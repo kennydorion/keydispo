@@ -27,17 +27,17 @@
   <!-- Indicateur de chargement (désactivé: UX non-bloquante, on utilise des placeholders gris) -->
 
     <!-- Suggestions contextuelles -->
-    <div v-if="suggestions.length" class="suggestions">
-      <va-icon name="lightbulb" size="14px" class="mr-1" />
+    <div v-if="suggestions.length" class="suggestions-compact">
+      <va-icon name="lightbulb" size="12px" class="mr-1" />
       <span v-for="(s, i) in suggestions" :key="i" class="suggestion-item">{{ s }}</span>
     </div>
 
-    <!-- Indicateur de chargement extension (non bloquant) -->
-    <div v-if="extending || (isBusy && !isInitialLoad)" class="extending-indicator">
-      <va-icon name="refresh" spin size="1rem" />
-      <span v-if="extending">Extension en cours...</span>
-      <span v-else-if="fetchingRanges">Chargement des données...</span>
-      <span v-else>Synchronisation...</span>
+    <!-- Indicateur de chargement extension (compact) -->
+    <div v-if="extending || (isBusy && !isInitialLoad)" class="extending-indicator-compact">
+      <va-icon name="refresh" spin size="12px" />
+      <span v-if="extending">Extension...</span>
+      <span v-else-if="fetchingRanges">Chargement...</span>
+      <span v-else>Sync...</span>
     </div>
 
     <!-- Indicateur de scroll rapide SUPPRIMÉ -->
@@ -180,6 +180,12 @@
           title="Nettoyer sessions expirées"
         />
       </div>
+    </div>
+
+    <!-- Indicateur du mois visible fixe -->
+    <div v-if="currentVisibleMonth" class="current-month-indicator">
+      <va-icon name="event" size="14px" />
+      {{ currentVisibleMonth }}
     </div>
 
     <!-- Aide contextuelle discrète -->
@@ -3194,7 +3200,9 @@ function getSelectedCollaborateur(): Collaborateur | null {
 }
 
 function formatModalDate(date: string) {
-  return new Date(date).toLocaleDateString('fr-FR', {
+  // CORRECTION: Utiliser T12:00:00 pour éviter les problèmes de timezone UTC
+  // Le problème "clic sur 22 → affichage 21" vient du décalage timezone
+  return new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric', 
     month: 'long',
@@ -3845,6 +3853,9 @@ function clearAllFilters() {
       // Sans scroller, force quand même le recalcul
       recomputeRowWindow(null as any)
     }
+    
+    // CORRECTION: Aller à la semaine actuelle au lieu de rester en juin
+    goToToday()
     
     // Double vérification après un court délai
     setTimeout(() => {
@@ -7680,6 +7691,57 @@ onUnmounted(() => {
 }
 
 /* Indicateur d'extension non-bloquant */
+/* Indicateur du mois visible */
+.current-month-indicator {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+  background: rgba(var(--va-primary-rgb), 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Indicateur d'extension compact */
+.extending-indicator-compact {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+/* Suggestions compactes */
+.suggestions-compact {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  background: rgba(var(--va-info-rgb), 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .extending-indicator {
   position: fixed;
   top: 20px;
