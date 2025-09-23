@@ -625,6 +625,7 @@ import type { Collaborateur } from '../types/planning'
 
 // ⚠️ OPTIMISATION D'URGENCE
 import { emergencyOptimization } from '../services/emergencyOptimization'
+import { slotOptions } from '../services/dispoFormOptions'
 import { useVirtualGrid } from '@/composables/useVirtualGrid'
 import { useCollabPresence } from '@/composables/useCollabPresence'
 import { usePlanningFilters } from '@/composables/usePlanningFilters'
@@ -1085,15 +1086,6 @@ const editingDispo = ref<Partial<Disponibilite>>({
   lieu: '',
   slots: []
 })
-
-// Options de créneaux
-const slotOptions = [
-  { text: 'Matin (06:00–12:00)', value: 'morning' },
-  { text: 'Midi (12:00–14:00)', value: 'midday' },
-  { text: 'Après-midi (14:00–18:00)', value: 'afternoon' },
-  { text: 'Soir (18:00–22:00)', value: 'evening' },
-  { text: 'Nuit (22:00–06:00)', value: 'night' },
-]
 
 // Options métiers/lieux utilisant le système centralisé
 const lieuOptions = ref<string[]>([])
