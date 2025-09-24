@@ -1661,6 +1661,16 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
     classes.push('row-hovered')
   }
   
+  // Ajouter classe pour dimanche (pour supprimer bordure droite)
+  // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
+  if (dayIndex < visibleDays.value.length) {
+    const day = visibleDays.value[dayIndex]
+    const date = new Date(day.date + 'T00:00:00')
+    if (date.getDay() === 0) { // dimanche = 0
+      classes.push('sunday')
+    }
+  }
+  
   // Plus besoin de today-column - géré par data-today dans le template
   
   cellClassesCache.set(cacheKey, classes)
@@ -1674,6 +1684,16 @@ function getDayHeaderClasses(dayIndex: number) {
   
   if (hoveredColumnIndex.value === localDayIndex) {
     classes.push('column-hovered')
+  }
+  
+  // Ajouter classe pour dimanche (pour supprimer bordure droite)
+  // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
+  if (dayIndex < visibleDays.value.length) {
+    const day = visibleDays.value[dayIndex]
+    const date = new Date(day.date + 'T00:00:00')
+    if (date.getDay() === 0) { // dimanche = 0
+      classes.push('sunday')
+    }
   }
   
   // Plus besoin de today-column - géré par data-today dans le template
@@ -8932,6 +8952,11 @@ onUnmounted(() => {
   position: relative; /* pour ancrer le séparateur ::after et éviter la coupure */
 }
 
+/* Supprimer bordure droite des dimanches car les lundi ont déjà leur séparateur */
+.excel-day-cell.sunday {
+  border-right: none;
+}
+
 /* (supprimé) séparateur sur header jours remplacé par overlay global */
 
 /* Highlight de la colonne du jour - CSS pur avec attribut data */
@@ -9369,6 +9394,11 @@ onUnmounted(() => {
   contain: layout style; /* Conteneur isolé pour limiter recalculs */
   /* Pas de transforms ici pour fiabiliser sticky */
   transition: none !important;
+}
+
+/* Supprimer bordure droite des dimanches dans le planning également */
+.excel-cell.sunday {
+  border-right: none;
 }
 
 /* ==========================================
