@@ -9884,6 +9884,8 @@ body.dragging-selection .excel-cell {
   pointer-events: none;
 }
 
+/* Suppression des séparateurs week-boundary-left - doublons avec week-sep */
+/*
 .excel-cell.week-boundary-left::before,
 .excel-day-cell.week-boundary-left::before {
   content: '';
@@ -9895,6 +9897,7 @@ body.dragging-selection .excel-cell {
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }
+*/
 
 /* Suppression des séparateurs de fin de mois dans les cellules - causent des barres indésirables */
 /*
