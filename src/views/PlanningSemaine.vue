@@ -2516,6 +2516,10 @@ const weekSegments = computed(() => {
 
 // Fonction pour déterminer si un segment de semaine marque une frontière de mois
 function isMonthBoundary(seg: { week: number; monthLabel: string }, segIndex: number): boolean {
+  // Temporairement désactivé pour éviter les barres indésirables
+  return false
+  
+  /* Logique originale commentée
   if (segIndex === 0) return false // Le premier segment n'est jamais une frontière
   
   const segments = weekSegments.value
@@ -2527,6 +2531,7 @@ function isMonthBoundary(seg: { week: number; monthLabel: string }, segIndex: nu
   const isSameWeekDifferentMonth = prevSeg.week === seg.week && prevSeg.monthLabel !== seg.monthLabel
   
   return isSameWeekDifferentMonth
+  */
 }
 
 // Gestion hover performante
@@ -8988,17 +8993,19 @@ onUnmounted(() => {
   border: 1px solid #bbdefb; /* Bordure discrète */
 }
 
-/* Fin de mois sur header jours */
+/* Suppression des séparateurs de fin de mois - causent des barres indésirables */
+/*
 .excel-day-cell.month-boundary-right::after {
   content: '';
   position: absolute;
-  right: -1px; /* chevauche pour éviter double épaisseur */
+  right: -1px;
   top: 0;
   bottom: 0;
   width: var(--week-sep-width, 3px);
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }
+*/
 
 .excel-day-cell.hovered {
   background: #e8f5e8 !important;
@@ -9889,7 +9896,8 @@ body.dragging-selection .excel-cell {
   pointer-events: none;
 }
 
-/* Fin de mois: trait identique, même épaisseur/couleur */
+/* Suppression des séparateurs de fin de mois dans les cellules - causent des barres indésirables */
+/*
 .excel-cell.month-boundary-right::after {
   content: '';
   position: absolute;
@@ -9900,6 +9908,7 @@ body.dragging-selection .excel-cell {
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }
+*/
 
 .excel-cell:hover { background: transparent; }
 
