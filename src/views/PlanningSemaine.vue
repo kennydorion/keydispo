@@ -2192,51 +2192,49 @@ watch(windowedRows, (_newRows, _oldRows) => {
 }, { immediate: false, deep: false })
 
 // CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
-watch(planningFilters.filterState, async () => {
-  
+watch(planningFilters.filterState, async (newFilters, oldFilters) => {
+  // Détecter si la plage de dates a changé
+  const dateChanged = !!oldFilters && (
+    newFilters.dateFrom !== oldFilters.dateFrom || newFilters.dateTo !== oldFilters.dateTo
+  )
+
   // Vérifier si tous les filtres sont vides (remis à zéro)
-  const allFiltersEmpty = !planningFilters.filterState.search && 
-                         !planningFilters.filterState.metier && 
-                         !planningFilters.filterState.lieu && 
-                         !planningFilters.filterState.statut && 
-                         !planningFilters.filterState.dateFrom && 
-                         !planningFilters.filterState.dateTo
-  
+  const allFiltersEmpty = !newFilters.search && 
+                         !newFilters.metier && 
+                         !newFilters.lieu && 
+                         !newFilters.statut && 
+                         !newFilters.dateFrom && 
+                         !newFilters.dateTo
+
   await nextTick()
-  
-  // Force le recalcul de la virtualisation quand les filtres changent
+
+  // Recalcul de la virtualisation quand les filtres changent
   const scroller = planningScroll.value
   if (scroller) {
-    if (allFiltersEmpty) {
-      // Si tous les filtres sont vides, aller à aujourd'hui au lieu de scroller à 0
-      // Attendre que les données se rechargent puis aller à aujourd'hui
-      setTimeout(() => {
-        goToToday()
-      }, 100)
-    } else {
-      // Réinitialise la position de scroll horizontal pour commencer au début des données filtrées
-      scroller.scrollLeft = 0
-    }
-    
-    // Recalcule complet (horizontal + vertical)
+    // Recalcule complet (horizontal + vertical) sans forcer un scroll à gauche
     recomputeWindow(scroller)
     recomputeRowWindow(scroller)
   } else {
     recomputeWindow(null as any)
     recomputeRowWindow(null as any)
   }
-  
+
   await nextTick()
-  
-  
-  // NOUVEAU: Force refresh automatique si les résultats ne s'affichent pas
+
+  // Politique de recentrage: rester/aller à aujourd'hui si la plage de dates n'a pas été modifiée,
+  // ou si tous les filtres sont vidés.
+  if (allFiltersEmpty || !dateChanged) {
+    setTimeout(() => {
+      goToToday()
+    }, 150)
+  }
+
+  // Force refresh automatique si les résultats ne s'affichent pas
   if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
-    // Attendre encore un peu puis forcer un refresh complet
     setTimeout(async () => {
       await nextTick()
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
-        // Simuler un event qui force le re-render (comme le double-clic)
         const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
         if (container) {
           container.dispatchEvent(new Event('focus'))
@@ -2250,7 +2248,7 @@ watch(planningFilters.filterState, async () => {
           forceRender()
         }
       }
-    }, 100)
+    }, 120)
   }
 }, { immediate: false, deep: true })
 
