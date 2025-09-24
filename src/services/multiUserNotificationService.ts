@@ -59,7 +59,7 @@ class MultiUserNotificationService {
    * Initialiser le service de notifications
    */
   init() {
-    console.log('🔔 Service de notifications multi-utilisateur initialisé')
+    
     this.isEnabled.value = true
     this.notifications.value = []
     this.unreadCount.value = 0
@@ -258,7 +258,7 @@ class MultiUserNotificationService {
       this.notifications.value = this.notifications.value.slice(0, 50)
     }
     
-    console.log(`🔔 Notification: ${notification.title} - ${notification.message}`)
+    
   }
 
   /**
@@ -302,15 +302,15 @@ class MultiUserNotificationService {
    */
   setEnabled(enabled: boolean) {
     this.isEnabled.value = enabled
-    console.log(`🔔 Notifications ${enabled ? 'activées' : 'désactivées'}`)
+    
   }
 
   /**
    * Mettre en surbrillance une cellule (helper pour actions)
    */
-  private highlightCell(cellId: string) {
+  private highlightCell(_cellId: string) {
     // Cette fonction pourrait être implémentée pour scroller vers la cellule
-    console.log(`🎯 Mise en surbrillance cellule: ${cellId}`)
+    
   }
 
   // ==========================================

@@ -152,10 +152,10 @@ watch(() => props.disponibilites, (newDispos, oldDispos) => {
   const newIds = newDispos?.map(d => d.id).join(',') || ''
   
   if (oldCount !== newCount || oldIds !== newIds) {
-    console.log('🔄 [COLLAB-CALENDAR] Watcher disponibilites déclenché:', {
+  /* console.log('🔄 [COLLAB-CALENDAR] Watcher disponibilites déclenché:', {
       nouvelles: newCount,
       anciennes: oldCount
-    })
+  }) */
     
     if (fcRef.value) {
       nextTick(() => {

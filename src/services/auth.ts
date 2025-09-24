@@ -120,7 +120,7 @@ export class AuthService {
       }
       await set(userRef, tenantData)
       
-      console.log(`✅ Utilisateur créé avec rôle: ${finalRole} (email: ${email})`)
+      
     } else {
       // Update last access
       await update(userRef, { lastAccess: Date.now() })

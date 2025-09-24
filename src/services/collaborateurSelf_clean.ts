@@ -192,7 +192,7 @@ export const CollaborateurSelfService = {
             // Log optimisé pour éviter le spam
             const currentTime = Date.now()
             if (!lastLogTime || currentTime - lastLogTime > 2000) {
-              console.log(`🔄 Callback RTDB temps réel: ${myDispos.length} disponibilités pour ${me.nom} ${me.prenom}`)
+              
               lastLogTime = currentTime
             }
             callback(myDispos.map(mapRTDBToSelf))

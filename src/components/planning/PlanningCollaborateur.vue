@@ -429,7 +429,7 @@ watch(selectedCells, () => {
   // Transmettre les sélections aux autres utilisateurs via RTDB
   if (collaborationService && collaborationService.isActive) {
     collaborationService.updateSelectedCells(selectedCells.value)
-    console.log('📋 Sélections collaborateur transmises:', selectedCells.value.size, 'cellules')
+    
   }
 }, { deep: true })
 
@@ -911,7 +911,7 @@ function onCalendarAdd(dateStr: string) {
 }
 
 // Nouvelle fonction pour gérer les clics sur les cellules avec des disponibilités
-function onCellClick(dateStr: string, disponibilites: CollaborateurDisponibilite[]) {
+function onCellClick(dateStr: string, _disponibilites: CollaborateurDisponibilite[]) {
   // Si on est en mode sélection, on ajouter à la sélection
   if (isSelectionMode.value) {
     const collaborateurId = currentCollaborateur.value?.id
@@ -930,7 +930,7 @@ function onCellClick(dateStr: string, disponibilites: CollaborateurDisponibilite
   // Ouvrir la modale avec la liste des disponibilités existantes pour cette date
   openCollaborateurDispoModal(dateStr)
   
-  console.log('🔍 Clic sur cellule avec disponibilités:', dateStr, disponibilites)
+  
 }
 
 // Fonction pour toggler le mode sélection sur mobile
@@ -943,7 +943,7 @@ function toggleSelectionMode() {
     selectedCells.value = new Set(selectedCells.value)
   }
   
-  console.log('📱 Mode sélection mobile:', isSelectionMode.value ? 'ACTIVÉ' : 'DÉSACTIVÉ')
+  
 }
 
 // Gestion du long press pour activer le mode sélection sur mobile
@@ -969,7 +969,7 @@ function handleTouchStart(dateStr: string, _event: TouchEvent) {
         selectedCells.value.add(cellId)
         selectedCells.value = new Set(selectedCells.value)
       }
-      console.log('📱 Long press détecté - Mode sélection activé:', dateStr)
+      
     }
   }, LONG_PRESS_DURATION)
 }
@@ -1141,7 +1141,7 @@ async function loadRange(start: string, end: string) {
       return
     }
     
-    console.log('🔄 [PARENT] Configuration listener RTDB direct pour plage:', start, 'à', end)
+    
     
     // Configurer le tenantId du service RTDB
     disponibilitesRTDBService.setTenantId(currentCollaborateur.value.tenantId)
@@ -1177,7 +1177,7 @@ async function loadRange(start: string, end: string) {
             }
           })
         
-        console.log('🔄 [PARENT] RTDB direct update:', myDispos.length, 'disponibilités')
+        
         mesDisponibilites.value = myDispos
         
         // Rafraîchir le calendrier immédiatement
@@ -1262,14 +1262,7 @@ function onCellLeave(collaborateurId: string, date: string) {
 
 // Fonction de debug pour tester la synchronisation
 function debugSyncState() {
-  console.log('🔍 État de synchronisation collaborateur:', {
-    collaborateur: currentCollaborateur.value,
-    disponibilites: mesDisponibilites.value?.length,
-    listenerActif: unsubscribe !== null,
-    collaborationActif: collaborationService?.isActive,
-    presenceUsers: presenceUsers.value?.length
-  })
-  
+  // debug output removed
   if (typeof window !== 'undefined') {
     (window as any).debugCollab = {
       currentCollaborateur: currentCollaborateur.value,
@@ -1318,18 +1311,18 @@ onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     try {
       if (!user) return
-      console.log(`🔧 [INIT] Initialisation service collaboration pour:`, user.uid)
+      
       
       // Éviter les doubles inits
   if ((collaborationService as any).isActive) {
-        console.log(`🔧 [INIT] Service déjà actif, skip init`)
+        
         return
       }
       
       const tenantId = AuthService.currentTenantId || 'keydispo'
-      console.log(`🔧 [INIT] Init avec tenantId: ${tenantId}`)
-      console.log(`🔧 [INIT] AuthService.currentTenantId: ${AuthService.currentTenantId}`)
-      console.log(`🔧 [INIT] VITE_TENANT_ID: ${import.meta.env.VITE_TENANT_ID}`)
+      
+      
+      
       
       // Essayer de récupérer le profil collaborateur pour utiliser le vrai nom
       let userName = user.displayName || user.email || 'Collaborateur'
@@ -1339,7 +1332,7 @@ onMounted(() => {
           userName = `${profil.prenom} ${profil.nom}`
         }
       } catch (error) {
-        console.log('🔧 [INIT] Pas de profil collaborateur trouvé, utilisation du nom Firebase')
+        
       }
       
       const initOptions = {
@@ -1347,12 +1340,12 @@ onMounted(() => {
         userName: userName,
         userEmail: user.email || 'collaborateur@keydispo.com'
       }
-      console.log(`🔧 [INIT] Options d'initialisation:`, initOptions)
+      
       
       const success = await (collaborationService as any).init(tenantId, initOptions)
       
       if (success) {
-        console.log(`✅ [INIT] Service collaboration initialisé avec succès`)
+        
       } else {
         console.error(`❌ [INIT] Échec de l'initialisation du service`)
         return
@@ -1376,14 +1369,9 @@ onMounted(() => {
   setupSelectionListeners()
   
   // Écouter la présence multi‑utilisateurs
-  console.log(`👥 [PRESENCE] Initialisation listener onPresenceChange`)
+  
   stopPresence = collaborationService.onPresenceChange((presence) => {
-    console.log(`👥 [PRESENCE] Changement détecté:`, {
-      count: presence.size,
-      users: Array.from(presence.values()).map(p => ({ id: p.userId, name: p.userName }))
-    })
     presenceUsers.value = Array.from(presence.values()).map(p => ({ userId: p.userId, userName: p.userName }))
-    console.log(`👥 [PRESENCE] presenceUsers mis à jour:`, presenceUsers.value)
   })
 
   // Écouter les changements d'activités pour synchroniser les indicateurs
@@ -1392,8 +1380,8 @@ onMounted(() => {
   })
 
   // Écouter les changements de sélections multi-cellules pour mettre à jour les verrous visuels
-  stopSelectionListener = collaborationService.onSelectionChange((selections) => {
-    console.log('📋 [COLLAB] Changement sélections détecté:', selections.size, 'sélections')
+  stopSelectionListener = collaborationService.onSelectionChange((_selections) => {
+    
     debouncedUpdatePresenceSets?.(50)
   })
 

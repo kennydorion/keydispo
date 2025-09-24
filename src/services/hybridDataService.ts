@@ -3,8 +3,7 @@ import {
   set as rtdbSet, 
   onValue as rtdbOnValue, 
   remove as rtdbRemove,
-  serverTimestamp as rtdbServerTimestamp,
-  Database
+  serverTimestamp as rtdbServerTimestamp
 } from 'firebase/database'
 import { rtdb } from './firebase'
 import { AuthService } from './auth'
@@ -53,7 +52,7 @@ export class HybridDataService {
         timestamp: rtdbServerTimestamp(),
         lastUpdate: Date.now()
       })
-      console.log(`📡 Session RTDB créée: ${sessionData.sessionId}`)
+      
     } catch (error) {
       console.error('❌ Erreur session RTDB:', error)
     }
@@ -66,7 +65,7 @@ export class HybridDataService {
     try {
       const sessionRef = rtdbRef(rtdb, `tenants/${this.tenantId}/sessions/${sessionId}`)
       await rtdbRemove(sessionRef)
-      console.log(`📡 Session RTDB supprimée: ${sessionId}`)
+      
     } catch (error) {
       console.error('❌ Erreur suppression session RTDB:', error)
     }
@@ -89,7 +88,7 @@ export class HybridDataService {
           })
         })
       }
-      console.log(`📡 Sessions RTDB mises à jour: ${sessions.length}`)
+      
       callback(sessions)
     })
 
@@ -120,7 +119,7 @@ export class HybridDataService {
         lastUpdate: rtdbServerTimestamp(),
         expiresAt: Date.now() + (5 * 60 * 1000) // Expire après 5 minutes
       })
-      console.log(`📡 Activité cellule RTDB: ${cellId}`)
+      
     } catch (error) {
       console.error('❌ Erreur activité cellule RTDB:', error)
     }
@@ -150,7 +149,7 @@ export class HybridDataService {
         })
       }
       
-      console.log(`📡 Activités cellules RTDB: ${activities.length}`)
+      
       callback(activities)
     })
 
@@ -178,7 +177,7 @@ export class HybridDataService {
         tenantId: this.tenantId,
         lastUpdate: rtdbServerTimestamp()
       })
-      console.log(`📡 Présence RTDB mise à jour: ${userId}`)
+      
     } catch (error) {
       console.error('❌ Erreur présence RTDB:', error)
     }
@@ -201,7 +200,7 @@ export class HybridDataService {
           })
         })
       }
-      console.log(`📡 Présence RTDB mise à jour: ${presence.length} utilisateurs`)
+      
       callback(presence)
     })
 
@@ -221,7 +220,7 @@ export class HybridDataService {
     if (unsubscribe) {
       unsubscribe()
       this.rtdbListeners.delete(listenerId)
-      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
+      
     }
   }
 
@@ -229,9 +228,8 @@ export class HybridDataService {
    * Arrêter tous les listeners RTDB
    */
   stopAllListeners() {
-    this.rtdbListeners.forEach((unsubscribe, listenerId) => {
+    this.rtdbListeners.forEach((unsubscribe) => {
       unsubscribe()
-      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
     })
     this.rtdbListeners.clear()
   }
@@ -241,12 +239,11 @@ export class HybridDataService {
    */
   async cleanupExpiredData() {
     try {
-      const now = Date.now()
-      const activitiesRef = rtdbRef(rtdb, `tenants/${this.tenantId}/cellActivities`)
+  // placeholder pour future logique de nettoyage
       
       // Cette fonction devrait être appelée périodiquement
       // pour nettoyer les données expirées
-      console.log('🧹 Nettoyage des données RTDB expirées')
+      
     } catch (error) {
       console.error('❌ Erreur nettoyage RTDB:', error)
     }

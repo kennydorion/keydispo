@@ -15,7 +15,7 @@ class WASMHighlightEngine {
     try {
       // Utiliser l'implémentation JavaScript ultra-optimisée
       this.initializeJSOptimized()
-      console.log('⚡ Moteur JavaScript ultra-optimisé initialisé')
+      
     } catch (error) {
       console.error('❌ Erreur lors de l\'initialisation:', error)
       this.isReady = false
@@ -128,7 +128,7 @@ class WASMHighlightEngine {
         const end = performance.now()
         const avgTime = (end - start) / iterations
         
-        console.log(`⚡ JS Optimisé Benchmark: ${avgTime.toFixed(4)}ms par calcul (${iterations} itérations)`)
+        
         resolve(avgTime)
       } catch (error) {
         console.error('❌ Erreur benchmark:', error)

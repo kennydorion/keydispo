@@ -329,7 +329,7 @@ const handleSave = async () => {
   saving.value = true
   
   try {
-    console.log(`🔄 RTDB: Création de disponibilité pour ${props.collaborateur.prenom} ${props.collaborateur.nom}`)
+    
     
     // Mapping des types UI vers RTDB
     const mapUITypeToRTDB = (uiType: string): 'standard' | 'formation' | 'urgence' | 'maintenance' => {
@@ -372,7 +372,6 @@ const handleSave = async () => {
     
     await disponibilitesRTDBService.createDisponibilite(dispoData)
     
-    console.log(`✅ RTDB: Disponibilité créée avec succès`)
     
     emit('save', {
       type: editingDispo.value.type,

@@ -453,13 +453,13 @@ async function saveColorChoice() {
   
   try {
     saving.value = true
-    console.log('🎨 Sauvegarde couleur de présence:', selectedColor.value, 'pour utilisateur:', user.value.uid)
+    
     
     // Utiliser la méthode du composable pour cohérence
     await updatePresenceColor(user.value.uid, selectedColor.value)
     lastSaved.value = new Date()
     
-    console.log('✅ Couleur sauvegardée, nouvelle valeur preferences:', preferences.value.presenceColor)
+    
     
     toast({
       message: 'Couleur de présence mise à jour avec succès',
@@ -594,7 +594,7 @@ async function loadAdminsList() {
   try {
     loadingAdmins.value = true
     adminsList.value = await AuthService.getAllAdmins(user.value.email!)
-    console.log('📊 Admins chargés:', adminsList.value)
+    
   } catch (error) {
     console.error('Erreur lors du chargement des admins:', error)
     toast({
@@ -706,11 +706,11 @@ async function loadUserData() {
   if (!user.value) return
   
   try {
-    console.log('🔄 Chargement des données utilisateur:', user.value.uid)
+    
     
     // Charger les préférences
     await loadPreferences(user.value.uid)
-    console.log('✅ Préférences chargées:', preferences.value)
+    
     
     // Charger le rôle utilisateur
     const userRoleData = await AuthService.getUserRole(user.value.uid)
@@ -718,7 +718,7 @@ async function loadUserData() {
     
     // Synchroniser la couleur sélectionnée avec les préférences
     selectedColor.value = preferences.value.presenceColor || ''
-    console.log('🎨 Couleur synchronisée:', selectedColor.value)
+    
     
     // Charger la liste des admins si super admin
     if (isSuperAdmin.value) {
@@ -733,7 +733,7 @@ async function loadUserData() {
 // Watcher pour synchroniser selectedColor avec les préférences
 watch(() => preferences.value.presenceColor, (newColor) => {
   selectedColor.value = newColor || ''
-  console.log('🎨 Couleur mise à jour automatiquement:', newColor)
+  
 }, { immediate: true })
 
 // Setup de l'authentification

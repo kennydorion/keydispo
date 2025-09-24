@@ -164,7 +164,7 @@ const saveDisponibilite = async () => {
 
 // Chargement RTDB
 const loadDisponibilites = async () => {
-  if (!currentCollaborateur.value) { console.log('🔄 Pas de collaborateur, on attend.'); return }
+  if (!currentCollaborateur.value) { return }
   if (currentListener.value) { disponibilitesRTDBService.stopListener(currentListener.value); currentListener.value = null }
 
   const firstDay = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
@@ -173,12 +173,12 @@ const loadDisponibilites = async () => {
   const endDate = new Date(lastDay); const lastDayOfWeek = lastDay.getDay(); const daysToSunday = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek; endDate.setDate(lastDay.getDate() + daysToSunday)
   const start = startDate.toISOString().split('T')[0]; const end = endDate.toISOString().split('T')[0]
 
-  console.log(`🔄 Création listener RTDB ${start} → ${end}`)
-  console.log('👤 Collaborateur courant:', currentCollaborateur.value)
+  
+  
 
   currentListener.value = await disponibilitesRTDBService.listenToDisponibilitesByDateRange(start, end, (dispos) => {
-    console.log('📡 RTDB CALLBACK: ', dispos.length, 'dispos reçues')
-    if (dispos.length > 0) console.log('📡 Exemple:', dispos[0])
+    
+    
     // Filtrer par collaborateur (email → id → nom+prénom)
     const collab = currentCollaborateur.value
     const mesDispos = dispos.filter((dispo: any) => {
@@ -190,7 +190,7 @@ const loadDisponibilites = async () => {
       }
       return false
     })
-    console.log(`🎯 Dispos filtrées pour le collaborateur: ${mesDispos.length}`)
+    
     disponibilites.value = mesDispos
   })
 }
@@ -203,19 +203,19 @@ onMounted(() => {
   activeTenant.value = AuthService.currentTenantId
   try {
     disponibilitesRTDBService.setTenantId(AuthService.currentTenantId)
-    console.log('🏷️ TenantId appliqué au RTDB service:', AuthService.currentTenantId)
+    
   } catch (e) { console.warn('⚠️ setTenantId RTDB:', e) }
 
   onAuthStateChanged(auth, async (user) => {
     currentUser.value = user
-    console.log('👤 Auth changé:', user?.email)
+    
     if (user?.email) {
       try {
         // Charger tous les collaborateurs et filtrer par email
         const allCollaborateurs = await CollaborateursServiceV2.loadCollaborateurs(AuthService.currentTenantId)
         const collab = allCollaborateurs.find((c: any) => c.email === user.email)
-        if (collab) { currentCollaborateur.value = collab; console.log('👤 Collaborateur trouvé:', collab) }
-        else { console.log('❌ Aucun collaborateur pour', user.email) }
+  if (collab) { currentCollaborateur.value = collab }
+  else { /* no collaborator for user */ }
       } catch (e) { console.error('❌ Erreur loadCollaborateur:', e) }
     }
   })

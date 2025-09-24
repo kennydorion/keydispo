@@ -59,7 +59,7 @@ export function getQueryLimit(type: 'disponibilites' | 'sessions' | 'activities'
  */
 export function logFirestoreOperation(operation: string, collection: string, count: number) {
   if (EMERGENCY_FIRESTORE_CONFIG.LOG_ALL_FIRESTORE_OPERATIONS) {
-    console.log(`🔥 [${operation}] ${collection}: ${count} lectures`)
+    
   }
   
   if (count > EMERGENCY_FIRESTORE_CONFIG.ALERT_ON_HIGH_READS) {

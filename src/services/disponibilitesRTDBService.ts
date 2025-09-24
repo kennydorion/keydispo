@@ -150,7 +150,6 @@ export class DisponibilitesRTDBService {
    */
   public setTenantId(tenantId: string) {
     if (!tenantId || tenantId === this.tenantId) return
-    console.log(`🔧 RTDB Service: changement de tenantId -> ${tenantId} (ancien: ${this.tenantId})`)
     this.tenantId = tenantId
     // Invalider le cache lié aux dispos car le tenant change
     this.cache.invalidate('dispos_')
@@ -340,9 +339,6 @@ export class DisponibilitesRTDBService {
    * Formater une disponibilité pour RTDB (structure plate)
    */
   private formatDispoForRTDB(dispo: Partial<DisponibiliteRTDB>): any {
-    // DEBUG: Tracer l'email avant formatage
-    console.log('🔧 formatDispoForRTDB - dispo.email entrant:', dispo.email)
-    
     const formatted: any = {
       id: dispo.id || this.generateDispoId(),
       collaborateurId: dispo.collaborateurId || '',
@@ -364,9 +360,6 @@ export class DisponibilitesRTDBService {
       isArchived: dispo.isArchived || false,
       hasConflict: dispo.hasConflict || false
     }
-
-    // DEBUG: Tracer l'email après formatage
-    console.log('🔧 formatDispoForRTDB - formatted.email sortant:', formatted.email)
 
     // Ajouter les propriétés optionnelles seulement si elles ne sont pas undefined
     if (dispo.type !== undefined) {
@@ -397,14 +390,7 @@ export class DisponibilitesRTDBService {
    */
   async createDisponibilite(dispo: Partial<DisponibiliteRTDB>): Promise<string> {
     try {
-      // DEBUG: Tracer l'email reçu
-      console.log('🚀 RTDB Service - createDisponibilite called with:', dispo)
-      console.log('📧 Email dans la disponibilité reçue:', dispo.email)
-      
   const formattedDispo = this.formatDispoForRTDB(dispo)
-      
-      // DEBUG: Tracer l'email après formatage
-      console.log('📧 Email après formatage:', formattedDispo.email)
       
       // Écrire sous la date si présente (structure par date), sinon fallback racine
       const basePath = `tenants/${this.tenantId}/disponibilites`
@@ -414,9 +400,7 @@ export class DisponibilitesRTDBService {
       const dispoRef = rtdbRef(rtdb, dispoPath)
       
       await rtdbSet(dispoRef, formattedDispo)
-      
-      console.log(`✅ Disponibilité créée en RTDB: ${formattedDispo.id}`)
-      console.log('📧 Email final sauvegardé:', formattedDispo.email)
+
       return formattedDispo.id
     } catch (error) {
       console.error('❌ Erreur création disponibilité RTDB:', error)
@@ -513,8 +497,7 @@ export class DisponibilitesRTDBService {
       } else {
         await rtdbSet(rtdbRef(rtdb, currentPath), updatedDispo)
       }
-      
-      console.log(`✅ Disponibilité mise à jour en RTDB: ${id}`)
+
     } catch (error) {
       console.error('❌ Erreur mise à jour disponibilité RTDB:', error)
       throw error
@@ -532,8 +515,7 @@ export class DisponibilitesRTDBService {
         return
       }
       await rtdbRemove(rtdbRef(rtdb, path))
-      
-      console.log(`✅ Disponibilité supprimée de RTDB: ${id}`)
+
     } catch (error) {
       console.error('❌ Erreur suppression disponibilité RTDB:', error)
       throw error
@@ -690,7 +672,6 @@ export class DisponibilitesRTDBService {
         .filter(d => d.tenantId === this.tenantId && d.collaborateurId === collaborateurId)
         .sort((a, b) => this.compareDispos(a, b))
       
-      console.log(`👤 RTDB: ${disponibilites.length} disponibilités trouvées pour collaborateur ${collaborateurId}`)
       return disponibilites
     } catch (error) {
       console.error('❌ Erreur requête collaborateur RTDB:', error)
@@ -750,7 +731,6 @@ export class DisponibilitesRTDBService {
             .filter(d => d.tenantId === this.tenantId && d.date >= startDate && d.date <= endDate)
             .sort((a, b) => this.compareDispos(a, b))
           this.cache.set(cacheKey, filtered, listenerId)
-          console.log(`🔄 Listener par jour: ${filtered.length} disponibilités (${days.length} jours)`) 
           callback(filtered)
         }
 
@@ -817,7 +797,6 @@ export class DisponibilitesRTDBService {
     if (stopFunction) {
       stopFunction()
       this.listeners.delete(listenerId)
-      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
     }
   }
 
@@ -825,9 +804,8 @@ export class DisponibilitesRTDBService {
    * Arrêter tous les listeners
    */
   stopAllListeners(): void {
-    this.listeners.forEach((stopFunction, listenerId) => {
+    this.listeners.forEach((stopFunction, _listenerId) => {
       stopFunction()
-      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
     })
     this.listeners.clear()
   }
@@ -843,8 +821,6 @@ export class DisponibilitesRTDBService {
     try {
       const promises = disponibilites.map(dispo => this.createDisponibilite(dispo))
       const ids = await Promise.all(promises)
-      
-      console.log(`✅ ${ids.length} disponibilités créées en batch RTDB`)
       return ids
     } catch (error) {
       console.error('❌ Erreur création batch disponibilités RTDB:', error)
@@ -859,8 +835,6 @@ export class DisponibilitesRTDBService {
     try {
       const promises = ids.map(id => this.deleteDisponibilite(id))
       await Promise.all(promises)
-      
-      console.log(`✅ ${ids.length} disponibilités supprimées en batch RTDB`)
     } catch (error) {
       console.error('❌ Erreur suppression batch disponibilités RTDB:', error)
       throw error

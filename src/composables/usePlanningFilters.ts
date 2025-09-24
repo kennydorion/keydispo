@@ -317,45 +317,11 @@ export function usePlanningFilters() {
     const start = performance.now()
     isFiltering.value = true
     
-    console.log(`🔍 [DEBUG] DÉBUT filterDisponibilites - Total dispos: ${disponibilites.length}, Total collabs: ${filteredCollaborateurs.length}`)
-    console.log(`🔍 [DEBUG] Filtres actifs:`, {
-      dateFrom: globalFilterState.dateFrom,
-      dateTo: globalFilterState.dateTo,
-      lieu: globalFilterState.lieu,
-      statut: globalFilterState.statut
-    })
+    
     
     // ⚠️ DEBUG SPÉCIAL POUR LE CAS ADV
     if (globalFilterState.lieu === 'ADV' && globalFilterState.dateFrom === '2025-09-15') {
-      console.log(`🚨 [DEBUG ADV] Cas spécial détecté: lieu=ADV + date=15-09-2025`)
-      console.log(`🚨 [DEBUG ADV] Toutes les dispos pour cette date:`)
-      const disposDuJour = disponibilites.filter(d => d.date === '2025-09-15')
-      disposDuJour.forEach((d, i) => {
-        console.log(`🚨 [DEBUG ADV] Dispo ${i+1}:`, {
-          nom: d.nom,
-          prenom: d.prenom,
-          metier: d.metier,
-          lieu: d.lieu,
-          type: d.type,
-          collaborateurId: d.collaborateurId,
-          date: d.date
-        })
-      })
-      
-      console.log(`🚨 [DEBUG ADV] Dispos avec lieu contenant "ADV" (case insensitive):`)
-      const advDispos = disponibilites.filter(d => 
-        d.date === '2025-09-15' && 
-        d.lieu && 
-        d.lieu.toString().toLowerCase().includes('adv')
-      )
-      advDispos.forEach((d, i) => {
-        console.log(`🚨 [DEBUG ADV] Match ${i+1}:`, {
-          nom: d.nom,
-          prenom: d.prenom,
-          lieu: d.lieu,
-          exact: d.lieu.toString().trim().toLowerCase() === 'adv'
-        })
-      })
+      // Debug spécial désactivé
     }
     
     try {
@@ -363,14 +329,7 @@ export function usePlanningFilters() {
       
       // Debug: examiner quelques disponibilités initiales
       if (results.length > 0) {
-        console.log(`🔍 [DEBUG] Exemples de dispos initiales:`, results.slice(0, 3))
-        console.log(`🔍 [DEBUG] Format dates exemples:`, results.slice(0, 5).map(d => ({
-          id: d.id, 
-          date: d.date, 
-          type: typeof d.date,
-          nom: d.nom,
-          prenom: d.prenom
-        })))
+        // traces de debug désactivées
       }
       
       // Filtre par collaborateurs filtrés (priorité à l'ID, fallback email, puis nom/prénom normalisés)
@@ -407,33 +366,24 @@ export function usePlanningFilters() {
         return byId || byEmail || byName
       })
       
-      console.log(`🔍 [DEBUG] Après filtre collaborateurs: ${results.length} dispos`)
+      
       
       // Filtre par plage de dates
       if (globalFilterState.dateFrom) {
-        const beforeLength = results.length
         results = results.filter(dispo => {
           const comparison = dispo.date >= globalFilterState.dateFrom
-          if (!comparison && Math.random() < 0.1) { // Debug aléatoire pour éviter trop de logs
-            console.log(`🔍 [DEBUG] Dispo exclue par dateFrom: ${dispo.date} < ${globalFilterState.dateFrom} (${dispo.nom} ${dispo.prenom})`)
+          if (!comparison) {
           }
           return comparison
         })
-        console.log(`🔍 [DEBUG] Après filtre dateFrom (${globalFilterState.dateFrom}): ${beforeLength} → ${results.length} dispos`)
         
-        // Debug: montrer quelques dates restantes
-        if (results.length > 0) {
-          const dateRange = results.map(d => d.date).sort()
-          console.log(`🔍 [DEBUG] Plage de dates après filtre: ${dateRange[0]} → ${dateRange[dateRange.length - 1]}`)
-          console.log(`🔍 [DEBUG] Premières dates filtrées:`, dateRange.slice(0, 10))
-        }
       }
       
       if (globalFilterState.dateTo) {
         results = results.filter(dispo => 
           dispo.date <= globalFilterState.dateTo
         )
-        console.log(`🔍 [DEBUG] Après filtre dateTo (${globalFilterState.dateTo}): ${results.length} dispos`)
+        
       }
       
       // Filtre par lieu
@@ -444,7 +394,7 @@ export function usePlanningFilters() {
           : globalFilterState.lieu
         const requestedLieu = (rawLieu || '').toString().trim().toLowerCase()
 
-        console.log(`🔍 [DEBUG] Filtre lieu - objet:`, globalFilterState.lieu, `-> valeur extraite: "${requestedLieu}"`)
+        
 
         // Normalisation simple pour matcher des lieux composés (ex: "ADV - Paris")
         const normalize = (s: string) => s.normalize('NFKD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim()
@@ -458,7 +408,7 @@ export function usePlanningFilters() {
           return match
         })
 
-        console.log(`🔍 [DEBUG] Après filtre lieu ("${requestedLieu}"): ${results.length} dispos`)
+        
       }
       
       // Filtre par statut
@@ -476,12 +426,11 @@ export function usePlanningFilters() {
         }
         const statutValue = normalizeStatut(rawStatut as string)
         
-        console.log(`🔍 [DEBUG] Filtrage par statut: "${statutValue}" (type: ${typeof globalFilterState.statut})`)
-        console.log(`🔍 [DEBUG] Nombre de dispos avant filtre statut: ${results.length}`)
+        
         
         // Debug: examiner quelques disponibilités
         if (results.length > 0) {
-          console.log(`🔍 [DEBUG] Exemple de disponibilités à analyser:`, results.slice(0, 3))
+          // traces de debug désactivées
         }
         
         results = results.filter(dispo => {
@@ -505,21 +454,9 @@ export function usePlanningFilters() {
             
             // ⚠️ DEBUG SPÉCIAL POUR LES MISSIONS ADV
             if (globalFilterState.lieu === 'ADV' && statutValue === 'mission') {
-              console.log(`🚨 [DEBUG MISSION ADV] ${dispo.nom} ${dispo.prenom}:`, {
-                lieu: dispo.lieu,
-                typeOriginal: dispo.type,
-                kindResolved: kind.type,
-                mappedType: mappedType,
-                isMatch: match,
-                resolveKindResult: kind
-              })
+              // trace désactivée
             }
             
-            if (!match) {
-              console.log(`🔍 [DEBUG] Dispo rejetée: ${dispo.nom} ${dispo.prenom} - ${dispo.date} - lieu: "${dispo.lieu}" - type résolu: "${kind.type}" -> "${mappedType}" != "${statutValue}"`)
-            } else {
-              console.log(`🔍 [DEBUG] Dispo acceptée: ${dispo.nom} ${dispo.prenom} - ${dispo.date} - lieu: "${dispo.lieu}" - type résolu: "${kind.type}" -> "${mappedType}"`)
-            }
             
             return match
           } catch (error) {
@@ -528,10 +465,6 @@ export function usePlanningFilters() {
           }
         })
         
-        console.log(`🔍 [DEBUG] Nombre de dispos après filtre statut: ${results.length}`)
-        if (!globalFilterState.lieu) {
-          console.log('🔍 [DEBUG] Aucun filtre lieu actif; toutes missions matchées sont gardées')
-        }
       }
       
       return results
@@ -571,18 +504,10 @@ export function usePlanningFilters() {
    * Met à jour un filtre spécifique
    */
   function updateFilter(key: keyof FilterState, value: string) {
-    const oldValue = globalFilterState[key]
-    globalFilterState[key] = value
+  globalFilterState[key] = value
     
     // Log pour debug
-    if (key === 'dateFrom' || key === 'dateTo') {
-      console.log(`🗓️ [FILTERS] ${key} mis à jour: ${oldValue} → ${value}`)
-    }
     
-    // Log pour debug des filtres lieu/statut
-    if (key === 'lieu' || key === 'statut') {
-      console.log(`🎯 [FILTERS] ${key} mis à jour: ${oldValue} → ${value}`)
-    }
     
     // Si on efface les dates, effacer aussi lieu et statut
     if ((key === 'dateFrom' || key === 'dateTo') && !value) {
@@ -590,7 +515,7 @@ export function usePlanningFilters() {
       if (!hasAnyDate) {
         globalFilterState.lieu = ''
         globalFilterState.statut = ''
-        console.log('🧹 [FILTERS] Lieu et statut effacés (pas de dates)')
+        
       }
     }
   }
@@ -710,7 +635,7 @@ export function usePlanningFilters() {
   function refreshFilters() {
     // Force la réactivité des computed
     // Les filtres se mettront à jour automatiquement grâce à la réactivité Vue
-    console.log('🔄 [FILTERS] Refresh des filtres')
+    
   }
 
   // Enregistrement pour les mises à jour temps réel

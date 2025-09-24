@@ -449,7 +449,7 @@ function onFileSelected(event: Event) {
   const target = event.target as HTMLInputElement
   const files = target.files
   if (files && files.length > 0) {
-    console.log('📁 Fichier sélectionné:', files[0])
+    
     selectedFile.value = [files[0]]
   }
 }
@@ -460,7 +460,7 @@ async function parseFile() {
   parsing.value = true
   
   try {
-    console.log('📊 Début du parsing Excel...')
+    
     const result = await parseWorkbook(selectedFile.value[0])
     parseResult.value = result
     
@@ -468,7 +468,7 @@ async function parseFile() {
     validationResult.value = validateImportDataRTDB(result.data)
     
     step.value = 'preview'
-    console.log('✅ Parsing terminé:', result.stats)
+    
     
   } catch (error) {
     console.error('❌ Erreur parsing:', error)
@@ -485,7 +485,7 @@ async function startImport() {
   step.value = 'importing'
   
   try {
-    console.log('🚀 Début de l\'import...')
+    
     
     // Vérification de l'authentification
     const { auth } = await import('../../services/firebase')
@@ -495,11 +495,11 @@ async function startImport() {
       throw new Error('Utilisateur non authentifié. Veuillez vous connecter.')
     }
     
-    console.log('👤 Utilisateur authentifié:', currentUser.email)
+    
     
     const tenantId = (import.meta as any).env?.VITE_TENANT_ID || 'keydispo'
     disponibilitesRTDBService.setTenantId(tenantId)
-    console.log('🏢 Tenant ID:', tenantId)
+    
     
     const stats = await importToRTDB(
       parseResult.value.data,
@@ -511,7 +511,7 @@ async function startImport() {
     
     importStats.value = stats
     
-    console.log('✅ Import terminé:', stats)
+    
     
     // Recharger les informations du dernier import
     await loadLastImportInfo()

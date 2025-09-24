@@ -19,8 +19,7 @@ export function installMultiUserSystem(app: App) {
     console.warn('⚠️ Plugin multi-utilisateur déjà installé')
     return
   }
-  
-  console.log('🚀 Initialisation du système multi-utilisateur unifié...')
+
   isPluginInstalled = true
   
   // Initialiser le service quand l'utilisateur est connecté
@@ -28,11 +27,9 @@ export function installMultiUserSystem(app: App) {
     if (user) {
       // Éviter la ré-initialisation pour le même utilisateur
       if (lastInitializedUserId === user.uid) {
-        console.log('👤 Utilisateur déjà initialisé, ignoré')
         return
       }
       
-      console.log('👤 Utilisateur connecté, vérification du rôle...')
       
       try {
         // Attendre un petit délai pour permettre aux vérifications de rôle 
@@ -41,7 +38,6 @@ export function installMultiUserSystem(app: App) {
         
         // Vérifier si l'utilisateur est toujours connecté après le délai
         if (!auth.currentUser) {
-          console.log('👤 Utilisateur déconnecté pendant la vérification du rôle')
           return
         }
         
@@ -51,17 +47,14 @@ export function installMultiUserSystem(app: App) {
         // Le système multi-utilisateur n'est nécessaire que pour les admins et éditeurs
         // Les simples "viewer" n'ont pas besoin des fonctionnalités collaboratives avancées
         if (userRole?.role === 'viewer') {
-          console.log('👥 Utilisateur avec rôle "viewer" détecté, système multi-utilisateur désactivé')
           return
         }
         
         // Si pas de rôle trouvé, probablement pas un membre du tenant
         if (!userRole) {
-          console.log('❓ Aucun rôle trouvé, système multi-utilisateur désactivé')
           return
         }
         
-        console.log(`👤 Utilisateur ${userRole.role} détecté, démarrage du système multi-utilisateur`)
         
         // Obtenir le tenantId depuis la configuration
         const tenantId = AuthService.currentTenantId || 'keydispo'
@@ -81,19 +74,17 @@ export function installMultiUserSystem(app: App) {
             userName: user.displayName || user.email || 'Utilisateur',
             userEmail: user.email || 'user@keydispo.com'
           })
-          console.log('✅ Service hybride multi-utilisateur démarré')
+          // service hybride prêt
         } catch (error) {
           console.warn('⚠️ Service hybride ignoré:', error)
         }
         
         // Marquer cet utilisateur comme initialisé
         lastInitializedUserId = user.uid
-        console.log('✅ Système multi-utilisateur démarré avec succès')
       } catch (error: any) {
         console.warn('⚠️ Erreur lors du démarrage du système multi-utilisateur (sera ignorée):', error)
       }
     } else {
-      console.log('👤 Utilisateur déconnecté, arrêt du système multi-utilisateur')
       lastInitializedUserId = null
       try {
         // Indiquer une raison de signout pour éviter des écritures pendant teardown
@@ -112,8 +103,7 @@ export function installMultiUserSystem(app: App) {
   
   // Ajouter le service aux propriétés globales si nécessaire
   app.config.globalProperties.$multiUserService = multiUserService
-  
-  console.log('✅ Plugin système multi-utilisateur installé')
+
 }
 
 export default {

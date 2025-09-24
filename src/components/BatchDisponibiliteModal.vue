@@ -204,10 +204,7 @@ const avatarColor = computed(() => {
   return c.color || getUserColor(c.id)
 })
 
-const collaborateurName = computed(() => {
-  if (!props.selectedCollaborateur) return ''
-  return `${props.selectedCollaborateur.prenom} ${props.selectedCollaborateur.nom}`
-})
+// collaborateurName non utilisé
 
 const isFormValid = computed(() => isDraftValid(editingDispo.value as any))
 
@@ -285,7 +282,6 @@ const handleSave = async () => {
   saving.value = true
   
   try {
-    console.log(`🔄 RTDB: Création de ${props.selectedDates.length} disponibilité(s) pour ${collaborateurName.value}`)
 
     // Préparer les disponibilités pour le service RTDB
     const disponibilitesToCreate: any[] = []
@@ -321,10 +317,7 @@ const handleSave = async () => {
         updatedBy: 'batch-modal'
       }
       
-      console.log(`🔥 Préparation dispo RTDB pour ${date}:`, baseDispoData, {
-        typeUI: editingDispo.value.type,
-        typeRTDB: baseDispoData.type
-      })
+      
       disponibilitesToCreate.push(baseDispoData)
       allCreatedDates.push(date)
       
@@ -343,7 +336,7 @@ const handleSave = async () => {
             _cont: 'end' as const // Marquer comme continuation overnight
           }
           
-          console.log(`🌙 Préparation dispo overnight pour ${nextDay}:`, nextDayData)
+          
           disponibilitesToCreate.push(nextDayData)
           allCreatedDates.push(nextDay)
         }
@@ -351,9 +344,7 @@ const handleSave = async () => {
     }
     
     // Créer toutes les disponibilités via le service RTDB
-    const createdIds = await disponibilitesRTDBService.createMultipleDisponibilites(disponibilitesToCreate)
-    
-    console.log(`✅ RTDB: ${createdIds.length} disponibilité(s) créée(s) avec succès`)
+  await disponibilitesRTDBService.createMultipleDisponibilites(disponibilitesToCreate)
     
     // Émettre l'événement avec toutes les dates créées
     emit('batch-created', {

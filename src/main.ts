@@ -7,6 +7,16 @@ import { installMultiUserSystem } from './services/multiUserPlugin'
 import { InterfaceManager } from './services/interfaceManager'
 import './style.css'
 
+// Garde globale pour désactiver les logs verbeux (réactivables via VITE_ENABLE_DEBUG_LOGS="true")
+const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+if (!enableDebugLogs) {
+  const noop = () => {}
+  console.log = noop
+  console.debug = noop
+  console.info = noop
+  console.trace = noop
+}
+
 // Création du routeur
 const router = createRouter({
   history: createWebHistory(),

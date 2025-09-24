@@ -29,14 +29,7 @@ const firebaseConfig = {
   appId: useEmulator ? 'app-fake' : import.meta.env.VITE_FB_APP_ID,
 } as const
 
-// Log compact sans exposer les secrets, pour diagnostiquer les manques en prod
-console.log('🔧 Configuration Firebase:', {
-  useEmulator,
-  projectId: firebaseConfig.projectId,
-  hasApiKey: Boolean(firebaseConfig.apiKey),
-  hasAuthDomain: Boolean(firebaseConfig.authDomain),
-  hasAppId: Boolean(firebaseConfig.appId)
-})
+// Log compact supprimé en prod (géré par garde globale)
 
 // Détection d'une apiKey factice en prod
 if (!useEmulator && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('fake')) {
@@ -87,18 +80,15 @@ let app: any
 // Protection globale contre les multiples initialisations
 if (typeof window !== 'undefined') {
   if (window.__FIREBASE_APP__) {
-    app = window.__FIREBASE_APP__
-    console.log('🔄 Firebase App récupérée depuis cache global')
+  app = window.__FIREBASE_APP__
   } else {
     try {
       // Vérifier si des apps existent déjà
       const existingApps = getApps()
       if (existingApps.length > 0) {
-        app = existingApps[0]
-        console.log('🔄 Firebase App existante récupérée')
+  app = existingApps[0]
       } else {
-        app = initializeApp(firebaseConfig)
-        console.log('🆕 Nouvelle Firebase App initialisée')
+  app = initializeApp(firebaseConfig)
       }
       // Stocker dans le cache global
       window.__FIREBASE_APP__ = app
@@ -106,7 +96,7 @@ if (typeof window !== 'undefined') {
       if (error.code === 'app/duplicate-app') {
         app = getApp()
         window.__FIREBASE_APP__ = app
-        console.log('🔄 Firebase App récupérée après erreur duplicate')
+  // duplicate handled silently
       } else {
         throw error
       }
@@ -153,13 +143,13 @@ if (shouldForceLongPolling) {
     experimentalForceLongPolling: true,
     experimentalLongPollingOptions: { timeoutSeconds: 25 },
   }
-  console.log('📡 Firestore transport: force long-polling', { reason: forceLongPollFromEnv ? 'env' : 'safari-detected' })
+  // transport info suppressed (debug-only)
 } else {
   dbSettings = {
     experimentalAutoDetectLongPolling: true,
     experimentalLongPollingOptions: { timeoutSeconds: 25 },
   }
-  console.log('📡 Firestore transport: auto-detect long-polling')
+  // transport info suppressed (debug-only)
 }
 
 export const db = initializeFirestore(app, dbSettings)
@@ -168,33 +158,30 @@ export const rtdb = getDatabase(app)
 
 // Connexion aux émulateurs (local uniquement)
 if (useEmulator) {
-  console.log('🧪 Connexion aux émulateurs Firebase...')
   const firestorePort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || '8180')
   const authPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || '9199')
   const rtdbPort = parseInt(import.meta.env.VITE_DATABASE_EMULATOR_PORT || '9200')
   
   try {
     connectAuthEmulator(auth, `http://127.0.0.1:${authPort}`, { disableWarnings: true })
-    console.log(`✅ Émulateur Auth connecté sur 127.0.0.1:${authPort}`)
+  // emulator auth connected
   } catch (error) {
     console.warn('⚠️ Auth émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
   }
   
   try {
     connectFirestoreEmulator(db, '127.0.0.1', firestorePort)
-    console.log(`✅ Émulateur Firestore connecté sur 127.0.0.1:${firestorePort}`)
+  // emulator firestore connected
   } catch (error) {
     console.warn('⚠️ Firestore émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
   }
   
   try {
   connectDatabaseEmulator(rtdb, '127.0.0.1', rtdbPort)
-  console.log(`✅ Émulateur Realtime Database connecté sur 127.0.0.1:${rtdbPort}`)
+  // emulator rtdb connected
   } catch (error) {
     console.warn('⚠️ Realtime Database émulateur déjà connecté ou erreur:', error instanceof Error ? error.message : String(error))
   }
-} else {
-  console.log('📡 Mode production - services Firebase réels')
 }
 
 export default app

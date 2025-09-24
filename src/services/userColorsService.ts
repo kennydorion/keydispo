@@ -38,7 +38,6 @@ class UserColorsService {
   static listenToUserColor(uid: string): void {
     // ⚠️ CONTRÔLE D'URGENCE : Désactiver les listeners temps réel
     if (emergencyOptimization.isServiceDisabled('DISABLE_PRESENCE_TRACKING')) {
-      console.log('🚨 [EMERGENCY] Listeners couleurs désactivés - Utilisation cache local uniquement')
       // Utiliser directement la couleur par défaut en cache
       this.updateColorCache(uid, getUserColor(uid))
       return
@@ -77,12 +76,10 @@ class UserColorsService {
             // Mettre à jour le cache avec TTL
             userColorsCache.value.set(uid, presenceColor)
             cacheTimestamps.set(uid, Date.now())
-            console.log(`🎨 Couleur mise à jour pour ${uid}:`, presenceColor)
           } else {
             // Supprimer du cache si plus de couleur personnalisée
             userColorsCache.value.delete(uid)
             cacheTimestamps.delete(uid)
-            console.log(`🎨 Couleur par défaut pour ${uid}`)
           }
         } else {
           // Document n'existe pas, supprimer du cache
@@ -110,7 +107,6 @@ class UserColorsService {
       unsubscribe()
       activeListeners.delete(uid)
       // ⚠️ GARDER le cache plus longtemps pour éviter les re-lectures
-      console.log(`🔇 Arrêt écoute couleur pour ${uid} (cache conservé)`)
     }
   }
 
@@ -197,13 +193,11 @@ class UserColorsService {
    * Nettoyer tous les écouteurs
    */
   static cleanup(): void {
-    activeListeners.forEach((unsubscribe, uid) => {
+    activeListeners.forEach((unsubscribe) => {
       unsubscribe()
-      console.log(`🔇 Nettoyage écouteur couleur pour ${uid}`)
     })
     activeListeners.clear()
     // ⚠️ NE PAS vider le cache pour éviter les re-lectures
-    console.log(`🧹 Nettoyage UserColors terminé - Cache conservé (${userColorsCache.value.size} entrées)`)
   }
 
   /**
@@ -219,7 +213,6 @@ class UserColorsService {
   static updateColorCache(uid: string, color: string): void {
     userColorsCache.value.set(uid, color)
     cacheTimestamps.set(uid, Date.now())
-    console.log(`🎨 Couleur forcée dans le cache pour ${uid}:`, color)
   }
 
   /**

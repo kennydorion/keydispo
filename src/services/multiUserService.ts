@@ -114,7 +114,6 @@ class MultiUserServiceRTDB {
       // Démarrer le nettoyage automatique
       this.startCleanupTimer()
       
-      console.log('✅ Session multi-utilisateur RTDB démarrée:', sessionId)
       return sessionId
       
     } catch (error) {
@@ -152,7 +151,7 @@ class MultiUserServiceRTDB {
         this.cleanupTimer = null
       }
       
-      console.log('✅ Session RTDB terminée')
+      
       
     } catch (error) {
       console.error('❌ Erreur fin de session:', error)
@@ -310,8 +309,8 @@ class MultiUserServiceRTDB {
   // MÉTHODES DE COMPATIBILITÉ
   // ==========================================
   
-  setShutdownReason(reason: string) {
-    console.log('🔄 Shutdown reason RTDB:', reason)
+  setShutdownReason(_reason: string) {
+    // quiet
   }
   
   // Méthodes vides pour compatibilité avec l'ancien service

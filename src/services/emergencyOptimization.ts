@@ -103,7 +103,7 @@ export class EmergencyOptimizationService {
     if (now - this.lastMinuteReset >= 60000) { // 1 minute
       this.readCountThisMinute = 0
       this.lastMinuteReset = now
-      console.log(`📊 Reset compteur lectures: ${this.activeListenersCount} listeners actifs`)
+      
     }
   }
   
@@ -146,7 +146,7 @@ export class EmergencyOptimizationService {
    * Désactiver le mode d'urgence
    */
   deactivateEmergencyMode(): void {
-    console.log('✅ Désactivation du mode d\'urgence')
+    
     
     EmergencyOptimizationService.EMERGENCY_MODE = {
       DISABLE_PRESENCE_TRACKING: false,

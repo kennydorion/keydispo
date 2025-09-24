@@ -97,16 +97,17 @@ const getDispoType = (dispo: any) => {
 }
 
 const refreshData = async () => {
-  console.log('🔄 [DEBUG] Actualisation des données...')
+  
   try {
     await planningData.loadCollaborateurs()
-    console.log('✅ [DEBUG] Collaborateurs rechargés')
+    
   } catch (error) {
     console.error('❌ [DEBUG] Erreur rechargement:', error)
   }
 }
 
 const logToConsole = () => {
+  /*
   console.log('🔍 [DEBUG] État complet des filtres:', {
     filters: planningFilters.filterState,
     stats: planningData.filterStats.value,
@@ -114,10 +115,11 @@ const logToConsole = () => {
     metiersOptions: planningFilters.metiersOptions.value,
     lieuxOptions: planningFilters.lieuxOptions.value
   })
+  */
 }
 
 const testADVFilter = () => {
-  console.log('🧪 [DEBUG] Test filtre ADV...')
+  
   
   // Appliquer les filtres du cas problématique
   planningFilters.updateFilters({
@@ -128,14 +130,14 @@ const testADVFilter = () => {
     dateTo: '2025-09-15'
   })
   
-  console.log('🔧 [DEBUG] Filtres appliqués - vérifiez les logs de filtrage ci-dessus')
+  
 }
 
 onMounted(() => {
   // Auto-ouvrir en mode développement
   if (import.meta.env.DEV) {
     setTimeout(() => {
-      console.log('🔍 [DEBUG] Panel de debug disponible - cliquez sur le bouton pour ouvrir')
+      
     }, 1000)
     
     // Exposer les instances pour debug global
@@ -145,18 +147,11 @@ onMounted(() => {
       
       // Fonctions utilitaires debug
       ;(window as any).diagnoseFiltreADV = () => {
-        console.log('🔍 ===== DIAGNOSTIC FILTRE ADV =====')
-        console.log('📊 État des filtres:', planningFilters.filterState)
-        console.log('📈 Statistiques:', planningData.filterStats.value)
-        console.log('👥 Collaborateurs filtrés:', planningData.filteredCollaborateurs.value.length)
-        console.log('📅 Disponibilités filtrées:', planningData.filteredDisponibilites.value.length)
-        console.log('🔧 Options lieux:', planningFilters.lieuxOptions.value.map(l => l.text))
-        console.log('🔧 Options métiers:', planningFilters.metiersOptions.value.map(m => m.text))
-        console.log('🔍 ===== FIN DIAGNOSTIC =====')
+        
       }
       
       ;(window as any).testScenarioADV = () => {
-        console.log('🧪 Test scénario ADV...')
+        
         planningFilters.updateFilters({
           metier: 'AS',
           lieu: 'ADV',
@@ -165,11 +160,11 @@ onMounted(() => {
           dateTo: '2025-09-15'
         })
         setTimeout(() => {
-          console.log('📊 Résultat test:', planningData.filterStats.value)
+          
         }, 500)
       }
       
-      console.log('🔧 [DEBUG] Fonctions disponibles: diagnoseFiltreADV(), testScenarioADV()')
+      
     }
   }
 })

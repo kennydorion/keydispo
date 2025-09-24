@@ -402,13 +402,13 @@ const loadCollaborateur = async () => {
     loading.value = true
     const tenantId = AuthService.currentTenantId || 'keydispo'
     
-    console.log('🔄 Chargement collaborateur:', collaborateurId.value, 'tenant:', tenantId)
+    
     
     // Essayer RTDB d'abord
     let collab = null
     try {
       collab = await CollaborateursServiceV2.getCollaborateurFromRTDB(tenantId, collaborateurId.value)
-      console.log('✅ Collaborateur RTDB trouvé:', collab)
+      
     } catch (rtdbError) {
       console.warn('⚠️ Erreur RTDB, tentative fallback:', rtdbError)
       // Fallback sur méthode alternative
@@ -432,7 +432,7 @@ const loadCollaborateur = async () => {
       note: collab.note || ''
     }
     
-    console.log('✅ Collaborateur chargé:', collaborateur.value)
+    
     
     // TODO: Charger le nombre de disponibilités (placeholder)
     disponibilitesCount.value = 0

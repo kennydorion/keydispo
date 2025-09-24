@@ -337,7 +337,7 @@ const loadCollaborateurProfil = async () => {
   try {
     collaborateurProfil.value = await CollaborateurSelfService.getMonProfil()
   } catch (error) {
-    console.log('Pas de profil collaborateur trouvé:', error)
+    
     collaborateurProfil.value = null
   }
 }

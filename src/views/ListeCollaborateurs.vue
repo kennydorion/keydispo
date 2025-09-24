@@ -382,7 +382,6 @@ const getInitials = (collaborateur: Collaborateur) => {
 
 // Méthodes d'actions
 const editCollaborateur = (collaborateur: Collaborateur) => {
-  console.log('Navigation vers modification collaborateur:', collaborateur)
   
   if (!collaborateur.id) {
     notify({
@@ -396,7 +395,6 @@ const editCollaborateur = (collaborateur: Collaborateur) => {
 }
 
 const viewCollaborateur = (collaborateur: Collaborateur) => {
-  console.log('View collaborateur:', collaborateur)
   
   if (!collaborateur.id) {
     notify({
@@ -420,20 +418,14 @@ const loadCollaborateurs = async () => {
     isRefreshing.value = true
     const tenantId = AuthService.currentTenantId || 'keydispo'
     
-    console.log('🔄 Chargement des collaborateurs pour tenant:', tenantId)
-    console.log('� Utilisateur connecté:', auth.currentUser?.email)
-    
     // Charger depuis RTDB d'abord (plus de données)
     let data: CollaborateurV2[] = []
     try {
       data = await CollaborateursServiceV2.loadCollaborateursFromRTDB(tenantId)
-      console.log('✅ Données RTDB chargées:', data.length)
       // Si RTDB est vide, fallback explicite vers import
       if (!data || data.length === 0) {
-        console.log('ℹ️ RTDB vide, fallback vers import')
         try {
           data = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
-          console.log('✅ Données RTDB chargées:', data.length)
         } catch (rtdbError) {
           console.warn('⚠️ Erreur RTDB, fallback import:', rtdbError)
           data = await CollaborateursServiceV2.loadCollaborateursFromImport(tenantId)
@@ -464,14 +456,6 @@ const loadCollaborateurs = async () => {
       createdAt: collab.createdAt,
       updatedAt: collab.updatedAt
     }))
-    
-    // Log temporaire pour vérifier les couleurs
-    console.log('🎨 Collaborateurs avec couleurs:', collaborateurs.value.map(c => ({
-      nom: `${c.prenom} ${c.nom}`,
-      color: c.color
-    })))
-    
-    console.log(`✅ ${collaborateurs.value.length} collaborateurs chargés`)
     
     if (collaborateurs.value.length === 0) {
       notify({

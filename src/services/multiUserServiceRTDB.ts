@@ -14,7 +14,7 @@ import {
   get,
   onValue,
   off,
-  serverTimestamp
+  
 } from 'firebase/database'
 import { rtdb } from './firebase'
 
@@ -72,8 +72,7 @@ class MultiUserServiceRTDB {
   private currentTenant: string = ''
   private currentSession: UserSession | null = null
   private sessionRef: any = null
-  private listeners: Map<string, any> = new Map()
-  private cleanupTimer: NodeJS.Timeout | null = null
+  private cleanupTimer: number | null = null
   
   // Configuration
   private readonly SESSION_DURATION = 30 * 60 * 1000 // 30 minutes
@@ -116,7 +115,6 @@ class MultiUserServiceRTDB {
       // Démarrer le nettoyage automatique
       this.startCleanupTimer()
       
-      console.log('✅ Session multi-utilisateur RTDB démarrée:', sessionId)
       return sessionId
       
     } catch (error) {
@@ -154,7 +152,7 @@ class MultiUserServiceRTDB {
         this.cleanupTimer = null
       }
       
-      console.log('✅ Session RTDB terminée')
+      
       
     } catch (error) {
       console.error('❌ Erreur fin de session:', error)
@@ -312,8 +310,8 @@ class MultiUserServiceRTDB {
   // MÉTHODES DE COMPATIBILITÉ
   // ==========================================
   
-  setShutdownReason(reason: string) {
-    console.log('🔄 Shutdown reason RTDB:', reason)
+  setShutdownReason(_reason: string) {
+    // quiet
   }
   
   // Méthodes vides pour compatibilité avec l'ancien service

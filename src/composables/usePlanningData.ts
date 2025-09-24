@@ -267,7 +267,6 @@ export function usePlanningData() {
   watch(
     () => [planningFilters.filterState.dateFrom, planningFilters.filterState.dateTo],
     ([dateFrom, dateTo]) => {
-      console.log(`🔄 [DEBUG] Watch dates triggered:`, { dateFrom, dateTo })
       
       // En environnement de test, on ne déclenche pas de chargements réseau automatiques
       if (isTestEnv) return
@@ -278,7 +277,6 @@ export function usePlanningData() {
         // Charger les disponibilités pour la période calculée si non couverte
         if (startDate && endDate) {
           if (!isRangeCoveredByLoadedRanges(startDate, endDate)) {
-            console.log(`🔄 Chargement automatique des disponibilités: ${startDate} → ${endDate}`)
             getDisponibilitiesByDateRange(startDate, endDate)
           }
         }

@@ -88,7 +88,7 @@ import PlanningIndicators from '../components/planning/PlanningIndicators.vue'
 import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
 
 // Placeholder temporaire pour la grille
-import { defineComponent } from 'vue'
+import { defineComponent, ref, computed } from 'vue'
 const PlanningGridPlaceholder = defineComponent({
   template: '<div class="planning-grid-placeholder">Grille du planning à refactoriser</div>'
 })
@@ -97,13 +97,6 @@ const PlanningGridPlaceholder = defineComponent({
 // Pour l'instant, nous devons importer toute la logique existante
 
 // Variables réactives (à extraire en composables)
-const viewMode = ref('week')
-const searchTerm = ref('')
-const filterMetier = ref('')
-const filterLieu = ref('')
-const filterStatut = ref('')
-const dateFrom = ref('')
-const dateTo = ref('')
 const selectedCells = ref(new Set())
 const isSelectionMode = ref(false)
 const isDraggingSelection = ref(false)
@@ -130,12 +123,7 @@ const showLoadingModal = computed(() => false) // Temporairement désactivé
 const suggestions = computed(() => [])
 const isBusy = computed(() => loadingCollaborateurs.value || loadingDisponibilites.value || fetchingRanges.value)
 const isEmulator = computed(() => false) // À implémenter
-const formatCurrentPeriod = computed(() => 'Période courante')
-const metiersOptions = computed(() => [])
-const lieuxOptions = computed(() => [])
-const statutOptions = computed(() => [])
-const paginatedCollaborateurs = computed(() => allCollaborateurs.value)
-const totalDisponibilites = computed(() => 0)
+// Placeholders optionnels retirés tant qu'ils ne sont pas utilisés
 
 // Méthodes (à extraire en composables)
 function clearSelection() {
@@ -149,31 +137,14 @@ function getActiveUsers() {
 }
 
 function showRealtimeStats() {
-  console.log('Affichage des stats temps réel')
 }
 
 function cleanupSessions() {
-  console.log('Nettoyage des sessions')
 }
 
-function goToPreviousWeek() {
-  console.log('Semaine précédente')
-}
-
-function goToToday() {
-  console.log('Aller à aujourd\'hui')
-}
-
-function goToNextWeek() {
-  console.log('Semaine suivante')
-}
-
-function updateFilters(filters) {
-  console.log('Mise à jour des filtres:', filters)
-}
+// Fonctions de navigation et mise à jour supprimées (non utilisées ici)
 
 function handleBatchUpdate() {
-  console.log('Mise à jour batch')
 }
 </script>
 

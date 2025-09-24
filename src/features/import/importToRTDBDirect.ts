@@ -181,7 +181,7 @@ function prepareDataForImportRTDB(data: NormalizedRow[], tenantId: string) {
  * Supprime toutes les données existantes pour un tenant dans RTDB
  */
 async function clearTenantDataRTDB(tenantId: string, onProgress?: (progress: ImportProgressRTDB) => void): Promise<void> {
-  console.log(`🧹 Suppression des données RTDB existantes pour tenant: ${tenantId}`)
+  
   
   onProgress?.({
     phase: 'processing',
@@ -221,7 +221,7 @@ async function clearTenantDataRTDB(tenantId: string, onProgress?: (progress: Imp
       message: 'Suppression terminée'
     })
     
-    console.log(`✅ Suppression RTDB terminée pour tenant: ${tenantId}`)
+    
     
   } catch (error) {
     console.error('❌ Erreur lors de la suppression RTDB:', error)
@@ -248,7 +248,7 @@ export async function importToRTDB(
   }
   
   try {
-    console.log('🚀 Début import RTDB...')
+    
     
     // 1. Suppression des anciennes données
     await clearTenantDataRTDB(tenantId, onProgress)
@@ -263,7 +263,7 @@ export async function importToRTDB(
     
     const { collaborateurs, dispositions } = prepareDataForImportRTDB(data, tenantId)
     
-    console.log(`📊 Données préparées: ${collaborateurs.length} collaborateurs, ${dispositions.length} dispositions`)
+    
     
     // 3. Import des collaborateurs par chunks
     onProgress?.({
@@ -297,7 +297,7 @@ export async function importToRTDB(
       message: `Import RTDB terminé en ${Math.round(stats.duration / 1000)}s`
     })
     
-    console.log('🎉 Import RTDB terminé!', stats)
+    
     return stats
     
   } catch (error) {
@@ -338,7 +338,7 @@ async function importCollaborateursRTDB(
       total: collaborateurs.length,
       message: `Collaborateurs: ${stats.collaborateursCreated + stats.collaborateursMerged}/${collaborateurs.length}`
     })
-    console.log(`✅ Collaborateurs écrits en une passe (${collaborateurs.length})`)
+    
   } catch (error) {
     const errorMsg = `Erreur écriture collaborateurs: ${error}`
     stats.errors.push(errorMsg)
@@ -359,7 +359,7 @@ async function importDisponibilitesRTDB(
   const disposByDate = groupByDate(dispositions)
   const dates = Array.from(disposByDate.keys()).sort()
   
-  console.log(`📅 Import de ${dates.length} dates différentes`)
+  
   
   for (let i = 0; i < dates.length; i++) {
     const date = dates[i]
@@ -381,7 +381,7 @@ async function importDisponibilitesRTDB(
         }
       }
       await writeWithRetry(ref(database, `tenants/${tenantId}/disponibilites/${date}`), payload, `dispos:${date}`)
-      console.log(`✅ Date RTDB ${i + 1}/${dates.length}: ${date} (${dispos.length} disponibilités)`)
+      
       
       onProgress?.({
         phase: 'disponibilites',
@@ -424,7 +424,7 @@ async function finalizeImportRTDB(
     }
     
     await set(ref(database, `tenants/${tenantId}/metadata/lastImport`), metadata)
-    console.log('✅ Métadonnées d\'import RTDB sauvegardées')
+    
     
   } catch (error) {
     console.warn('⚠️ Erreur sauvegarde métadonnées RTDB:', error)
@@ -526,7 +526,7 @@ export function validateImportDataRTDB(data: NormalizedRow[]): {
     dates.add(row.date)
   }
   
-  console.log(`📊 Validation RTDB: ${collaborateurs.size} collaborateurs, ${dates.size} dates uniques`)
+  
   
   return {
     isValid: errors.length === 0,

@@ -160,7 +160,7 @@ const handleLogin = async () => {
 
   try {
     const user = await AuthService.signInWithEmail(email.value, password.value)
-    console.log('🔐 Connexion réussie via formulaire')
+    
     
     // Récupérer le rôle de l'utilisateur avec petite tolérance (premier login/propagation)
     let role: any = null
@@ -173,7 +173,7 @@ const handleLogin = async () => {
     
     if (isCollaborateurContext.value) {
       // Contexte collaborateur - tous les rôles sont acceptés
-      console.log('✅ Connexion collaborateur réussie, redirection vers interface collaborateur')
+      
       InterfaceManager.forceCollaborateurInterface()
       await router.push('/collaborateur/planning')
     } else {
@@ -184,7 +184,7 @@ const handleLogin = async () => {
       }
       
       InterfaceManager.forceAdminInterface()
-      console.log('✅ Utilisateur admin vérifié, accès à l\'interface admin autorisé')
+      
       await router.push('/dashboard')
     }
     
@@ -247,7 +247,7 @@ const loginAsTestUser = async () => {
   
   try {
     const user = await AuthService.signInWithEmail('admin@test.com', 'password123')
-    console.log('🔐 Connexion utilisateur test via formulaire admin')
+    
     
     // Vérifier que l'utilisateur a bien un rôle admin pour accéder à l'interface admin
     const tenantUser = await AuthService.getUserRole(user.uid)
@@ -261,7 +261,7 @@ const loginAsTestUser = async () => {
     
     // Marquer que l'utilisateur s'est connecté via l'interface admin
     sessionStorage.setItem('loginInterface', 'admin')
-    console.log('✅ Utilisateur test admin vérifié, accès à l\'interface admin autorisé')
+    
     
     // Redirection vers l'interface admin
     await router.push('/dashboard')

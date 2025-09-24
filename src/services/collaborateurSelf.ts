@@ -49,10 +49,8 @@ async function resolveMyCollaborateur(): Promise<CollaborateurProfilLight> {
     
     // Si trouvé par email mais pas lié, on peut proposer de lier automatiquement
     if (me && !(me as any).userId) {
-      console.log('🔗 Collaborateur trouvé par email mais non lié, tentative de liaison automatique...')
       try {
         await linkUserToCollaborateur(tenantId, user.uid, me.id!, user.email)
-        console.log('✅ Liaison automatique réussie')
         // Recharger pour avoir les données à jour
         const updatedCollabs = await CollaborateursServiceV2.loadCollaborateurs(tenantId)
         me = updatedCollabs.find(c => (c as any).userId === user.uid)
@@ -116,8 +114,6 @@ async function linkUserToCollaborateur(tenantId: string, userId: string, collabo
     updatedAt: Date.now(),
     email: email
   })
-
-  console.log(`✅ Liaison créée entre utilisateur ${userId} et collaborateur ${collaborateurId}`)
 }
 
 function mapRTDBToSelf(d: DisponibiliteRTDB): CollaborateurDisponibilite {
@@ -230,7 +226,7 @@ export const CollaborateurSelfService = {
             // Log optimisé pour éviter le spam
             const currentTime = Date.now()
             if (!lastLogTime || currentTime - lastLogTime > 2000) {
-              console.log(`🔄 Callback RTDB temps réel: ${myDispos.length} disponibilités pour ${me.nom} ${me.prenom}`)
+              
               lastLogTime = currentTime
             }
             callback(myDispos.map(mapRTDBToSelf))

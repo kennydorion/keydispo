@@ -433,12 +433,12 @@ function clearSelection() {
 
 function openBatchModal() {
   // Ouvrir le modal de traitement par lot
-  console.log('Opening batch modal for', selectedCells.value.size, 'cells')
+  
 }
 
 function handleForceSync() {
   // Forcer la synchronisation
-  console.log('Force sync requested')
+  
 }
 
 // Utilitaires
@@ -520,7 +520,7 @@ watch(
     // Éviter les mises à jour inutiles
     if (JSON.stringify(newDateArray) === JSON.stringify(oldDateArray)) return
     
-    console.log('📅 Dates du planning mises à jour:', newDateArray)
+    
     
     // Afficher un feedback de chargement si les dates ont vraiment changé
     if (newDateArray.length > 0) {

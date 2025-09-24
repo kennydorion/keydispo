@@ -25,10 +25,9 @@ export function useRealtimeSync() {
   /**
    * Déclenche un rafraîchissement immédiat de tous les composants enregistrés
    */
-  async function triggerGlobalRefresh(reason = 'manual') {
+  async function triggerGlobalRefresh(_reason = 'manual') {
     if (isRefreshing.value) return
-    
-    console.log(`🔄 [REALTIME-SYNC] Déclenchement refresh global: ${reason}`)
+
     isRefreshing.value = true
     
     try {
@@ -67,7 +66,6 @@ export function useRealtimeSync() {
    * Rafraîchissement spécifique après une action utilisateur
    */
   async function refreshAfterUserAction(actionType: 'create' | 'update' | 'delete') {
-    console.log(`🔄 [REALTIME-SYNC] Refresh après action: ${actionType}`)
     await triggerGlobalRefresh(`user-action-${actionType}`)
   }
   
@@ -75,7 +73,6 @@ export function useRealtimeSync() {
    * Rafraîchissement suite à une mise à jour temps réel
    */
   async function refreshFromRealtimeUpdate(source = 'rtdb') {
-    console.log(`🔄 [REALTIME-SYNC] Refresh depuis: ${source}`)
     await triggerGlobalRefresh(`realtime-${source}`)
   }
   

@@ -220,16 +220,7 @@
           <!-- Plus d'overlay manuel - CSS pur -->
           <!-- <div class="column-hover-overlay-header" aria-hidden="true" ref="colHoverHeaderEl"></div> -->
           <!-- <div class="today-overlay-header" aria-hidden="true"></div> -->
-          <!-- Séparateurs hebdo du header (mois+semaines+jours) -->
-      <div class="week-separators-header" aria-hidden="true">
-            <template v-for="(day, idx) in visibleDays" :key="'sep-'+day.date">
-              <div
-                v-if="isWeekBoundary(day.date)"
-                class="week-sep"
-                :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + ${getWeekSeparatorPosition(day.date, idx)} * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
-              ></div>
-            </template>
-          </div>
+          <!-- Pas d'overlay de séparateurs hebdomadaires: style uniquement via CSS sur dimanche -->
           <!-- Coin sticky top+left -->
           <div class="excel-corner corner-sticky">
             <!-- Bouton Aujourd'hui en haut -->
@@ -277,8 +268,7 @@
                   :class="[
                     {
                       'today': day.isToday,
-                      'loading-placeholder': !isDayLoaded(day.date),
-                      'week-boundary-left': isWeekBoundary(day.date)
+                      'loading-placeholder': !isDayLoaded(day.date)
                     },
                     ...getDayHeaderClasses(windowStartIndex + dayIndex)
                   ]"
@@ -364,7 +354,6 @@
                       'today': day.isToday,
                       'has-dispos': getCellDispos(collaborateur.id, day.date).length > 0,
                       'loading-placeholder': !isDayLoaded(day.date),
-                      'week-boundary-left': isWeekBoundary(day.date),
                       'selected': selectedCells.has(`${collaborateur.id}-${day.date}`),
                       'locked': isCellLockedByOther(collaborateur.id, day.date),
                       'has-indicator': (() => {
@@ -500,7 +489,7 @@
         @cancel-edit-dispo="cancelEditDispo"
         @save-edit-dispo="saveEditDispo"
         @add-new-dispo-line="addNewDispoLine"
-        @update-editing-lieu="(v) => { console.log('🏢 Lieu updated:', v); editingDispo.lieu = v }"
+  @update-editing-lieu="(v) => { editingDispo.lieu = v }"
       />
       
       <CollabEditContent
@@ -713,36 +702,17 @@ const filterStatut = computed({
 })
 
 const dateFrom = computed({
-  get: () => {
-    const value = planningFilters.filterState.dateFrom
-    console.log('🔍 DEBUG dateFrom computed - value:', value)
-    return value
-  },
-  set: (value) => {
-    console.log('🔍 DEBUG dateFrom set called with:', value)
-    planningFilters.updateFilter('dateFrom', value)
-  }
+  get: () => planningFilters.filterState.dateFrom,
+  set: (value) => planningFilters.updateFilter('dateFrom', value)
 })
 
 const dateTo = computed({
-  get: () => {
-    const value = planningFilters.filterState.dateTo
-    console.log('🔍 DEBUG dateTo computed - value:', value)
-    return value
-  },
-  set: (value) => {
-    console.log('🔍 DEBUG dateTo set called with:', value)
-    planningFilters.updateFilter('dateTo', value)
-  }
+  get: () => planningFilters.filterState.dateTo,
+  set: (value) => planningFilters.updateFilter('dateTo', value)
 })
 
 // État de filtrage du système centralisé
-const hasActiveFilters = computed(() => {
-  const value = planningFilters.hasActiveFilters.value
-  console.log('🔍 DEBUG hasActiveFilters computed - value:', value)
-  console.log('🔍 DEBUG filterState:', JSON.stringify(planningFilters.filterState, null, 2))
-  return value
-})
+const hasActiveFilters = computed(() => planningFilters.hasActiveFilters.value)
 
 // Variables restantes non liées aux filtres
 // (viewMode, mobileFiltersOpen retirés: non utilisés ici)
@@ -830,11 +800,10 @@ watch(selectedCells, () => {
   // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
   // Plus besoin de updatePresenceInitials()
   
-  // Transmettre les sélections aux autres utilisateurs via RTDB
-  if (collaborationService.isActive) {
-    collaborationService.updateSelectedCells(selectedCells.value)
-    // console.log('📋 Sélections transmises:', selectedCells.value.size, 'cellules')
-  }
+    // Transmettre les sélections aux autres utilisateurs via RTDB
+    if (collaborationService.isActive) {
+      collaborationService.updateSelectedCells(selectedCells.value)
+    }
 }, { deep: true })
 
 // Watcher pour le modal batch - lock des cellules sélectionnées côté admin
@@ -842,8 +811,7 @@ watch(batchModalOpen, async (isOpen) => {
   if (!collaborationService.isActive) return
   
   if (isOpen && selectedCells.value.size > 0) {
-    // Modal ouvert : verrouiller toutes les cellules sélectionnées
-    console.log('🔒 Verrouillage modal batch:', selectedCells.value.size, 'cellules')
+  // Modal ouvert : verrouiller toutes les cellules sélectionnées
     
     const lockPromises: Promise<boolean>[] = []
     selectedCells.value.forEach(cellKey => {
@@ -855,15 +823,12 @@ watch(batchModalOpen, async (isOpen) => {
     })
     
     try {
-      const results = await Promise.all(lockPromises)
-      const successfulLocks = results.filter(success => success).length
-      console.log(`🔒 Modal batch: ${successfulLocks}/${lockPromises.length} cellules verrouillées`)
+  await Promise.all(lockPromises)
     } catch (error) {
       console.warn('⚠️ Erreur lors du verrouillage modal batch:', error)
     }
   } else if (!isOpen) {
-    // Modal fermé : libérer tous les verrous
-    console.log('🔓 Libération verrous modal batch')
+  // Modal fermé : libérer tous les verrous
     
     const unlockPromises: Promise<void>[] = []
     selectedCells.value.forEach(cellKey => {
@@ -875,8 +840,7 @@ watch(batchModalOpen, async (isOpen) => {
     })
     
     try {
-      await Promise.all(unlockPromises)
-      console.log('🔓 Modal batch: verrous libérés')
+  await Promise.all(unlockPromises)
     } catch (error) {
       console.warn('⚠️ Erreur lors de la libération des verrous modal batch:', error)
     }
@@ -1036,7 +1000,6 @@ watch(isBusy, async (busy, prevBusy) => {
   // Quand on passe de busy=true à busy=false (fin de chargement)
   if (prevBusy && !busy) {
     await nextTick()
-    console.log('🔍 [DEBUG] Fin de chargement - forcer recalcul filtrage:', filteredCollaborateurs.value.length)
     // Forcer la réactivité
     const scroller = planningScroll.value
     if (scroller) {
@@ -1335,52 +1298,20 @@ const visibleDays = computed(() => {
   const from = dateFrom.value
   const to = dateTo.value
 
-  console.log(`🔍 [DEBUG] visibleDays calcul - loadedDays.length: ${days.length}, dateFrom: ${from}, dateTo: ${to}`)
-  console.log(`🔍 [DEBUG] Types de dateFrom/dateTo:`, typeof from, typeof to)
-  console.log(`🔍 [DEBUG] Valeurs brutes dateFrom/dateTo:`, JSON.stringify({from, to}))
-  console.log(`🔍 [DEBUG] hasActiveFilters:`, hasActiveFilters.value)
-  
-  if (days.length > 0) {
-    const firstLoaded = days[0]?.date
-    const lastLoaded = days[days.length - 1]?.date
-    console.log(`🔍 [DEBUG] loadedDays plage: ${firstLoaded} → ${lastLoaded}`)
-    
-    // Échantillon de dates pour voir ce qui est chargé
-    const sampleDates = days.slice(0, 10).map(d => d.date)
-    console.log(`🔍 [DEBUG] Échantillon de dates chargées:`, sampleDates)
-  }
-
-  // Deux bornes définies: plage stricte entre a et b
   if (from && to) {
     const a = from <= to ? from : to
     const b = from <= to ? to : from
-    const filtered = days.filter(d => d.date >= a && d.date <= b)
-    console.log(`🔍 [DEBUG] visibleDays deux bornes (${a} → ${b}): ${filtered.length} jours`)
-    return filtered
+    return days.filter(d => d.date >= a && d.date <= b)
   }
-
-  // Une seule borne définie
   if (from && !to) {
-    // Comportement demandé: plage ouverte vers le futur à partir de from
-    // On renvoie toutes les journées chargées >= from; l'extension à droite se fait via le scroll
     const a = from
-    const filtered = days.filter(d => d.date >= a)
-    console.log(`🔍 [DEBUG] visibleDays depuis ${a}: ${filtered.length} jours`)
-    if (filtered.length > 0) {
-      const firstVisible = filtered[0]?.date
-      const lastVisible = filtered[filtered.length - 1]?.date
-      console.log(`🔍 [DEBUG] visibleDays plage résultante: ${firstVisible} → ${lastVisible}`)
-    }
-    return filtered
+    return days.filter(d => d.date >= a)
   }
   if (to && !from) {
-    // Cas inchangé: afficher un contexte raisonnable en amont de to (7 jours déjà chargés ou plus)
     const a = addDaysStr(to, -6)
     const b = to
     return days.filter(d => d.date >= a && d.date <= b)
   }
-
-  // Aucun filtre: toutes les journées chargées
   return days
 })
 const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth.value) + 'px')
@@ -1421,28 +1352,10 @@ function forceRender() {
 
 const paginatedCollaborateurs = computed(() => {
   const rows = windowedRows.value
-  
-  // DEBUG: Log pour tracer le problème de filtrage
-  console.log('🔍 [DEBUG] paginatedCollaborateurs calcul:', {
-    windowedRowsLength: rows.length,
-    filteredCollaborateursLength: filteredCollaborateurs.value.length,
-    hasFilters: planningFilters.hasActiveFilters.value
-  })
-  
-  // Filet de sécurité: si la fenêtre virtualisée est vide alors que des résultats existent,
-  // tenter un reclamp immédiat, puis exposer un petit sous-ensemble en dernier recours.
   if (rows.length === 0 && filteredCollaborateurs.value.length > 0) {
-    console.log('� [DEBUG] PROBLÈME: Fenêtre virtualisée vide mais filteredCollaborateurs non vide!')
-    console.log('🔧 [DEBUG] Tentative de correction immédiate...')
-    
-    // SOLUTION RADICALE: Bypasser complètement la virtualisation pour le filtrage
-    // Retourner directement les premiers résultats filtrés
     const directResults = filteredCollaborateurs.value.slice(0, Math.min(50, filteredCollaborateurs.value.length))
-    console.log('� [DEBUG] Bypass virtualisation - retour direct:', directResults.length, 'collaborateurs')
     return directResults
   }
-  
-  console.log('🔍 [DEBUG] Retour windowedRows normal:', rows.length)
   return rows
 })
 
@@ -1665,7 +1578,7 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
   // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
-    const date = new Date(day.date + 'T00:00:00')
+    const date = new Date(day.date + 'T12:00:00')
     if (date.getDay() === 0) { // dimanche = 0
       classes.push('sunday')
     }
@@ -1690,7 +1603,7 @@ function getDayHeaderClasses(dayIndex: number) {
   // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
-    const date = new Date(day.date + 'T00:00:00')
+    const date = new Date(day.date + 'T12:00:00')
     if (date.getDay() === 0) { // dimanche = 0
       classes.push('sunday')
     }
@@ -2221,17 +2134,11 @@ watch(filteredCollaborateurs, (list) => {
 }, { immediate: true, deep: false })
 
 // CORRECTION: Watcher agressif pour forcer la mise à jour de la virtualisation
-watch(filteredCollaborateurs, async (newList, oldList) => {
-  console.log('🔍 [DEBUG] filteredCollaborateurs changé:', {
-    newLength: newList.length,
-    oldLength: oldList?.length,
-    windowedRowsLength: windowedRows.value.length
-  })
+watch(filteredCollaborateurs, async (newList) => {
   
   // Toujours forcer le recalcul quand les données filtrées changent
   await nextTick()
   const scroller = planningScroll.value
-  console.log('🔍 [DEBUG] Forcer recalcul virtualisation après changement filtrage')
   
   // CRITICAL: Toujours recalculer la fenêtre, pas seulement si elle est vide
   if (scroller) {
@@ -2247,18 +2154,15 @@ watch(filteredCollaborateurs, async (newList, oldList) => {
   
   // Double-check: Attendre un autre tick et vérifier si windowedRows a été mis à jour
   await nextTick()
-  console.log('🔍 [DEBUG] Après recalcul - windowedRows.length:', windowedRows.value.length)
   
   // Si malgré le recalcul, windowedRows est toujours vide, forcer un reset complet
   if (newList.length > 0 && windowedRows.value.length === 0) {
-    console.log('🚨 [DEBUG] PROBLÈME: windowedRows vide malgré recalcul, reset complet')
     // Reset complet de la virtualisation
   rowWindowStartIndex.value = 0
   rowWindowEndIndex.value = Math.min(9, newList.length - 1) // Afficher au moins 10 éléments
   await nextTick()
   // Frame suivante pour laisser le DOM se stabiliser
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    console.log('🔧 [DEBUG] Après reset forcé - windowedRows.length:', windowedRows.value.length)
     if (windowedRows.value.length === 0) {
       // Forcer un re-render de la fenêtre des lignes
       forceRender()
@@ -2266,7 +2170,6 @@ watch(filteredCollaborateurs, async (newList, oldList) => {
     
     // NOUVEAU: Si même après reset forcé ça ne marche pas, simuler un click
     if (windowedRows.value.length === 0) {
-      console.log('🚨 [DEBUG] Reset forcé inefficace, simulation click automatique')
       setTimeout(async () => {
         const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
         if (container) {
@@ -2277,7 +2180,6 @@ watch(filteredCollaborateurs, async (newList, oldList) => {
           container.click()
           await nextTick()
           await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-          console.log('🔧 [DEBUG] Après click auto dans watcher - windowedRows.length:', windowedRows.value.length)
         }
       }, 50)
     }
@@ -2285,17 +2187,12 @@ watch(filteredCollaborateurs, async (newList, oldList) => {
 }, { immediate: false, deep: false })
 
 // DEBUG: Watcher pour surveiller les changements de windowedRows
-watch(windowedRows, (newRows, oldRows) => {
-  console.log('🔍 [DEBUG] windowedRows changé:', {
-    newLength: newRows.length,
-    oldLength: oldRows?.length,
-    filteredLength: filteredCollaborateurs.value.length
-  })
+watch(windowedRows, (_newRows, _oldRows) => {
+  // debug removed
 }, { immediate: false, deep: false })
 
 // CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
 watch(planningFilters.filterState, async () => {
-  console.log('🔍 [DEBUG] Filtres changés, recalcul virtualisation')
   
   // Vérifier si tous les filtres sont vides (remis à zéro)
   const allFiltersEmpty = !planningFilters.filterState.search && 
@@ -2312,7 +2209,6 @@ watch(planningFilters.filterState, async () => {
   if (scroller) {
     if (allFiltersEmpty) {
       // Si tous les filtres sont vides, aller à aujourd'hui au lieu de scroller à 0
-      console.log('📅 [DEBUG] Tous les filtres vides, navigation vers aujourd\'hui')
       // Attendre que les données se rechargent puis aller à aujourd'hui
       setTimeout(() => {
         goToToday()
@@ -2320,7 +2216,6 @@ watch(planningFilters.filterState, async () => {
     } else {
       // Réinitialise la position de scroll horizontal pour commencer au début des données filtrées
       scroller.scrollLeft = 0
-      console.log('🔍 [DEBUG] Position scroll horizontal réinitialisée à 0')
     }
     
     // Recalcule complet (horizontal + vertical)
@@ -2332,17 +2227,15 @@ watch(planningFilters.filterState, async () => {
   }
   
   await nextTick()
-  console.log('🔍 [DEBUG] Après recalcul filtres - windowedRows.length:', windowedRows.value.length)
+  
   
   // NOUVEAU: Force refresh automatique si les résultats ne s'affichent pas
   if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
-    console.log('🚨 [DEBUG] Auto-refresh nécessaire, simulation double-clic')
     // Attendre encore un peu puis forcer un refresh complet
     setTimeout(async () => {
       await nextTick()
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
-        console.log('🔧 [DEBUG] Force refresh automatique')
         // Simuler un event qui force le re-render (comme le double-clic)
         const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
         if (container) {
@@ -2352,7 +2245,6 @@ watch(planningFilters.filterState, async () => {
           container.click()
           await nextTick()
           await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-          console.log('🔧 [DEBUG] Après click automatique - windowedRows.length:', windowedRows.value.length)
         }
         if (windowedRows.value.length === 0) {
           forceRender()
@@ -2446,27 +2338,9 @@ function getISOWeek(dateStr: string): number {
   return 1 + Math.round(diff / (7 * 24 * 3600 * 1000))
 }
 
-// Détecte le début de nouvelle semaine (lundi) pour tracer une séparation visuelle
-// La semaine ISO commence le lundi, donc on place le séparateur au début de chaque nouvelle semaine
-function isWeekBoundary(dateStr: string): boolean {
-  const d = new Date(dateStr + 'T12:00:00')
-  // Lundi = 1 (début de nouvelle semaine ISO)
-  return d.getDay() === 1
-}
+// (isWeekBoundary / getWeekSeparatorPosition obsolètes – remplacés par weekBoundaryPositions)
 
-// Calcule la position correcte du séparateur en tenant compte du décalage de la première date
-function getWeekSeparatorPosition(dayDate: string, dayIndex: number): number {
-  if (visibleDays.value.length === 0) return dayIndex
-  
-  const firstDate = new Date(visibleDays.value[0].date + 'T12:00:00')
-  const currentDate = new Date(dayDate + 'T12:00:00')
-  
-  // Calculer la différence en jours depuis la première date visible
-  const diffTime = currentDate.getTime() - firstDate.getTime()
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
-  
-  return diffDays
-}
+// (weekBoundaryPositions retiré – approche purement CSS pour dimanche)
 
 // Détecte la fin de mois (jour dont le lendemain change de mois)
 // (supprimé) Fin de mois: plus utilisée pour jours/body; le style mois utilise un séparateur dédié
@@ -2515,7 +2389,7 @@ const weekSegments = computed(() => {
 })
 
 // Fonction pour déterminer si un segment de semaine marque une frontière de mois
-function isMonthBoundary(seg: { week: number; monthLabel: string }, segIndex: number): boolean {
+function isMonthBoundary(_seg: { week: number; monthLabel: string }, _segIndex: number): boolean {
   // Temporairement désactivé pour éviter les barres indésirables
   return false
   
@@ -3404,7 +3278,6 @@ function getConflictMessageWithCandidate(existing: Partial<Disponibilite>[], can
 }
 
 function addNewDispo() {
-  console.log(`🔨 addNewDispo called`)
   if (!selectedCell.value) return
   if (!canAddDispo.value) {
   const msg = getConflictMessageWithCandidate(selectedCellDispos.value, newDispo.value) || (violatesMissionDispoOverlap(selectedCellDispos.value, newDispo.value) ? 'Conflit: cette disponibilité chevauche une mission existante.' : null)
@@ -3417,7 +3290,6 @@ function addNewDispo() {
   if (!collab) return
   
   const d = newDispo.value
-  console.log(`🔨 newDispo being added:`, d)
   
   // Détection automatique des missions overnight
   let finalTimeKind = d.timeKind
@@ -3487,6 +3359,7 @@ function editDispo(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'en
 }
 
 // Conversion rapide disponibilité → mission
+/*
 async function convertDispoToMission(dispo: Disponibilite, newLieu?: string) {
   if (!dispo.id) {
     console.error('❌ Impossible de convertir: ID manquant')
@@ -3533,26 +3406,22 @@ async function convertDispoToMission(dispo: Disponibilite, newLieu?: string) {
     })
   }
 }
+*/
 
 // Gestion du remplacement automatique des disponibilités en conflit avec les missions
 async function handleAutoReplacementLogic(date: string, collabId: string, newDispos: any[]): Promise<{ removedIds: string[]; removedEntries: Disponibilite[] }> {
-  console.log(`� handleAutoReplacementLogic CALLED: date=${date}, collabId=${collabId}, newDispos=`, newDispos)
   
   // Récupérer les disponibilités existantes pour cette date et ce collaborateur
   const existing = (disponibilitesCache.value.get(date) || []).filter(d => 
     d.collaborateurId === collabId && !(d as any)._cont
   )
 
-  console.log(`🔍 Existing dispos:`, existing)
+  
 
   // Identifier les nouvelles missions
-  const newMissions = newDispos.filter(d => {
-    const kind = resolveDispoKind(d)
-    console.log(`🔍 Checking dispo:`, d, `kind:`, kind)
-    return kind.type === 'mission'
-  })
+  const newMissions = newDispos.filter(d => resolveDispoKind(d).type === 'mission')
 
-  console.log(`🔍 New missions:`, newMissions)
+  
 
   const removedIds: string[] = []
   const removedEntries: Disponibilite[] = []
@@ -3560,28 +3429,21 @@ async function handleAutoReplacementLogic(date: string, collabId: string, newDis
   // Pour chaque nouvelle mission, vérifier les conflits avec les disponibilités existantes
   for (const mission of newMissions) {
     const conflictingDispos = existing.filter(existingDispo => {
-      const existingKind = resolveDispoKind(existingDispo)
-      console.log(`🔍 Checking conflict: existing`, existingDispo, `kind:`, existingKind)
+  const existingKind = resolveDispoKind(existingDispo)
       
       // Seules les disponibilités de type "disponible" peuvent être remplacées par des missions
       // Cela exclut les indisponibilités et autres missions
-      if (existingKind.type !== 'disponible') {
-        console.log(`🔍 Skipping replacement - not a disponible:`, existingKind.type)
-        return false
-      }
+      if (existingKind.type !== 'disponible') return false
       
       // Vérifier le conflit horaire
       const hasConflict = hasTimeConflict(mission, existingDispo)
-      console.log(`🔍 Time conflict result:`, hasConflict)
       return hasConflict
     })
-
-    console.log(`🔍 Conflicting dispos for mission:`, conflictingDispos)
+    
 
     // Supprimer automatiquement les disponibilités en conflit
     for (const conflicting of conflictingDispos) {
       if (conflicting.id) {
-        console.log(`🔄 Remplacement automatique: suppression dispo ${conflicting.id} pour mission ${mission.lieu}`)
         await disponibilitesRTDBService.deleteDisponibilite(conflicting.id)
         removedIds.push(conflicting.id)
         removedEntries.push(conflicting as Disponibilite)
@@ -3607,12 +3469,8 @@ function hasTimeConflict(dispo1: any, dispo2: any): boolean {
   const kind1 = resolveDispoKind(dispo1)
   const kind2 = resolveDispoKind(dispo2)
   
-  console.log(`🔍 hasTimeConflict: dispo1=`, dispo1, `kind1=`, kind1)
-  console.log(`🔍 hasTimeConflict: dispo2=`, dispo2, `kind2=`, kind2)
-  
   // Si l'une des deux est full-day, il y a conflit
   if (kind1.timeKind === 'full-day' || kind2.timeKind === 'full-day') {
-    console.log(`✅ hasTimeConflict: full-day conflict detected`)
     return true
   }
   
@@ -3623,12 +3481,9 @@ function hasTimeConflict(dispo1: any, dispo2: any): boolean {
     const start2 = dispo2.heure_debut
     const end2 = dispo2.heure_fin
     
-    console.log(`🔍 hasTimeConflict: range comparison - (${start1}-${end1}) vs (${start2}-${end2})`)
-    
     if (start1 && end1 && start2 && end2) {
       // Deux plages horaires se chevauchent si l'une commence avant que l'autre ne finisse
       const hasConflict = start1 < end2 && start2 < end1
-      console.log(`✅ hasTimeConflict: range conflict =`, hasConflict)
       return hasConflict
     }
   }
@@ -3745,9 +3600,7 @@ function cancelEditDispo() {
 }
 
 function setEditingType(type: string) {
-  console.log(`🎯 setEditingType called with:`, type)
   editingDispo.value.type = type as Disponibilite['type']
-  console.log(`🎯 editingDispo after setEditingType:`, editingDispo.value)
   // Reset timeKind si incompatible
   if (type === 'indisponible') {
     editingDispo.value.timeKind = 'full-day'
@@ -3790,43 +3643,33 @@ function toggleEditingSlot(slotValue: string) {
 
 const isEditFormValid = computed(() => {
   const dispo = editingDispo.value
-  console.log(`🔍 isEditFormValid check - dispo:`, dispo)
 
   
   if (!dispo.type || !dispo.timeKind) {
-    console.log(`❌ isEditFormValid: missing type (${dispo.type}) or timeKind (${dispo.timeKind})`)
     return false
   }
   
   if (dispo.timeKind === 'range') {
     if (!dispo.heure_debut || !dispo.heure_fin) {
-      console.log(`❌ isEditFormValid: missing hours for range - debut:${dispo.heure_debut} fin:${dispo.heure_fin}`)
       return false
     }
   }
   
   if (dispo.timeKind === 'slot') {
     if (!dispo.slots || dispo.slots.length === 0) {
-      console.log(`❌ isEditFormValid: missing slots for slot timeKind`)
       return false
     }
   }
   
   if (dispo.type === 'mission' && !dispo.lieu) {
-    console.log(`❌ isEditFormValid: mission without lieu - lieu:`, dispo.lieu)
     return false
   }
   
-  console.log(`✅ isEditFormValid: form is valid`)
   return true
 })
 
 function saveEditDispo() {
-  console.log(`🚀 saveEditDispo CALLED - isEditFormValid:`, isEditFormValid.value)
-  console.log(`🚀 saveEditDispo - editingDispo:`, editingDispo.value)
-  console.log(`🚀 saveEditDispo - isAddingNewDispo:`, isAddingNewDispo.value, `editingDispoIndex:`, editingDispoIndex.value)
   if (!isEditFormValid.value) {
-    console.log(`❌ saveEditDispo: form not valid, aborting`)
     return
   }
   
@@ -3856,7 +3699,7 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value.push(newDispo)
-    console.log('✅ saveEditDispo: ajout mission, selectedCellDispos =', selectedCellDispos.value)
+    
 
   } else {
     // Modifier ligne existante
@@ -3869,10 +3712,9 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value[index] = newDispo
-    console.log('✅ saveEditDispo: mise à jour mission, selectedCellDispos =', selectedCellDispos.value)
+    
   }
   
-  console.log('🔁 saveEditDispo: before cancelEditDispo, selectedCellDispos =', selectedCellDispos.value)
   cancelEditDispo()
   
   // Enregistrer automatiquement la disponibilité
@@ -3880,8 +3722,6 @@ function saveEditDispo() {
 }
 
 async function saveDispos() {
-  console.log(`🚀 saveDispos CALLED - selectedCell:`, selectedCell.value)
-  console.log(`🚀 saveDispos: selectedCellDispos length =`, selectedCellDispos.value.length, selectedCellDispos.value)
   saving.value = true
   try {
     if (!selectedCell.value) return
@@ -3910,7 +3750,6 @@ async function saveDispos() {
     let after = selectedCellDispos.value.filter(d => (d as any)._cont !== 'end')
 
     // NOUVELLE LOGIQUE : Remplacement automatique des disponibilités en conflit avec les missions
-    console.log(`🔧 About to call handleAutoReplacementLogic with:`, { date, collabId, after })
     const replacementResult = await handleAutoReplacementLogic(date, collabId, after)
 
     if (replacementResult.removedIds.length || replacementResult.removedEntries.length) {
@@ -3922,10 +3761,7 @@ async function saveDispos() {
 
       selectedCellDispos.value = selectedCellDispos.value.filter(d => !shouldRemove(d))
       after = after.filter(d => !shouldRemove(d))
-      console.log(`🧹 Removed conflicting dispos from selection`, {
-        removedIds: replacementResult.removedIds,
-        after
-      })
+      
     }
 
     // Recalculer les diff après éventuelles suppressions
@@ -4127,7 +3963,7 @@ function clearAllFilters() {
       
       // Attendre que les données se rechargent puis aller à aujourd'hui
       setTimeout(() => {
-        console.log('📅 [DEBUG] Filtres effacés, navigation vers aujourd\'hui')
+        
         goToToday()
       }, 200)
     } else {
@@ -4165,7 +4001,7 @@ function goToToday() {
   
   if (todayIndex < 0) {
     // Aujourd'hui n'est pas dans la plage filtrée - afficher un message ou ne rien faire
-    console.log('📅 Aujourd\'hui n\'est pas visible avec les filtres actuels')
+    
     return
   }
   
@@ -4173,7 +4009,7 @@ function goToToday() {
   const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
   scroller.scrollTo({ left: centerOffset, behavior: 'smooth' })
   
-  console.log('📅 Navigation vers aujourd\'hui:', { todayIndex, centerOffset })
+  
   // Plus besoin d'updateTodayOverlayX - highlights gérés par CSS
 }
 
@@ -4456,18 +4292,18 @@ function startRealtimeSync() {
   // Vérifier si on a déjà un listener pour cette plage exacte
   const currentListenerId = `${dateDebut}_${dateFin}`
   if (realtimeListeners.value.includes(currentListenerId)) {
-    console.log(`📡 Listener RTDB déjà actif pour ${dateDebut} → ${dateFin}`)
+    
     return
   }
   
-  console.log(`📡 Démarrage listener RTDB pour ${dateDebut} → ${dateFin}`)
+  
   
   // Démarrer le listener RTDB pour cette plage
   const listenerId = disponibilitesRTDBService.listenToDisponibilitesByDateRange(
     dateDebut, 
     dateFin,
     (disponibilites) => {
-      console.log(`🔄 Mise à jour RTDB temps réel: ${disponibilites.length} disponibilités`)
+      
 
       // Regrouper par date (clé = date) pour rester cohérent avec le cache
       const byDate = new Map<string, any[]>()
@@ -4533,7 +4369,7 @@ function startRealtimeSync() {
         disponibilitesCache.value.set(date, dispos)
       })
 
-      console.log(`✅ Cache temps réel synchronisé: ${byDate.size} dates mises à jour`)
+      
     }
   )
   
@@ -4554,7 +4390,7 @@ function startRealtimeSync() {
       if (realtimeListeners.value.length === 0) {
         isRealtimeActive.value = false
       }
-      console.log(`📡 Listener RTDB arrêté: ${listenerId}`)
+      
     }
   }
 }
@@ -4578,9 +4414,8 @@ function stopRealtimeSync() {
  */
 function showRealtimeStats() {
   // Migration RTDB: anciennes stats Firestore désactivées
-  const collaborationStats = collaborationService.getStats()
-  console.log('� Statistiques de collaboration:', collaborationStats)
-  console.log('� Listeners RTDB actifs:', realtimeListeners.value.length)
+  collaborationService.getStats()
+  
   
   // notify({
   //   message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
@@ -4697,7 +4532,7 @@ function setupRealtimePreferences() {
   
   // ⚠️ CONTRÔLE D'URGENCE : Désactiver en mode urgence
   if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
-    console.log('🚨 [EMERGENCY] Sync préférences désactivée - Mode cache local')
+    console.warn('🚨 [EMERGENCY] Sync préférences désactivée - Mode cache local')
     // Charger une seule fois les préférences puis utiliser le cache
     if (loadPreferences && auth.currentUser) {
       loadPreferences(auth.currentUser.uid).then(() => {
@@ -4781,7 +4616,7 @@ function setupUserColorsSync() {
     UserColorsService.listenToMultipleUsers(userIds)
   }, { immediate: true })
   
-  console.log('🎨 Configuration synchronisation couleurs utilisateurs terminée')
+  
 }
 
 /**
@@ -5060,10 +4895,8 @@ function handleEditClose() {
   
   // Libérer le verrou de la cellule si elle était verrouillée
   if (selectedCell.value && collaborationService) {
-    const cellId = `${selectedCell.value.collaborateurId}-${selectedCell.value.date}`
-    console.log(`🔓 Tentative libération verrou pour: ${cellId}`)
+    
     collaborationService.unlockCell(selectedCell.value.collaborateurId, selectedCell.value.date)
-    console.log(`🔓 Verrou libéré pour ${cellId}`)
   }
   
   // Fermer les modaux et nettoyer l'état
@@ -5486,7 +5319,7 @@ function measureAndSetHeaderHeight() {
   const headerH = header ? header.getBoundingClientRect().height : 0
   scroller.style.setProperty('--header-h', `${headerH}px`)
   // Mesure fine: hauteur de la rangée des mois (pour arrêter les traits de semaine au-dessus)
-  const weeksRow = scroller.querySelector('.excel-weeks-row') as HTMLElement | null
+  scroller.querySelector('.excel-weeks-row')
   const monthsH = 0 // Plus besoin de calculer la hauteur des mois puisqu'on les a supprimés
   scroller.style.setProperty('--months-h', `${monthsH}px`)
 }
@@ -5538,7 +5371,7 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
         duration: 3000
       })
       
-      console.log(`🔒 Interaction bloquée: cellule ${cellId} verrouillée par ${lock.userName}`)
+      
       return // Empêcher toute interaction
     }
   }
@@ -5554,7 +5387,7 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
         duration: 3000
       })
       
-      console.log(`📋 Interaction bloquée: cellule ${cellId} sélectionnée par ${selection.userName}`)
+      
       return // Empêcher toute interaction
     }
   }
@@ -5564,46 +5397,36 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
     event.preventDefault()
     event.stopPropagation()
     
-    console.log('=== MODE MULTISELECT - AUCUNE MODALE ===')
-    console.log('Mode:', event.ctrlKey || event.metaKey ? 'DESKTOP CTRL/CMD' : 'MOBILE FAB')
-    console.log('Clic sur:', cellId)
-    console.log('Selection avant:', Array.from(selectedCells.value))
+    
     
     // RESTRICTION ULTRA-STRICTE: interdire toute sélection sur un autre collaborateur
     if (selectedCells.value.size > 0 && !canAddCellToSelection(collaborateurId)) {
-      const currentSelectedCollaborateur = getCurrentSelectedCollaborateur()
-      console.log('❌ INTERDIT: Tentative de sélection sur un autre collaborateur')
-      console.log('🔒 Sélection actuelle:', currentSelectedCollaborateur, '| Tentative:', collaborateurId)
-      console.log('⚠️ Impossible de sélectionner des cellules sur différentes lignes de collaborateurs')
+  getCurrentSelectedCollaborateur()
+      
       return
     }
     
     // Toggle la sélection
     if (selectedCells.value.has(cellId)) {
       selectedCells.value.delete(cellId)
-      console.log('DESELECTION de:', cellId)
+      
     } else {
       selectedCells.value.add(cellId)
-      console.log('SELECTION de:', cellId)
+      
     }
     
     // Validation post-ajout (sécurité)
     if (!validateSingleCollaboratorSelection()) {
-      console.log('❌ VALIDATION ÉCHOUÉE: Nettoyage de la sélection')
+      
       cleanSelectionToSingleCollaborator()
     }
     // Forcer la réactivité
     selectedCells.value = new Set(selectedCells.value)
-    console.log('Selection apres:', Array.from(selectedCells.value))
-    console.log('Total:', selectedCells.value.size)
-    console.log('========================')
+    
     
   } else {
     // Clic normal 
-    console.log('=== CLIC NORMAL SUR CELLULE ===')
-    console.log('Cellule:', cellId)
-    console.log('Selection active:', selectedCells.value.size > 0)
-    console.log('Mode selection:', isSelectionMode.value)
+    
     
     // Désactiver le mode sélection pour un clic normal
     isSelectionMode.value = false
@@ -5611,11 +5434,9 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
     // Si il y a une sélection active, la vider mais permettre l'ouverture de la modale
     if (selectedCells.value.size > 0) {
       selectedCells.value.clear()
-      console.log('Selection videe par clic normal')
     }
     
     // Toujours ouvrir la modale pour un clic normal
-    console.log('Ouverture de la modale pour:', collaborateurId, date)
     openModalForCollaborateur(collaborateurId, date)
   }
 }
@@ -5653,7 +5474,7 @@ function clearSelection() {
     collaborationService.clearSelectedCells()
   }
   
-  console.log('🧹 Sélection vidée')
+  
 }
 
 // Fonction pour toggler le mode sélection sur mobile
@@ -5665,7 +5486,7 @@ function toggleSelectionMode() {
     clearSelection()
   }
   
-  console.log('📱 Mode sélection mobile:', isSelectionMode.value ? 'ACTIVÉ' : 'DÉSACTIVÉ')
+  
 }
 
 // Obtenir le collaborateur actuellement sélectionné (s'il y en a un)
@@ -5725,46 +5546,25 @@ function cleanSelectionToSingleCollaborator() {
   }
   
   selectedCells.value = validCells
-  console.log(`🧹 Sélection nettoyée: gardé ${validCells.size} cellules pour ${currentCollaborateur}`)
 }
 
 // Vérifier si on peut ajouter une cellule à la sélection sans violer la règle du collaborateur unique
 function canAddCellToSelection(collaborateurId: string): boolean {
-  console.log('🔍 canAddCellToSelection appelée:', {
-    collaborateurId,
-    tailleSélection: selectedCells.value.size,
-    sélectionActuelle: Array.from(selectedCells.value)
-  })
-  
-  if (selectedCells.value.size === 0) {
-    console.log('✅ canAddCellToSelection: sélection vide, autoriser')
-    return true
-  }
-  
+  if (selectedCells.value.size === 0) return true
   const currentCollaborateur = getCurrentSelectedCollaborateur()
-  const canAdd = currentCollaborateur === collaborateurId
-  
-  console.log('🔍 canAddCellToSelection résultat:', {
-    collaborateurActuel: currentCollaborateur,
-    collaborateurDemandé: collaborateurId,
-    peutAjouter: canAdd
-  })
-  
-  return canAdd
+  return currentCollaborateur === collaborateurId
 }
 
 // Gestion du clic-glisser pour la sélection multiple
 function handleCellMouseDown(collaborateurId: string, date: string, event: MouseEvent) {
-  console.log('🖱️ MouseDown sur cellule:', collaborateurId, date, 'Ctrl/Cmd:', event.ctrlKey || event.metaKey)
+  
   
   if (event.ctrlKey || event.metaKey) {
     event.preventDefault()
     
     // VALIDATION ULTRA-STRICTE: Aucune sélection multi-collaborateur autorisée
     if (selectedCells.value.size > 0 && !canAddCellToSelection(collaborateurId)) {
-      console.log('❌ DRAG IMPOSSIBLE: Tentative de drag sur un autre collaborateur bloquée')
-      console.log('� Sélection actuelle:', getCurrentSelectedCollaborateur(), '| Tentative:', collaborateurId)
-      console.log('⚠️ Le drag ne peut pas traverser différentes lignes de collaborateurs')
+      
       return
     }
     
@@ -5775,20 +5575,20 @@ function handleCellMouseDown(collaborateurId: string, date: string, event: Mouse
     const cellId = `${collaborateurId}-${date}`
     if (selectedCells.value.has(cellId)) {
       selectedCells.value.delete(cellId)
-      console.log('🔹 Cellule désélectionnée:', cellId)
+      
     } else {
       selectedCells.value.add(cellId)
-      console.log('🔸 Cellule sélectionnée:', cellId)
+      
     }
     
     // VALIDATION POST-AJOUT (sécurité supplémentaire)
     if (!validateSingleCollaboratorSelection()) {
-      console.log('❌ VALIDATION DRAG ÉCHOUÉE: Nettoyage de la sélection')
+      
       cleanSelectionToSingleCollaborator()
     }
     
     selectedCells.value = new Set(selectedCells.value)
-    console.log('🖱️ Début drag sélection sur:', cellId)
+    
   }
 }
 
@@ -5811,9 +5611,9 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
     
     // VALIDATION ULTRA-STRICTE: Bloquer immédiatement toute tentative de changement de collaborateur
     const currentSelectedCollaborateur = getCurrentSelectedCollaborateur()
-    console.log('📋 Comparaison:', {current: currentSelectedCollaborateur, nouveau: collaborateurId})
+    
     if (currentSelectedCollaborateur && currentSelectedCollaborateur !== collaborateurId) {
-      console.log('❌ DRAG ENTER INTERDIT: Changement de collaborateur détecté, arrêt du drag')
+      
       isDraggingSelection.value = false
       dragStartCell.value = null
       return
@@ -5824,13 +5624,13 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
       selectedCells.value.add(cellId)
       // Validation post-ajout (sécurité)
       if (!validateSingleCollaboratorSelection()) {
-        console.log('❌ VALIDATION DRAG ENTER ÉCHOUÉE: Nettoyage de la sélection')
+        
         cleanSelectionToSingleCollaborator()
       }
       selectedCells.value = new Set(selectedCells.value)
-      console.log('➕ Ajout cellule au drag:', cellId)
+      
     } else {
-      console.log('⚪ Cellule déjà sélectionnée:', cellId)
+      
     }
   }
 }
@@ -5842,7 +5642,7 @@ function handleCellMouseUp() {
     
     // VALIDATION FINALE: S'assurer que la sélection respecte les règles
     if (!validateSingleCollaboratorSelection()) {
-      console.log('❌ VALIDATION FINALE ÉCHOUÉE: Nettoyage de la sélection')
+      
       cleanSelectionToSingleCollaborator()
     }
     
@@ -5851,7 +5651,7 @@ function handleCellMouseUp() {
       isSelectionMode.value = false
     }
 
-    console.log('🏁 Fin drag sélection')
+    
   }
 }
 
@@ -5860,12 +5660,12 @@ function handleGlobalMouseUp() {
   if (isDraggingSelection.value) {
     isDraggingSelection.value = false
     dragStartCell.value = null
-    console.log('🖱️ Sélection par glisser interrompue')
+    
     
     // Si on est en mode collaborateur, on vide aussi la sélection par sécurité
     if (isCollaborateurInterface.value) {
       selectedCells.value.clear()
-      console.log('🚫 Mode collaborateur: sélection vidée par sécurité')
+      
     }
   }
 }
@@ -5904,12 +5704,12 @@ async function handleBatchCreate(data: any) {
       tenantId: 'keydispo'
     }
     
-    console.log(`💾 Ajout au cache local pour ${date}:`, newDispo)
+    
     
     // Ajouter au cache local
     disponibilitesCache.value.set(date, [...existingDispos, newDispo])
     
-    console.log(`📊 Cache après ajout pour ${date}:`, disponibilitesCache.value.get(date)?.length, 'dispos')
+    
   }
   
   // Fermer le modal et vider la sélection
@@ -5931,7 +5731,7 @@ async function handleBatchCreate(data: any) {
     
     // Nettoyer les données temporaires après que les vraies soient arrivées
     setTimeout(() => {
-      console.log('🧹 Nettoyage des données temporaires...')
+      
       cleanupTemporaryData(data.dates)
     }, 1000)
   }, 500)
@@ -5947,7 +5747,7 @@ function cleanupTemporaryData(dates: string[]) {
       const isTemp = d.id?.startsWith('temp-')
       if (isTemp) {
         cleanedCount++
-        console.log(`🧹 Suppression donnée temporaire: ${d.prenom} ${d.nom} le ${date} (ID: ${d.id})`)
+        
       }
       return !isTemp
     })
@@ -6009,18 +5809,18 @@ async function refreshDisponibilites(clearCache = true) {
   try {
     if (clearCache) {
       // Vider le cache pour forcer le rechargement
-      console.log('📤 Vidage du cache disponibilités...')
+      
       disponibilitesCache.value.clear()
       
       // Reset de l'état de chargement des ranges
       // Reset des ranges chargées
       loadedDateRanges.value = []
     } else {
-      console.log('💾 Conservation du cache existant pour sync en arrière-plan...')
+      
     }
     
     // Recharger les données pour la période visible
-    console.log(`📊 visibleDays.value.length: ${visibleDays.value.length}`)
+    
     if (visibleDays.value.length > 0) {
       const firstDay = visibleDays.value[0]
       const lastDay = visibleDays.value[visibleDays.value.length - 1]
@@ -6119,7 +5919,7 @@ const openCollaborateurInfo = async (collaborateur: Collaborateur) => {
 
 const handleEditCollaborateur = (collaborateur: Collaborateur) => {
   // TODO: Rediriger vers la page d'édition du collaborateur ou ouvrir un modal d'édition
-  console.log('Édition du collaborateur:', collaborateur)
+  
   notify({
     message: `Édition de ${collaborateur.prenom} ${collaborateur.nom}`,
     color: 'info'
@@ -6216,8 +6016,6 @@ onMounted(async () => {
   
   // CORRECTION: Forcer un recalcul final pour s'assurer que le filtrage est appliqué
   await nextTick()
-  // Trigger manuel pour forcer la réactivité du filtrage
-  console.log('🔍 [DEBUG] Fin d\'initialisation - collaborateurs filtrés:', filteredCollaborateurs.value.length)
   // Forcer le recalcul si nécessaire
   if (scroller) {
     recomputeRowWindow(scroller)
@@ -6259,23 +6057,18 @@ onMounted(async () => {
     })
   }
   
-  // Exposer globalement pour le debug
-  if (typeof window !== 'undefined') {
+  // Exposer globalement quelques fonctions de debug uniquement si activé
+  if (import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true' && typeof window !== 'undefined') {
     ;(window as any).collaborationService = collaborationService
-    // Migration RTDB: realtimeSync obsolète
-    
-    // Exposer les fonctions de debug du cache DOM
     ;(window as any).testDOMCache = function() {
-      console.log('🧪 Test cache DOM:')
-      console.log('Cache valide:', _domCache.cacheValid)
-      console.log('Colonnes en cache:', _domCache.columnElements.size)
-      console.log('Lignes en cache:', _domCache.rowElements.size)
-      console.log('Dernière construction:', new Date(_domCache.lastBuilt))
+      return {
+        cacheValid: _domCache.cacheValid,
+        columnCount: _domCache.columnElements.size,
+        rowCount: _domCache.rowElements.size,
+        lastBuilt: new Date(_domCache.lastBuilt)
+      }
     }
-    
     ;(window as any).benchmarkHighlight = function(iterations = 100) {
-      console.log('🏃‍♂️ Benchmark highlighting avec', iterations, 'itérations')
-      
       const start = performance.now()
       for (let i = 0; i < iterations; i++) {
         const col = Math.floor(Math.random() * visibleDays.value.length)
@@ -6283,112 +6076,69 @@ onMounted(async () => {
         updateHighlightWithDOMCache(col, row)
       }
       const end = performance.now()
-      
-      console.log(`⚡ ${iterations} highlights en ${end - start}ms`)
-      console.log(`⚡ Performance: ${((end - start) / iterations).toFixed(2)}ms par highlight`)
       return (end - start) / iterations
     }
-    
     ;(window as any).rebuildCache = function() {
       invalidateDOMCache('Test manuel')
       buildDOMCache()
-      console.log('🔄 Cache DOM reconstruit')
     }
-    
-    // Fonction de test pour le verrouillage
     ;(window as any).testLock = function(collaborateurId: string, date: string) {
-      console.log('🧪 Test lock pour:', collaborateurId, date)
       if (collaborationService) {
-        console.log('📊 État avant lock:')
-        console.log('- SessionId:', (collaborationService as any).sessionId?.slice(-6))
-        console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
-        console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
-        
-        collaborationService.lockCellForEditing(collaborateurId, date).then(() => {
-          console.log('📊 État après lock:')
-          console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
-          console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
-        })
+        return {
+          before: {
+            isCellLocked: collaborationService.isCellLocked(collaborateurId, date),
+            lock: collaborationService.getCellLock(collaborateurId, date)
+          }
+        }
       }
     }
-    
     ;(window as any).testUnlock = function(collaborateurId: string, date: string) {
-      console.log('🧪 Test unlock pour:', collaborateurId, date)
       if (collaborationService) {
         collaborationService.unlockCell(collaborateurId, date)
-        console.log('📊 État après unlock:')
-        console.log('- isCellLocked:', collaborationService.isCellLocked(collaborateurId, date))
-        console.log('- getCellLock:', collaborationService.getCellLock(collaborateurId, date))
+        return {
+          after: {
+            isCellLocked: collaborationService.isCellLocked(collaborateurId, date),
+            lock: collaborationService.getCellLock(collaborateurId, date)
+          }
+        }
       }
     }
-    
-    // Fonction de test pour le hover
     ;(window as any).testHover = function(collaborateurId: string, date: string) {
-      console.log('🧪 Test hover pour:', collaborateurId, date)
       if (collaborationService) {
-        console.log('📊 État avant hover:')
-        console.log('- getHoveringUsers:', collaborationService.getHoveringUsers(collaborateurId, date))
-        
+        const before = collaborationService.getHoveringUsers(collaborateurId, date)
         collaborationService.updateHoveredCell(collaborateurId, date)
-        
-        setTimeout(() => {
-          console.log('📊 État après hover (500ms):')
-          console.log('- getHoveringUsers:', collaborationService.getHoveringUsers(collaborateurId, date))
-        }, 500)
+        return { before }
       }
     }
-    
-    // Test diagnostique des classes CSS
     ;(window as any).testCellClasses = function(collaborateurId: string, date: string) {
       const cellSelector = `[data-day-date="${date}"]`
       const cells = document.querySelectorAll(cellSelector)
       const cell = Array.from(cells).find(el => {
         const row = el.closest('.excel-row')
         return row?.getAttribute('data-collaborateur-id') === collaborateurId
-      })
-      
-      if (cell) {
-        console.log('🎨 Classes CSS pour', collaborateurId, date, ':', cell.className)
-        console.log('🎨 Computed styles background:', window.getComputedStyle(cell).backgroundColor)
-        return {
-          element: cell,
-          classes: cell.className,
-          hasIndicator: cell.classList.contains('has-indicator'),
-          hasPresence: cell.classList.contains('has-presence'),
-          locked: cell.classList.contains('locked')
-        }
-      } else {
-        console.log('❌ Cellule non trouvée pour', collaborateurId, date)
-        return null
+      }) as HTMLElement | undefined
+      if (!cell) return null
+      return {
+        element: cell,
+        classes: cell.className,
+        hasIndicator: cell.classList.contains('has-indicator'),
+        hasPresence: cell.classList.contains('has-presence'),
+        locked: cell.classList.contains('locked')
       }
     }
-    
-    // Test de force pour ajouter les classes CSS à une cellule
     ;(window as any).forceTestClasses = function(collaborateurId?: string, date?: string) {
       const targetCollab = collaborateurId || paginatedCollaborateurs.value[0]?.id
       const targetDate = date || visibleDays.value[0]?.date
-      
-      if (!targetCollab || !targetDate) {
-        console.log('❌ Pas de collaborateur ou date disponible')
-        return
-      }
-      
+      if (!targetCollab || !targetDate) return null
       const cellSelector = `[data-day-date="${targetDate}"]`
       const cells = document.querySelectorAll(cellSelector)
       const cell = Array.from(cells).find(el => {
         const row = el.closest('.excel-row')
         return row?.getAttribute('data-collaborateur-id') === targetCollab
-      }) as HTMLElement
-      
-      if (cell) {
-        cell.classList.add('has-indicator', 'has-presence')
-        // Classes forcées
-        console.log('🎨 Classes actuelles:', cell.className)
-        return cell
-      } else {
-        console.log('❌ Cellule non trouvée pour', targetCollab, targetDate)
-        return null
-      }
+      }) as HTMLElement | undefined
+      if (!cell) return null
+      cell.classList.add('has-indicator', 'has-presence')
+      return cell
     }
   }
   
@@ -6411,7 +6161,7 @@ onMounted(async () => {
   
   // Charger immédiatement les dispos pour la fenêtre initiale complète
   if (loadedDays.value.length > 0) {
-    console.log('🚀 Chargement initial avec sync temps réel...')
+    
     // Utiliser refreshDisponibilites au lieu de generateDisponibilitesForDateRange
     // pour déclencher la synchronisation temps réel
     await refreshDisponibilites(true)
@@ -6425,7 +6175,7 @@ onMounted(async () => {
     // TEMPORAIREMENT DÉSACTIVÉ pendant migration complète vers RTDB
     if (disponibilitesCache.value.size > 0) {
       // detectAndFixExistingOvernightMissions().catch(console.error)
-      console.log('🔧 Auto-correction overnight missions désactivée pendant migration RTDB')
+      
     }
   }
   window.addEventListener('resize', onResize)
@@ -6622,14 +6372,14 @@ watch(visibleDays, async (newDays, _oldDays) => {
 watch(() => route.query, (newQuery) => {
   if (newQuery.collaborateur && newQuery.collaborateur !== searchTerm.value) {
     searchTerm.value = newQuery.collaborateur as string
-    console.log(`🔍 Filtre collaborateur mis à jour: "${searchTerm.value}"`)
+    
   }
 }, { immediate: true })
 
 // Watchers pour optimisation des filtres
 watch(allCollaborateurs, () => {
   // Nettoyer le cache lors du changement des collaborateurs (géré par le composable)
-  console.log('🔄 Collaborateurs mis à jour, recalcul des filtres')
+  
 }, { deep: true })
 
 // Quand les filtres structurants changent, clamp le scroll vertical et recompute
@@ -6722,7 +6472,7 @@ onUnmounted(() => {
 // Watcher pour les préférences utilisateur - mettre à jour les couleurs automatiquement
 watch(() => preferences.value.presenceColor, (newColor) => {
   if (newColor && auth.currentUser) {
-    console.log('🎨 Couleur de préférence changée:', newColor)
+    
     updateUserColorVariables()
     
     // Forcer la mise à jour des avatars dans la barre d'utilisateurs actifs
@@ -6737,7 +6487,7 @@ watch(() => preferences.value.presenceColor, (newColor) => {
 // Watcher pour l'authentification - charger les préférences quand l'utilisateur change
 watch(() => auth.currentUser?.uid, (newUid, oldUid) => {
   if (newUid && newUid !== oldUid && loadPreferences) {
-    console.log('👤 Utilisateur changé, chargement des préférences...')
+    
     loadPreferences(newUid)
       .then(() => {
         // Préférences chargées
@@ -7885,7 +7635,7 @@ onUnmounted(() => {
   font-family: var(--va-font-family);
   /* Séparateur de semaine, utilisé partout (jours header, semaines header, body) */
   --week-sep-color: rgba(0, 0, 0, 0.10);
-  --week-sep-width: 3px;
+  --week-sep-width: 4px;
 }
 
 /* Optimisation de l'espace pour maximiser la surface du planning */
@@ -8877,7 +8627,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: var(--week-sep-width, 3px);
+  width: var(--week-sep-width, 4px);
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
 }
 
@@ -8922,7 +8672,7 @@ onUnmounted(() => {
 
 .excel-week-cell {
   background: #f9fafb;
-  border-right: 1px solid #e0e0e0;
+  border-right: 3px solid #e0e0e0;
   border-bottom: 1px solid #eef2f7;
   padding: 4px 6px;
   text-align: center;
@@ -8935,7 +8685,7 @@ onUnmounted(() => {
 
 /* Séparateur visuel pour les changements de mois dans la même semaine */
 .excel-week-cell.month-boundary {
-  border-left: 2px solid #9CA3AF;
+  border-left: var(--week-sep-width, 4px) solid #6B7280; /* plus épais pour frontière mois */
 }
 
 .excel-week-cell.month-boundary::before {
@@ -8944,8 +8694,8 @@ onUnmounted(() => {
   left: -1px;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: #6B7280;
+  width: 0; /* supprimer le doublon de trait */
+  background: transparent;
   border-radius: 0.5px;
 }
 
@@ -8971,9 +8721,19 @@ onUnmounted(() => {
   position: relative; /* pour ancrer le séparateur ::after et éviter la coupure */
 }
 
-/* Supprimer bordure droite des dimanches car les lundi ont déjà leur séparateur */
+/* Dimanche (header seulement): ajouter un trait épais pour marquer fin de semaine */
 .excel-day-cell.sunday {
-  border-right: none;
+  border-right: none; /* éviter doublon à droite */
+}
+.excel-day-cell.sunday::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: var(--week-sep-width, 4px); /* barre plus large uniforme */
+  background: var(--week-sep-color, rgba(0,0,0,0.18));
+  pointer-events: none;
 }
 
 /* (supprimé) séparateur sur header jours remplacé par overlay global */
@@ -9066,6 +8826,24 @@ onUnmounted(() => {
 /* Ancien système overlay supprimé - remplacé par CSS pur */
 
 /* Ancien système overlay supprimé - remplacé par CSS pur */
+
+/* Overlay des séparateurs dans le body pour descendre jusqu’aux lignes */
+.week-separators-body {
+  position: absolute;
+  top: 0; /* dans grid-overlay-clip, donc déjà sous l’en-tête sticky */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 21; /* au-dessus des cellules, sous d’autres overlays si présents */
+}
+.week-separators-body .week-sep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--week-sep-width, 4px);
+  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
+}
 
 /* === HIGHLIGHTS ULTRA-PERFORMANTS (DOM direct) === */
 
@@ -9417,10 +9195,7 @@ onUnmounted(() => {
   transition: none !important;
 }
 
-/* Supprimer bordure droite des dimanches dans le planning également */
-.excel-cell.sunday {
-  border-right: none;
-}
+/* Dimanche dans le body: pas de trait spécial, bordure standard conservée */
 
 /* ==========================================
    DESIGN ÉLÉGANT - COULEURS VUESTIC + ICÔNES MATERIAL
@@ -9879,7 +9654,7 @@ body.dragging-selection .excel-cell {
   right: -1px;
   top: 0;
   bottom: 0;
-  width: var(--week-sep-width, 2px);
+  width: var(--week-sep-width, 4px);
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }
@@ -9893,7 +9668,7 @@ body.dragging-selection .excel-cell {
   left: -1px;
   top: 0;
   bottom: 0;
-  width: var(--week-sep-width, 2px);
+  width: var(--week-sep-width, 4px);
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }
@@ -9907,7 +9682,7 @@ body.dragging-selection .excel-cell {
   right: -1px;
   top: 0;
   bottom: 0;
-  width: var(--week-sep-width, 3px);
+  width: var(--week-sep-width, 4px);
   background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
   pointer-events: none;
 }

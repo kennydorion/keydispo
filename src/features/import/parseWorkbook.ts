@@ -16,7 +16,7 @@ export function detectHeaderRow(aoa: any[][]): number {
     const hasMetier = row.some(c => c === 'métier' || c === 'metier')
     
     if (iNom >= 0 && hasPrenom && hasMetier) {
-      console.log(`📍 Entête détecté ligne ${r + 1}:`, row.slice(0, 10))
+      
       return r
     }
   }
@@ -150,7 +150,7 @@ export function buildDateBlocks(aoa: any[][], headerRow: number) {
     console.warn(`⚠️ Incohérence potentielle: dernière date détectée=${lastDetected} mais dernière date brute=${lastRaw}`)
   }
 
-  console.log(`📊 ${blocks.length} blocs (dynamiques) détectés sur ${dateCols.length} colonnes date.`)
+  
   return { startCol: dateCols[0].col, blocks }
 }
 
@@ -181,7 +181,7 @@ export function parseWorkbook(file: File): Promise<ParseResult> {
           defval: null 
         }) as any[][]
         
-        console.log(`📖 Lecture de l'onglet "${sheetName}" (${aoa.length} lignes)`)
+        
         
         const result = parseAOA(aoa)
         resolve(result)
@@ -214,7 +214,7 @@ function parseAOA(aoa: any[][]): ParseResult {
     
     // 2. Mapping des colonnes fixes
     const colMapping = buildColumnMapping(headers)
-    console.log('📋 Mapping colonnes:', colMapping)
+    
     
     // 3. Détection des blocs de dates
     const { blocks } = buildDateBlocks(aoa, headerRow)
@@ -303,7 +303,7 @@ function parseAOA(aoa: any[][]): ParseResult {
       const count = range.end - range.start + 1
       warnings.push(`Lignes vides ignorées: ${range.start}-${range.end} (${count} lignes)`) }    
 
-    console.log(`✅ Parse terminé: ${data.length} disponibilités, ${collaborateurs.size} collaborateurs ( ${emptyRanges.length} plage(s) de lignes vides ignorées )`)
+    
 
     // Vérification couverture temporelle (simple warning si trous majeurs)
     const datesList = data.map(d => d.date).sort()

@@ -332,7 +332,6 @@ class HybridMultiUserService {
       return
     }
     if (emergencyOptimization?.isServiceDisabled?.('DISABLE_PRESENCE_TRACKING')) {
-      console.log('🚨 [EMERGENCY] Listeners présence/activités/locks désactivés')
       return
     }
 
@@ -778,7 +777,7 @@ class HybridMultiUserService {
     
     // Nettoyer l'ancienne session si elle existe
     if (this._isActive) {
-      console.log('🔄 Nettoyage de l\'ancienne session avant ré-initialisation')
+      
       await this.cleanup()
     }
     
@@ -794,11 +793,7 @@ class HybridMultiUserService {
     this.currentUserEmail = options.userEmail
     this.currentSessionId = this.generateSessionId()
     
-    console.log('🔑 COLLABORATEUR: Session générée', {
-      sessionId: this.currentSessionId?.slice(0, 12) + '...',
-      userId: this.currentUserId?.slice(0, 8) + '...',
-      userName: this.currentUserName
-    })
+    
     
     // Initialiser RTDB si nécessaire
     if (!this.rtdb) {

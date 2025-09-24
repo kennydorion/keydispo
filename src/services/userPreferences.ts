@@ -113,7 +113,6 @@ export class UserPreferencesService {
         return mergedPreferences
       } else {
         // Document n'existe pas, créer avec les préférences par défaut
-        console.log('📝 Création du document utilisateur avec préférences par défaut')
         await UserPreferencesService.initializeUserDocument(userId)
         userPreferences.value = { ...defaultPreferences }
         notifyPreferencesChange()
@@ -125,7 +124,6 @@ export class UserPreferencesService {
       
       // Si erreur de permission, essayer de créer le document utilisateur
       if (error?.code === 'permission-denied') {
-        console.log('🔐 Erreur de permission, tentative de création du document utilisateur')
         try {
           await UserPreferencesService.initializeUserDocument(userId)
           userPreferences.value = { ...defaultPreferences }
@@ -159,7 +157,6 @@ export class UserPreferencesService {
         updatedAt: new Date().toISOString()
       })
       
-      console.log('✅ Document utilisateur initialisé')
     } catch (error) {
       console.error('❌ Erreur lors de l\'initialisation du document utilisateur:', error)
       throw error
@@ -198,7 +195,6 @@ export class UserPreferencesService {
         updatedAt: new Date().toISOString()
       })
       
-      console.log('✅ Préférences sauvegardées')
       
     } catch (error) {
       console.error('❌ Erreur lors de la sauvegarde des préférences:', error)
@@ -211,11 +207,6 @@ export class UserPreferencesService {
    */
   static async updatePresenceColor(userId: string, color: string): Promise<void> {
     try {
-      console.log(`🎨 [UserPreferencesService] updatePresenceColor called:`, {
-        userId,
-        color,
-        currentTenantId: AuthService.currentTenantId
-      })
       
       // 1. Mise à jour immédiate de l'état local (optimiste)
       userPreferences.value = {
@@ -226,13 +217,11 @@ export class UserPreferencesService {
       // 2. Notifier immédiatement le changement
       notifyPreferencesChange()
       
-      console.log(`🎨 Couleur de présence mise à jour localement: ${color}`)
       
       // 3. Sauvegarder en arrière-plan avec la structure complète
       if (AuthService.currentTenantId) {
         const userRef = rtdbRef(rtdb, `tenants/${AuthService.currentTenantId}/users/${userId}`)
         
-        console.log(`🔥 [RTDB] Tentative de sauvegarde vers:`, userRef.toString())
         
         // Récupérer les préférences actuelles et les mettre à jour
         const updatedPreferences = {
@@ -240,17 +229,12 @@ export class UserPreferencesService {
           presenceColor: color
         }
         
-        console.log(`📝 [RTDB] Données à sauvegarder:`, {
-          preferences: updatedPreferences,
-          updatedAt: new Date().toISOString()
-        })
         
         await update(userRef, {
           preferences: updatedPreferences,
           updatedAt: new Date().toISOString()
         })
         
-        console.log(`✅ [RTDB] Couleur sauvegardée avec succès:`, color)
       } else {
         console.warn(`⚠️ [UserPreferencesService] Pas de tenantId disponible pour sauvegarder`)
       }

@@ -341,7 +341,6 @@ const handleSave = async () => {
   saving.value = true
   
   try {
-    console.log(`🔄 RTDB: Création de disponibilité pour ${props.collaborateur.prenom} ${props.collaborateur.nom}`)
     
     const dispoData = {
       collaborateurId: props.collaborateur.id,
@@ -364,10 +363,7 @@ const handleSave = async () => {
     
     await disponibilitesRTDBService.createDisponibilite(dispoData)
     
-    console.log(`✅ RTDB: Disponibilité créée avec succès`, { 
-      typeUI: editingDispo.value.type, 
-      typeRTDB: dispoData.type 
-    })
+    
     
     emit('save', {
       type: editingDispo.value.type,

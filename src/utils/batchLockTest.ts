@@ -63,7 +63,7 @@ export async function testBatchLock(
       }
     }
 
-    console.log('🔒 Test batch lock:', result)
+    
     return result
 
   } catch (error) {
@@ -108,7 +108,7 @@ export async function testBatchUnlock(
       message: `${unlockCount} verrous libérés avec succès`
     }
 
-    console.log('🔓 Test batch unlock:', result)
+    
     return result
 
   } catch (error) {
@@ -161,13 +161,22 @@ export function testBatchLockVisibility(
     }
   }
 
-  console.log('👀 Test batch lock visibility:', result)
+  
   return result
+}
+
+// Types globaux pour exposition dans la console
+declare global {
+  interface Window {
+    testBatchLock?: (selectedCells: Set<string>, collaborationService: any) => Promise<BatchLockTestResult>
+    testBatchUnlock?: (selectedCells: Set<string>, collaborationService: any) => Promise<BatchLockTestResult>
+    testBatchLockVisibility?: (selectedCells: Set<string>, collaborationService: any) => BatchLockTestResult
+  }
 }
 
 // Export pour utilisation dans la console
 if (typeof window !== 'undefined') {
-  (window as any).testBatchLock = testBatchLock
-  (window as any).testBatchUnlock = testBatchUnlock
-  (window as any).testBatchLockVisibility = testBatchLockVisibility
+  window.testBatchLock = testBatchLock
+  window.testBatchUnlock = testBatchUnlock
+  window.testBatchLockVisibility = testBatchLockVisibility
 }

@@ -170,7 +170,7 @@ export function setupRouterGuards(router: Router) {
       
       // Si l'utilisateur n'a pas le bon rôle, rediriger
       if (!role || !allowedRoles.includes(role)) {
-        console.log(`Access denied: user role '${role}' not in allowed roles:`, allowedRoles)
+        
         // Rediriger vers l'interface appropriée selon le contexte
         if (to.path.startsWith('/collaborateur/')) {
           return { path: '/collaborateur/dashboard' }

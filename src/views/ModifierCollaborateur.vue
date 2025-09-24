@@ -557,32 +557,24 @@ const validerFormulaire = (): boolean => {
 }
 
 const sauvegarder = async () => {
-  console.log('🔄 Début sauvegarde collaborateur...')
-  console.log('📋 Données du formulaire:', form.value)
-  
   if (!validerFormulaire()) {
-    console.log('❌ Validation du formulaire échouée')
     initToast({
       message: 'Veuillez corriger les erreurs du formulaire',
       color: 'danger'
     })
     return
   }
-  console.log('✅ Validation du formulaire réussie')
 
   if (!auth.currentUser) {
-    console.log('❌ Utilisateur non connecté')
     initToast({
       message: 'Vous devez être connecté pour effectuer cette action',
       color: 'danger'
     })
     return
   }
-  console.log('✅ Utilisateur connecté:', auth.currentUser.uid)
 
   try {
     loading.value = true
-    console.log('⏳ Préparation des données...')
 
     const collaborateurData = {
       nom: form.value.nom,
@@ -595,26 +587,19 @@ const sauvegarder = async () => {
       tenantId: currentTenantId.value,
       actif: true
     }
-    
-    console.log('📝 Données préparées:', collaborateurData)
-    console.log('🏢 Tenant ID:', currentTenantId.value)
-    console.log('👤 User ID:', auth.currentUser.uid)
 
     if (isCreation.value) {
-      console.log('🆕 Mode création')
       // Création
-      const newId = await CollaborateursServiceV2.createCollaborateur(
+  await CollaborateursServiceV2.createCollaborateur(
         currentTenantId.value, 
         collaborateurData, 
         auth.currentUser.uid
       )
-      console.log('✅ Collaborateur créé avec ID:', newId)
       initToast({
         message: `Collaborateur ${form.value.prenom} ${form.value.nom} créé avec succès`,
         color: 'success'
       })
     } else {
-      console.log('✏️ Mode modification, ID:', collaborateurId.value)
       // Modification
       await CollaborateursServiceV2.updateCollaborateur(
         currentTenantId.value,
@@ -622,14 +607,11 @@ const sauvegarder = async () => {
         collaborateurData,
         auth.currentUser.uid
       )
-      console.log('✅ Collaborateur modifié')
       initToast({
         message: `Collaborateur ${form.value.prenom} ${form.value.nom} modifié avec succès`,
         color: 'success'
       })
     }
-
-    console.log('🔄 Redirection vers /collaborateurs')
     router.push('/collaborateurs')
   } catch (error) {
     console.error('❌ Erreur lors de la sauvegarde:', error)
@@ -651,7 +633,6 @@ const sauvegarder = async () => {
     })
   } finally {
     loading.value = false
-    console.log('🔄 Fin du processus de sauvegarde')
   }
 }
 
@@ -717,38 +698,20 @@ onMounted(() => {
 
 // Nouvelle méthode pour vérifier les permissions
 const verifierPermissions = async () => {
-  console.log('🔍 Vérification des permissions utilisateur...')
-  
   if (!auth.currentUser) {
-    console.log('❌ Aucun utilisateur connecté')
     return
   }
-  
-  console.log('✅ Utilisateur connecté:', {
-    uid: auth.currentUser.uid,
-    email: auth.currentUser.email
-  })
   
   try {
     const userRef = rtdbRef(rtdb, `tenants/${currentTenantId.value}/users/${auth.currentUser.uid}`)
     const userSnapshot = await get(userRef)
     
     if (!userSnapshot.exists()) {
-      console.log('❌ Utilisateur non trouvé dans le tenant')
-      console.log('👉 L\'utilisateur doit être ajouté au tenant par un administrateur')
       return
     }
     
-    const userData = userSnapshot.val()
-    console.log('✅ Permissions utilisateur:', userData)
     
-    if (userData.role === 'admin' || userData.role === 'editor') {
-      console.log('✅ L\'utilisateur a les permissions pour créer/modifier des collaborateurs')
-    } else {
-      console.log('❌ L\'utilisateur n\'a pas les permissions suffisantes')
-      console.log('👉 Rôle requis: admin ou editor')
-      console.log('👉 Rôle actuel:', userData.role)
-    }
+    // Permissions lues; aucune trace non essentielle en prod
     
   } catch (error) {
     console.error('❌ Erreur lors de la vérification des permissions:', error)

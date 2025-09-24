@@ -105,13 +105,11 @@ export class CollaborateursServiceV2 {
    */
   static async getCollaborateur(tenantId: string, collaborateurId: string): Promise<CollaborateurV2 | null> {
     try {
-      console.log('🔄 Recherche collaborateur RTDB:', collaborateurId)
       
       const collaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
       const snapshot = await get(collaborateurRef)
       
       if (!snapshot.exists()) {
-        console.log('❌ Collaborateur introuvable dans RTDB:', collaborateurId)
         return null
       }
       
@@ -176,8 +174,6 @@ export class CollaborateursServiceV2 {
       }
       
       await set(newCollaborateurRef, collaborateurData)
-      
-      console.log('✅ Collaborateur créé dans RTDB:', collaborateurId)
       return collaborateurId
       
     } catch (error) {
@@ -196,8 +192,6 @@ export class CollaborateursServiceV2 {
     userId: string
   ): Promise<void> {
     try {
-      console.log('🔄 Mise à jour collaborateur RTDB:', collaborateurId)
-      console.log('📋 Données à mettre à jour:', data)
       
       const collaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
       
@@ -214,10 +208,7 @@ export class CollaborateursServiceV2 {
         updatedBy: userId,
         version: (currentData.version || 0) + 1
       }
-      
-      console.log('📋 Données finales envoyées:', updateData)
       await update(collaborateurRef, updateData)
-      console.log('✅ Collaborateur mis à jour dans RTDB:', collaborateurId)
       
     } catch (error) {
       console.error('❌ Erreur mise à jour collaborateur:', error)
@@ -234,7 +225,6 @@ export class CollaborateursServiceV2 {
     userId: string
   ): Promise<void> {
     try {
-      console.log('🔄 Suppression collaborateur RTDB:', collaborateurId)
       
       const collaborateurRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs/${collaborateurId}`)
       
@@ -254,7 +244,6 @@ export class CollaborateursServiceV2 {
         version: (currentData.version || 0) + 1
       })
       
-      console.log('✅ Collaborateur supprimé (soft) dans RTDB:', collaborateurId)
       
     } catch (error) {
       console.error('❌ Erreur suppression collaborateur:', error)
@@ -273,7 +262,6 @@ export class CollaborateursServiceV2 {
     dateFin: string
   ): Promise<Map<string, DisponibiliteV2>> {
     try {
-      console.log(`🔄 Chargement disponibilités ${collaborateurId} du ${dateDebut} au ${dateFin}`)
       
       const disponibilites = new Map<string, DisponibiliteV2>()
       
@@ -297,7 +285,6 @@ export class CollaborateursServiceV2 {
       
       await Promise.all(promises)
       
-      console.log(`✅ ${disponibilites.size} disponibilités chargées`)
       return disponibilites
       
     } catch (error) {
@@ -331,7 +318,7 @@ export class CollaborateursServiceV2 {
         version: currentVersion + 1
       })
       
-      console.log(`✅ Disponibilité mise à jour: ${collaborateurId}/${date}`)
+      
       
     } catch (error) {
       console.error('❌ Erreur mise à jour disponibilité:', error)
@@ -348,7 +335,6 @@ export class CollaborateursServiceV2 {
     userId: string
   ): Promise<void> {
     try {
-      console.log(`🔄 Mise à jour en lot de ${updates.length} collaborateurs`)
       
       const updatePromises: Promise<void>[] = []
       
@@ -371,7 +357,6 @@ export class CollaborateursServiceV2 {
       }
       
       await Promise.all(updatePromises)
-      console.log('✅ Mise à jour en lot terminée')
       
     } catch (error) {
       console.error('❌ Erreur mise à jour en lot:', error)
@@ -388,7 +373,6 @@ export class CollaborateursServiceV2 {
     dateFin: string
   ): Promise<PlanningDataV2> {
     try {
-      console.log(`🔄 Chargement planning complet du ${dateDebut} au ${dateFin}`)
       
       // 1. Charger tous les collaborateurs
       const collaborateurs = await this.loadCollaborateurs(tenantId)
@@ -418,7 +402,6 @@ export class CollaborateursServiceV2 {
         totalDisponibilites
       }
       
-      console.log(`✅ Planning chargé: ${collaborateurs.length} collaborateurs, ${totalDisponibilites} disponibilités`)
       return planningData
       
     } catch (error) {
@@ -524,7 +507,7 @@ export class CollaborateursServiceV2 {
     }
     
     try {
-      console.log(`🔄 Import Excel: ${data.length} entrées à traiter`)
+      
       
       // Grouper par collaborateur
       const collaborateursMap = new Map<string, {
@@ -558,7 +541,7 @@ export class CollaborateursServiceV2 {
       }
       
       // Traiter chaque collaborateur
-      for (const [key, collabData] of collaborateursMap) {
+  for (const [_key, collabData] of collaborateursMap) {
         try {
           // Vérifier si le collaborateur existe déjà
           const existingCollabs = await this.loadCollaborateurs(tenantId)
@@ -602,7 +585,7 @@ export class CollaborateursServiceV2 {
             result.disponibilitesCreated += updates.updates.length
             
           } else {
-            console.log(`ℹ️ Collaborateur existant: ${key}`)
+            
             // Ici on pourrait mettre à jour les disponibilités existantes
           }
           
@@ -616,7 +599,6 @@ export class CollaborateursServiceV2 {
       }
       
       result.duree = Date.now() - startTime
-      console.log(`✅ Import terminé en ${result.duree}ms:`, result)
       return result
       
     } catch (error) {
@@ -682,7 +664,6 @@ export class CollaborateursServiceV2 {
    */
   static async clearTenantData(tenantId: string): Promise<{ deletedCollaborateurs: number, deletedDisponibilites: number }> {
     try {
-      console.log(`🗑️ Suppression de toutes les données du tenant: ${tenantId}`)
       
       // Supprimer tous les collaborateurs
       const collaborateursRef = rtdbRef(rtdb, `tenants/${tenantId}/collaborateurs`)
@@ -691,8 +672,6 @@ export class CollaborateursServiceV2 {
       // Supprimer toutes les disponibilités
       const disponibilitesRef = rtdbRef(rtdb, `tenants/${tenantId}/disponibilites`)
       await remove(disponibilitesRef)
-      
-      console.log(`✅ Suppression terminée pour le tenant: ${tenantId}`)
       return { deletedCollaborateurs: 0, deletedDisponibilites: 0 } // Valeurs symboliques car on ne peut pas compter avant suppression
       
     } catch (error) {
