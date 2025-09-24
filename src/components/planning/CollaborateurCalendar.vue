@@ -15,6 +15,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import frLocale from '@fullcalendar/core/locales/fr'
 import * as planningDisplayService from '@/services/planningDisplayService'
 import { canonicalizeLieu as canonicalizeLieuShared } from '@/services/normalization'
+import { toDateStr } from '@/utils/dateHelpers'
 
 // Types
 interface CollaborateurProfilLight {
@@ -597,20 +598,9 @@ function getCellDisposForDate(dateStr: string): Array<CollaborateurDisponibilite
     if (part) out.push({ ...d, _cont: part })
     else out.push(d)
   }
-  // Ajouter les continuations overnight venant de la veille
-  const prev = addDaysStr(dateStr, -1)
-  const prevList = getDisponibilitesForDate(prev)
-  for (const d of prevList) {
-    const s = toMinutes(d.heure_debut)
-    const e = toMinutes(d.heure_fin)
-    if (s >= 0 && e >= 0 && e < s) {
-      out.push({ ...d, _cont: 'end', date: dateStr })
-    }
-    // Slots night de la veille: afficher comme continuation ce jour
-    if (d.timeKind === 'slot' && Array.isArray(d.slots) && d.slots.includes('night')) {
-      out.push({ ...d, _cont: 'end', date: dateStr })
-    }
-  }
+  // NOTE: Les continuations overnight ont été désactivées à la demande des utilisateurs  
+  // Les disponibilités de nuit n'apparaissent maintenant que sur le jour de début
+  // pour simplifier l'affichage et éviter la confusion
   return out
 }
 
@@ -767,8 +757,8 @@ function handleSelect(arg: any) {
 
 function handleDatesSet(arg: any) {
   // Émission pour synchroniser les plages de dates
-  const start = arg.start?.toISOString()?.split('T')[0]
-  const end = arg.end?.toISOString()?.split('T')[0]
+  const start = arg.start ? toDateStr(arg.start) : null
+  const end = arg.end ? toDateStr(arg.end) : null
   if (start && end) {
     emit('rangeChange', { start, end })
   }
@@ -797,7 +787,7 @@ const calendarOptions = computed(() => ({
   },
   dayCellDidMount: (info: any) => {
     // Utiliser la fonction centralisée pour mettre à jour le contenu
-    const dateStr = info.date.toISOString().split('T')[0];
+    const dateStr = toDateStr(info.date)
     updateCellContent(info.el, dateStr)
   },
   datesSet: handleDatesSet

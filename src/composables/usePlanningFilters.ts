@@ -364,6 +364,13 @@ export function usePlanningFilters() {
       // Debug: examiner quelques disponibilités initiales
       if (results.length > 0) {
         console.log(`🔍 [DEBUG] Exemples de dispos initiales:`, results.slice(0, 3))
+        console.log(`🔍 [DEBUG] Format dates exemples:`, results.slice(0, 5).map(d => ({
+          id: d.id, 
+          date: d.date, 
+          type: typeof d.date,
+          nom: d.nom,
+          prenom: d.prenom
+        })))
       }
       
       // Filtre par collaborateurs filtrés (priorité à l'ID, fallback email, puis nom/prénom normalisés)
@@ -404,10 +411,22 @@ export function usePlanningFilters() {
       
       // Filtre par plage de dates
       if (globalFilterState.dateFrom) {
-        results = results.filter(dispo => 
-          dispo.date >= globalFilterState.dateFrom
-        )
-        console.log(`🔍 [DEBUG] Après filtre dateFrom (${globalFilterState.dateFrom}): ${results.length} dispos`)
+        const beforeLength = results.length
+        results = results.filter(dispo => {
+          const comparison = dispo.date >= globalFilterState.dateFrom
+          if (!comparison && Math.random() < 0.1) { // Debug aléatoire pour éviter trop de logs
+            console.log(`🔍 [DEBUG] Dispo exclue par dateFrom: ${dispo.date} < ${globalFilterState.dateFrom} (${dispo.nom} ${dispo.prenom})`)
+          }
+          return comparison
+        })
+        console.log(`🔍 [DEBUG] Après filtre dateFrom (${globalFilterState.dateFrom}): ${beforeLength} → ${results.length} dispos`)
+        
+        // Debug: montrer quelques dates restantes
+        if (results.length > 0) {
+          const dateRange = results.map(d => d.date).sort()
+          console.log(`🔍 [DEBUG] Plage de dates après filtre: ${dateRange[0]} → ${dateRange[dateRange.length - 1]}`)
+          console.log(`🔍 [DEBUG] Premières dates filtrées:`, dateRange.slice(0, 10))
+        }
       }
       
       if (globalFilterState.dateTo) {
@@ -417,8 +436,8 @@ export function usePlanningFilters() {
         console.log(`🔍 [DEBUG] Après filtre dateTo (${globalFilterState.dateTo}): ${results.length} dispos`)
       }
       
-      // Filtre par lieu (seulement si une plage de dates est définie)
-      if (globalFilterState.lieu && hasDateRange.value) {
+      // Filtre par lieu
+      if (globalFilterState.lieu) {
         // Extraire la valeur du lieu (peut être un objet avec .value/.text ou une string)
         const rawLieu = typeof globalFilterState.lieu === 'object'
           ? (globalFilterState.lieu as any)?.value || (globalFilterState.lieu as any)?.text || globalFilterState.lieu
@@ -442,8 +461,8 @@ export function usePlanningFilters() {
         console.log(`🔍 [DEBUG] Après filtre lieu ("${requestedLieu}"): ${results.length} dispos`)
       }
       
-      // Filtre par statut (seulement si une plage de dates est définie)
-      if (globalFilterState.statut && hasDateRange.value) {
+      // Filtre par statut
+      if (globalFilterState.statut) {
         // Extraire et normaliser la valeur du statut (peut être un objet avec .value ou une string)
         const rawStatut = typeof globalFilterState.statut === 'object' 
           ? (globalFilterState.statut as any)?.value || (globalFilterState.statut as any)?.text || globalFilterState.statut

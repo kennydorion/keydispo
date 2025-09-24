@@ -199,6 +199,7 @@
 <script setup lang="ts">
 import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
 import { usePlanningFilters } from '../composables/usePlanningFilters'
+import { toDateStr } from '@/utils/dateHelpers'
 
 // Émissions
 defineEmits<{
@@ -272,12 +273,12 @@ const dateToValue = computed(() => {
 })
 
 const updateDateFrom = (date: Date | null) => {
-  const dateStr = date ? date.toISOString().split('T')[0] : ''
+  const dateStr = date ? toDateStr(date) : ''
   planningFilters.updateFilter('dateFrom', dateStr)
 }
 
 const updateDateTo = (date: Date | null) => {
-  const dateStr = date ? date.toISOString().split('T')[0] : ''
+  const dateStr = date ? toDateStr(date) : ''
   planningFilters.updateFilter('dateTo', dateStr)
 }
 

@@ -18,7 +18,6 @@ export const slotOptions = [
   { value: 'journee', text: 'Journée' },
   { value: 'morning', text: 'Matin' },
   { value: 'afternoon', text: 'Après-midi' },
-  { value: 'late_evening', text: 'Fin de soirée' },
   { value: 'night', text: 'Nuit' },
 ]
 

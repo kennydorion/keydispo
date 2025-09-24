@@ -80,7 +80,7 @@
             </div>
             <div v-if="!(isCollaboratorView && dispo.type === 'mission')" class="card-actions">
               <va-button @click="$emit('edit-dispo-line', index)" :color="editingDispoIndex === index ? 'warning' : 'primary'" :icon="editingDispoIndex === index ? 'close' : 'edit'" size="small" preset="plain" :disabled="editingDispoIndex !== null && editingDispoIndex !== index">
-                {{ editingDispoIndex === index ? 'Annuler' : 'Modifier' }}
+                {{ editingDispoIndex === index ? 'Annuler' : 'Éditer' }}
               </va-button>
               <va-button @click="$emit('remove-dispo', index)" color="danger" icon="delete" size="small" preset="plain" :disabled="editingDispoIndex !== null">
                 Supprimer
@@ -120,6 +120,7 @@
             <div v-if="editingDispo.type === 'mission'" class="form-group">
               <label class="form-label">Lieu de mission</label>
               <template v-if="!isCollaboratorView">
+                <!-- Autocomplétion avec possibilité de saisie libre -->
                 <LieuCombobox :model-value="editingDispo.lieu || ''" @update:model-value="(v: string) => $emit('update-editing-lieu', v)" :options="lieuxOptionsStrings" label="" size="large" theme="light" class="lieu-input" @create="$emit('create-lieu', $event)" />
               </template>
               <template v-else>
@@ -155,56 +156,47 @@
             </div>
             <div class="form-actions">
               <va-button @click="$emit('cancel-edit-dispo')" color="secondary" size="large" preset="secondary">Annuler</va-button>
-              <va-button @click="$emit('save-edit-dispo')" color="primary" size="large" :disabled="!isEditFormValid">{{ isAddingNewDispo ? 'Ajouter' : 'Sauvegarder' }}</va-button>
+              <!-- Bouton de suppression pour les disponibilités existantes -->
+              <va-button 
+                v-if="!isAddingNewDispo && editingDispoIndex !== null"
+                @click="$emit('remove-dispo', editingDispoIndex)" 
+                color="danger" 
+                size="large"
+                icon="delete"
+              >
+                Supprimer
+              </va-button>
+              <!-- Bouton principal avec libellé clair -->
+              <va-button 
+                @click="$emit('save-edit-dispo')" 
+                :color="isAddingNewDispo ? 'success' : 'primary'" 
+                size="large" 
+                :disabled="!isEditFormValid"
+                :icon="isAddingNewDispo ? 'add' : 'save'"
+              >
+                {{ isAddingNewDispo ? 'Ajouter une disponibilité' : 'Modifier la disponibilité' }}
+              </va-button>
             </div>
           </div>
         </div>
       </Transition>
     </div>
 
-    <!-- FOOTER OPTIMISÉ -->
-  <div class="footer-actions" ref="footerRef">
+    <!-- FOOTER SIMPLIFIÉ -->
+    <div class="footer-actions" ref="footerRef">
       <va-button color="secondary" size="large" @click="$emit('cancel-modal')" class="cancel-button">Fermer</va-button>
       
-      <!-- Bouton intelligent d'enregistrement SIMPLIFIÉ -->
+      <!-- Bouton pour ajouter une nouvelle disponibilité -->
       <va-button 
-        v-if="!isAddingNewDispo && selectedCellDispos.length === 0"
-        color="primary" 
-        size="large" 
-        :loading="saving" 
-        @click="$emit('save-dispos')" 
-        class="save-button-direct"
-        icon="save"
-        :disabled="!isEditFormValid"
+        v-if="!isAddingNewDispo && editingDispoIndex === null" 
+        @click="$emit('add-new-dispo-line')" 
+        color="success" 
+        icon="add" 
+        size="large"
+        class="add-button"
       >
-        Enregistrer la disponibilité
+        Ajouter une disponibilité
       </va-button>
-      
-      <!-- Bouton pour ajouter puis enregistrer (workflow classique) -->
-      <template v-else>
-        <va-button 
-          v-if="!isAddingNewDispo && selectedCellDispos.length === 0" 
-          @click="$emit('add-new-dispo-line')" 
-          color="success" 
-          icon="add" 
-          size="large" 
-          :disabled="editingDispoIndex !== null" 
-          class="add-button-compact"
-        >
-          Ajouter
-        </va-button>
-        
-        <va-button 
-          color="primary" 
-          size="large" 
-          :loading="saving" 
-          @click="$emit('save-dispos')" 
-          class="save-button"
-          :disabled="selectedCellDispos.length === 0 && !isAddingNewDispo"
-        >
-          Enregistrer tout
-        </va-button>
-      </template>
     </div>
   </div>
 </template>

@@ -166,6 +166,7 @@ import { useToast } from 'vuestic-ui'
 import { CollaborateurSelfService } from '@/services/collaborateurSelf'
 import type { CollaborateurDisponibilite } from '@/services/collaborateurSelf'
 import { useModalA11y } from '@/composables/useModalA11y'
+import { toDateStr } from '@/utils/dateHelpers'
 
 // Composables
 const { init: initToast } = useToast()
@@ -224,13 +225,13 @@ const chargerDisponibilites = async () => {
     loading.value = true
     
     // Par défaut, charger les 3 prochains mois si pas de filtres
-    const dateDebut = filtreDateDebut.value?.toISOString().split('T')[0] || 
-                      new Date().toISOString().split('T')[0]
+    const dateDebut = filtreDateDebut.value ? toDateStr(filtreDateDebut.value) : 
+                      toDateStr(new Date())
     
-    const dateFin = filtreDateFin.value?.toISOString().split('T')[0] || (() => {
+    const dateFin = filtreDateFin.value ? toDateStr(filtreDateFin.value) : (() => {
       const future = new Date()
       future.setMonth(future.getMonth() + 3)
-      return future.toISOString().split('T')[0]
+      return toDateStr(future)
     })()
     
     let allDispos = await CollaborateurSelfService.getMesDisponibilites(dateDebut, dateFin)
@@ -289,7 +290,7 @@ const sauvegarderDisponibilite = async () => {
 
   try {
     const dispoData = {
-      date: form.value.date.toISOString().split('T')[0],
+      date: toDateStr(form.value.date),
       lieu: form.value.lieu,
       heure_debut: form.value.heure_debut,
       heure_fin: form.value.heure_fin

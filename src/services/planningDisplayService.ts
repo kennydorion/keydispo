@@ -130,7 +130,6 @@ export function slotLabel(slot: string): string {
     'midday': 'Midi', // ⚠️ AJOUT: Support pour "midday" (synonyme de lunch)
     'afternoon': 'A-M',
     'evening': 'Soir',
-    'late_evening': 'Tard',
     'night': 'Nuit'
   }
   return labels[slot] || slot

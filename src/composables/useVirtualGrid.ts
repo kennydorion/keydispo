@@ -19,7 +19,20 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
 
   const windowOffsetPx = computed(() => windowStartIndex.value * dayWidth.value)
   const adaptiveWindowPadding = computed(() => (isScrollingFast.value ? fastScrollBufferCols.value : windowPaddingCols.value))
-  const windowedDays = computed(() => visibleDays.value.slice(windowStartIndex.value, Math.min(windowEndIndex.value + 1, visibleDays.value.length)))
+  const windowedDays = computed(() => {
+    const result = visibleDays.value.slice(windowStartIndex.value, Math.min(windowEndIndex.value + 1, visibleDays.value.length))
+    console.log(`🔍 [DEBUG] windowedDays computed:`, {
+      visibleDaysLength: visibleDays.value.length,
+      windowStartIndex: windowStartIndex.value,
+      windowEndIndex: windowEndIndex.value,
+      resultLength: result.length,
+      firstVisible: (visibleDays.value[0] as any)?.date || 'none',
+      lastVisible: (visibleDays.value[visibleDays.value.length - 1] as any)?.date || 'none',
+      firstWindowed: (result[0] as any)?.date || 'none',
+      lastWindowed: (result[result.length - 1] as any)?.date || 'none'
+    })
+    return result
+  })
 
   // Vertical window (rows)
   const rowWindowStartIndex = ref(0)

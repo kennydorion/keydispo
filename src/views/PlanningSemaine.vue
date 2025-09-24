@@ -20,12 +20,6 @@
 
   <!-- Toast de chargement supprimé: trop de notifications -->
 
-  <div class="planning-manager">
-    </div>
-  </div>
-
-  <!-- Indicateur de chargement (désactivé: UX non-bloquante, on utilise des placeholders gris) -->
-
     <!-- Suggestions contextuelles -->
     <div v-if="suggestions.length" class="suggestions-compact">
       <va-icon name="lightbulb" size="12px" class="mr-1" />
@@ -182,12 +176,6 @@
       </div>
     </div>
 
-    <!-- Indicateur du mois visible fixe -->
-    <div v-if="currentVisibleMonth" class="current-month-indicator">
-      <va-icon name="event" size="14px" />
-      {{ currentVisibleMonth }}
-    </div>
-
     <!-- Aide contextuelle discrète -->
     <!-- Tooltip d'aide pour la sélection - ADMIN UNIQUEMENT -->
     <div v-if="!isCollaborateurInterface && !selectedCells.size && !isSelectionMode && !isDraggingSelection && !isMobileView" class="selection-help-tooltip">
@@ -238,14 +226,20 @@
               <div
                 v-if="isWeekBoundary(day.date)"
                 class="week-sep"
-        :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + (${idx} + 1) * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
+        :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + ${idx} * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
               ></div>
             </template>
           </div>
           <!-- Coin sticky top+left -->
           <div class="excel-corner corner-sticky">
             <!-- Bouton Aujourd'hui en haut -->
-            <button class="today-btn" @click="goToToday" title="Aller à aujourd'hui">
+            <button 
+              class="today-btn" 
+              :class="{ disabled: !isTodayVisible }"
+              :disabled="!isTodayVisible"
+              @click="goToToday" 
+              :title="isTodayVisible ? 'Aller à aujourd\'hui' : 'Aujourd\'hui n\'est pas visible avec les filtres actuels'"
+            >
               <span class="material-icons">today</span>
               <span>Aujourd'hui</span>
             </button>
@@ -259,26 +253,18 @@
           </div>
           <!-- En-têtes des jours (défilent horizontalement avec la grille, sticky vertical) -->
           <div class="days-header">
-            <div class="excel-months-row" :style="{ minWidth: gridMinWidth, width: 'max-content' }">
-              <div
-                v-for="seg in monthSegments"
-                :key="seg.key"
-                class="excel-month-cell"
-                :class="{ 'loading-placeholder': !seg.loaded }"
-                :style="{ width: `${dayWidth * seg.count}px` }"
-              >
-                {{ seg.label }}
-              </div>
-            </div>
-            <!-- Rangée des semaines (numéros ISO) -->
+            <!-- Rangée des semaines avec nom du mois -->
             <div class="excel-weeks-row" :style="{ minWidth: gridMinWidth, width: 'max-content' }">
               <div
-                v-for="seg in weekSegments"
+                v-for="(seg, segIndex) in weekSegments"
                 :key="seg.key"
                 class="excel-week-cell"
+                :class="{
+                  'month-boundary': isMonthBoundary(seg, segIndex)
+                }"
                 :style="{ width: `${dayWidth * seg.count}px` }"
               >
-                S{{ seg.week }}
+                {{ seg.monthLabel }} S{{ seg.week }}
               </div>
             </div>
             <div class="excel-days-row" :style="{ minWidth: gridMinWidth, width: 'max-content' }">
@@ -292,7 +278,7 @@
                     {
                       'today': day.isToday,
                       'loading-placeholder': !isDayLoaded(day.date),
-                      'week-boundary-right': isWeekBoundary(day.date)
+                      'week-boundary-left': isWeekBoundary(day.date)
                     },
                     ...getDayHeaderClasses(windowStartIndex + dayIndex)
                   ]"
@@ -378,7 +364,7 @@
                       'today': day.isToday,
                       'has-dispos': getCellDispos(collaborateur.id, day.date).length > 0,
                       'loading-placeholder': !isDayLoaded(day.date),
-                      'week-boundary-right': isWeekBoundary(day.date),
+                      'week-boundary-left': isWeekBoundary(day.date),
                       'selected': selectedCells.has(`${collaborateur.id}-${day.date}`),
                       'locked': isCellLockedByOther(collaborateur.id, day.date),
                       'has-indicator': (() => {
@@ -514,7 +500,7 @@
         @cancel-edit-dispo="cancelEditDispo"
         @save-edit-dispo="saveEditDispo"
         @add-new-dispo-line="addNewDispoLine"
-        @update-editing-lieu="(v) => editingDispo.lieu = v"
+        @update-editing-lieu="(v) => { console.log('🏢 Lieu updated:', v); editingDispo.lieu = v }"
       />
       
       <CollabEditContent
@@ -529,7 +515,6 @@
     </va-modal>
 
   </div> <!-- Fin excel-planning-container -->
-  </div> <!-- Fin planning-app -->
 
   <!-- Modal de sélection par lot (admin seulement) -->
   <BatchDisponibiliteModal
@@ -575,6 +560,9 @@
       {{ isSelectionMode ? 'Terminer' : 'Sélectionner' }}
     </va-button>
   </div>
+
+  </div> <!-- Fin main-content -->
+  </div> <!-- Fin planning-app -->
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
@@ -725,17 +713,36 @@ const filterStatut = computed({
 })
 
 const dateFrom = computed({
-  get: () => planningFilters.filterState.dateFrom,
-  set: (value) => planningFilters.updateFilter('dateFrom', value)
+  get: () => {
+    const value = planningFilters.filterState.dateFrom
+    console.log('🔍 DEBUG dateFrom computed - value:', value)
+    return value
+  },
+  set: (value) => {
+    console.log('🔍 DEBUG dateFrom set called with:', value)
+    planningFilters.updateFilter('dateFrom', value)
+  }
 })
 
 const dateTo = computed({
-  get: () => planningFilters.filterState.dateTo,
-  set: (value) => planningFilters.updateFilter('dateTo', value)
+  get: () => {
+    const value = planningFilters.filterState.dateTo
+    console.log('🔍 DEBUG dateTo computed - value:', value)
+    return value
+  },
+  set: (value) => {
+    console.log('🔍 DEBUG dateTo set called with:', value)
+    planningFilters.updateFilter('dateTo', value)
+  }
 })
 
 // État de filtrage du système centralisé
-const hasActiveFilters = planningFilters.hasActiveFilters
+const hasActiveFilters = computed(() => {
+  const value = planningFilters.hasActiveFilters.value
+  console.log('🔍 DEBUG hasActiveFilters computed - value:', value)
+  console.log('🔍 DEBUG filterState:', JSON.stringify(planningFilters.filterState, null, 2))
+  return value
+})
 
 // Variables restantes non liées aux filtres
 // (viewMode, mobileFiltersOpen retirés: non utilisés ici)
@@ -1328,11 +1335,28 @@ const visibleDays = computed(() => {
   const from = dateFrom.value
   const to = dateTo.value
 
+  console.log(`🔍 [DEBUG] visibleDays calcul - loadedDays.length: ${days.length}, dateFrom: ${from}, dateTo: ${to}`)
+  console.log(`🔍 [DEBUG] Types de dateFrom/dateTo:`, typeof from, typeof to)
+  console.log(`🔍 [DEBUG] Valeurs brutes dateFrom/dateTo:`, JSON.stringify({from, to}))
+  console.log(`🔍 [DEBUG] hasActiveFilters:`, hasActiveFilters.value)
+  
+  if (days.length > 0) {
+    const firstLoaded = days[0]?.date
+    const lastLoaded = days[days.length - 1]?.date
+    console.log(`🔍 [DEBUG] loadedDays plage: ${firstLoaded} → ${lastLoaded}`)
+    
+    // Échantillon de dates pour voir ce qui est chargé
+    const sampleDates = days.slice(0, 10).map(d => d.date)
+    console.log(`🔍 [DEBUG] Échantillon de dates chargées:`, sampleDates)
+  }
+
   // Deux bornes définies: plage stricte entre a et b
   if (from && to) {
     const a = from <= to ? from : to
     const b = from <= to ? to : from
-    return days.filter(d => d.date >= a && d.date <= b)
+    const filtered = days.filter(d => d.date >= a && d.date <= b)
+    console.log(`🔍 [DEBUG] visibleDays deux bornes (${a} → ${b}): ${filtered.length} jours`)
+    return filtered
   }
 
   // Une seule borne définie
@@ -1340,7 +1364,14 @@ const visibleDays = computed(() => {
     // Comportement demandé: plage ouverte vers le futur à partir de from
     // On renvoie toutes les journées chargées >= from; l'extension à droite se fait via le scroll
     const a = from
-    return days.filter(d => d.date >= a)
+    const filtered = days.filter(d => d.date >= a)
+    console.log(`🔍 [DEBUG] visibleDays depuis ${a}: ${filtered.length} jours`)
+    if (filtered.length > 0) {
+      const firstVisible = filtered[0]?.date
+      const lastVisible = filtered[filtered.length - 1]?.date
+      console.log(`🔍 [DEBUG] visibleDays plage résultante: ${firstVisible} → ${lastVisible}`)
+    }
+    return filtered
   }
   if (to && !from) {
     // Cas inchangé: afficher un contexte raisonnable en amont de to (7 jours déjà chargés ou plus)
@@ -1353,6 +1384,9 @@ const visibleDays = computed(() => {
   return days
 })
 const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth.value) + 'px')
+
+// Vérifier si aujourd'hui est visible dans la plage filtrée
+const isTodayVisible = computed(() => visibleDays.value.some(d => d.isToday))
 
 // Hauteur totale de la grille des collaborateurs pour le scroll virtuel
 const gridTotalHeight = computed(() => (filteredCollaborateurs.value.length * rowHeight.value) + 'px')
@@ -2242,11 +2276,33 @@ watch(windowedRows, (newRows, oldRows) => {
 // CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
 watch(planningFilters.filterState, async () => {
   console.log('🔍 [DEBUG] Filtres changés, recalcul virtualisation')
+  
+  // Vérifier si tous les filtres sont vides (remis à zéro)
+  const allFiltersEmpty = !planningFilters.filterState.search && 
+                         !planningFilters.filterState.metier && 
+                         !planningFilters.filterState.lieu && 
+                         !planningFilters.filterState.statut && 
+                         !planningFilters.filterState.dateFrom && 
+                         !planningFilters.filterState.dateTo
+  
   await nextTick()
   
   // Force le recalcul de la virtualisation quand les filtres changent
   const scroller = planningScroll.value
   if (scroller) {
+    if (allFiltersEmpty) {
+      // Si tous les filtres sont vides, aller à aujourd'hui au lieu de scroller à 0
+      console.log('📅 [DEBUG] Tous les filtres vides, navigation vers aujourd\'hui')
+      // Attendre que les données se rechargent puis aller à aujourd'hui
+      setTimeout(() => {
+        goToToday()
+      }, 100)
+    } else {
+      // Réinitialise la position de scroll horizontal pour commencer au début des données filtrées
+      scroller.scrollLeft = 0
+      console.log('🔍 [DEBUG] Position scroll horizontal réinitialisée à 0')
+    }
+    
     // Recalcule complet (horizontal + vertical)
     recomputeWindow(scroller)
     recomputeRowWindow(scroller)
@@ -2354,49 +2410,7 @@ function findNextAvailability(collaborateurId: string, fromDate: string): string
 
 // (totalDisponibilites/statutOptions/formatCurrentPeriod supprimés – inutilisés)
 
-// Générer les segments de mois optimisés
-const monthSegments = computed(() => {
-  const segments: any[] = []
-  let currentMonth = ''
-  let currentCount = 0
-  let currentStartIdx = 0
-  
-  visibleDays.value.forEach((day, index) => {
-    const monthName = new Date(day.date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    
-    if (monthName !== currentMonth) {
-      if (currentCount > 0) {
-        segments.push({
-          key: `${currentMonth}-${index}`,
-          label: currentMonth,
-          count: currentCount,
-          // état de chargement de ce segment (si toutes les dates sont chargées)
-          loaded: visibleDays.value
-            .slice(currentStartIdx, currentStartIdx + currentCount)
-            .every(d => isDayLoaded(d.date))
-        })
-      }
-      currentMonth = monthName
-      currentCount = 1
-      currentStartIdx = index
-    } else {
-      currentCount++
-    }
-  })
-  
-  if (currentCount > 0) {
-    segments.push({
-      key: `${currentMonth}-final`,
-      label: currentMonth,
-      count: currentCount,
-      loaded: visibleDays.value
-        .slice(currentStartIdx, currentStartIdx + currentCount)
-        .every(d => isDayLoaded(d.date))
-    })
-  }
-  
-  return segments
-})
+// monthSegments supprimé car non utilisé (remplacé par weekSegments avec monthLabel)
 
 // Numéros de semaines ISO alignés sur 7 jours
 function getISOWeek(dateStr: string): number {
@@ -2412,36 +2426,74 @@ function getISOWeek(dateStr: string): number {
   return 1 + Math.round(diff / (7 * 24 * 3600 * 1000))
 }
 
-// Détecte la fin de semaine (dimanche) pour tracer une légère séparation
+// Détecte le début de nouvelle semaine (lundi) pour tracer une séparation visuelle
+// La semaine ISO commence le lundi, donc on place le séparateur au début de chaque nouvelle semaine
 function isWeekBoundary(dateStr: string): boolean {
   const d = new Date(dateStr + 'T12:00:00')
-  // Dimanche = 0
-  return d.getDay() === 0
+  // Lundi = 1 (début de nouvelle semaine ISO)
+  return d.getDay() === 1
 }
 
 // Détecte la fin de mois (jour dont le lendemain change de mois)
 // (supprimé) Fin de mois: plus utilisée pour jours/body; le style mois utilise un séparateur dédié
 
 const weekSegments = computed(() => {
-  const segs: Array<{ key: string; week: number; count: number }> = []
+  const segs: Array<{ key: string; week: number; count: number; monthLabel: string }> = []
   let currentWeek: number | null = null
   let count = 0
+  let currentMonthLabel = ''
+  
   for (let i = 0; i < visibleDays.value.length; i++) {
-    const w = getISOWeek(visibleDays.value[i].date)
+    const dateStr = visibleDays.value[i].date
+    const w = getISOWeek(dateStr)
+    
+    // Récupérer le label du mois pour cette date
+    const date = new Date(dateStr + 'T12:00:00')
+    const monthLabel = date.toLocaleDateString('fr-FR', { month: 'long' })
+    const capitalizedMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)
+    
     if (currentWeek === null) {
+      // Premier jour
       currentWeek = w
       count = 1
-    } else if (w === currentWeek) {
+      currentMonthLabel = capitalizedMonth
+    } else if (w === currentWeek && capitalizedMonth === currentMonthLabel) {
+      // Même semaine, même mois
       count++
+    } else if (w === currentWeek && capitalizedMonth !== currentMonthLabel) {
+      // Même semaine mais changement de mois - créer un segment pour le mois précédent
+      segs.push({ key: `w-${currentWeek}-${currentMonthLabel}-${i}`, week: currentWeek, count, monthLabel: currentMonthLabel })
+      // Commencer un nouveau segment pour le nouveau mois dans la même semaine
+      count = 1
+      currentMonthLabel = capitalizedMonth
     } else {
-      segs.push({ key: `w-${currentWeek}-${i}`, week: currentWeek, count })
+      // Nouvelle semaine
+      segs.push({ key: `w-${currentWeek}-${currentMonthLabel}-${i}`, week: currentWeek, count, monthLabel: currentMonthLabel })
       currentWeek = w
       count = 1
+      currentMonthLabel = capitalizedMonth
     }
   }
-  if (currentWeek != null && count > 0) segs.push({ key: `w-${currentWeek}-final`, week: currentWeek, count })
+  if (currentWeek != null && count > 0) {
+    segs.push({ key: `w-${currentWeek}-${currentMonthLabel}-final`, week: currentWeek, count, monthLabel: currentMonthLabel })
+  }
   return segs
 })
+
+// Fonction pour déterminer si un segment de semaine marque une frontière de mois
+function isMonthBoundary(seg: { week: number; monthLabel: string }, segIndex: number): boolean {
+  if (segIndex === 0) return false // Le premier segment n'est jamais une frontière
+  
+  const segments = weekSegments.value
+  const prevSeg = segments[segIndex - 1]
+  
+  // C'est une frontière de mois SEULEMENT si :
+  // Le segment précédent était de la même semaine mais d'un mois différent
+  // (cela indique qu'une semaine chevauche deux mois)
+  const isSameWeekDifferentMonth = prevSeg.week === seg.week && prevSeg.monthLabel !== seg.monthLabel
+  
+  return isSameWeekDifferentMonth
+}
 
 // Gestion hover performante
 // plus de setters de hover réactifs: supprimés
@@ -2606,24 +2658,9 @@ function getCellDispos(collaborateurId: string, date: string): CellDispo[] {
     if (part) out.push({ ...(d as any), _cont: part })
     else out.push(d as CellDispo)
   }
-  // Ajouter les continuations overnight venant de la veille
-  const prev = addDaysStr(date, -1)
-  const prevList = getDisponibilites(collaborateurId, prev)
-  for (const d of prevList) {
-  // Sécurité: ne considérer que les éléments dont la date est bien celle de la veille
-  if (d.date !== prev) continue
-    const k = resolveDispoKind(d)
-    if (k.timeKind === 'range' && d.heure_debut && d.heure_fin) {
-      const s = toMinutes(d.heure_debut)!, e = toMinutes(d.heure_fin)!
-      if (e < s) { // overnight depuis la veille vers aujourd'hui
-        out.push({ ...(d as any), _cont: 'end', date })
-      }
-    }
-    // Slots de nuit (22:00–06:00) de la veille: afficher comme continuation ce jour
-    if (k.timeKind === 'slot' && Array.isArray(k.slots) && k.slots.includes('night')) {
-      out.push({ ...(d as any), _cont: 'end', date })
-    }
-  }
+  // NOTE: Les continuations overnight ont été désactivées à la demande des utilisateurs
+  // Les disponibilités de nuit n'apparaissent maintenant que sur le jour de début
+  // pour simplifier l'affichage et éviter la confusion
   return out
 }
 
@@ -3292,13 +3329,14 @@ function wouldConflict(list: Partial<Disponibilite>[]): boolean {
   // Règles mission vs (dispo full-day | indispo full-day)
   const hasMission = list.some(d => resolveDispoKind(d as Disponibilite).type === 'mission')
   if (hasMission) {
-    // Aucun full-day dispo ni full-day indispo quand il y a une mission
+    // Bloquer uniquement si une mission coexiste avec une indisponibilité journée complète
     const hasIndispoFD = list.some(d => {
       const k = resolveDispoKind(d as Disponibilite)
       return k.type === 'indisponible' && k.timeKind === 'full-day'
     })
     if (hasIndispoFD) return true
-    if (hasDispoFD) return true
+
+    // Laisser passer la cohabitation mission + disponible (elle sera nettoyée par handleAutoReplacementLogic)
   }
   return false
 }
@@ -3319,9 +3357,6 @@ function getConflictMessage(list: Partial<Disponibilite>[]): string | null {
     if (list.some(d => { const k = resolveDispoKind(d as Disponibilite); return k.type === 'indisponible' && k.timeKind === 'full-day' })) {
       return 'Conflit: “Indisponible (journée)” ne peut pas coexister avec une mission le même jour.'
     }
-    if (list.some(d => { const k = resolveDispoKind(d as Disponibilite); return k.type === 'disponible' && k.timeKind === 'full-day' })) {
-      return 'Conflit: “Disponible (journée)” ne peut pas coexister avec une mission le même jour.'
-    }
   }
   return null
 }
@@ -3330,6 +3365,7 @@ function getConflictMessageWithCandidate(existing: Partial<Disponibilite>[], can
 }
 
 function addNewDispo() {
+  console.log(`🔨 addNewDispo called`)
   if (!selectedCell.value) return
   if (!canAddDispo.value) {
   const msg = getConflictMessageWithCandidate(selectedCellDispos.value, newDispo.value) || (violatesMissionDispoOverlap(selectedCellDispos.value, newDispo.value) ? 'Conflit: cette disponibilité chevauche une mission existante.' : null)
@@ -3342,6 +3378,7 @@ function addNewDispo() {
   if (!collab) return
   
   const d = newDispo.value
+  console.log(`🔨 newDispo being added:`, d)
   
   // Détection automatique des missions overnight
   let finalTimeKind = d.timeKind
@@ -3398,6 +3435,8 @@ function addNewDispo() {
 
 function removeDispo(index: number) {
   selectedCellDispos.value.splice(index, 1)
+  // Enregistrer automatiquement après suppression
+  saveDispos()
 }
 
 function editDispo(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'end' }), cellDate?: string) {
@@ -3406,6 +3445,168 @@ function editDispo(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'en
   // Si c’est une continuation venant de la veille (cellDate != originalDate), ouvrir la modale sur la date d’origine
   const targetDate = (cellDate && cellDate !== originalDate && k.timeKind === 'range') ? originalDate : (cellDate || originalDate)
   openDispoModal((dispo as any).collaborateurId || `${dispo.nom}-${dispo.prenom}`, targetDate)
+}
+
+// Conversion rapide disponibilité → mission
+async function convertDispoToMission(dispo: Disponibilite, newLieu?: string) {
+  if (!dispo.id) {
+    console.error('❌ Impossible de convertir: ID manquant')
+    return
+  }
+
+  try {
+    const currentKind = resolveDispoKind(dispo)
+    
+    // Si c'est déjà une mission, ne rien faire
+    if (currentKind.type === 'mission') {
+      notify({
+        message: 'Cette disponibilité est déjà une mission',
+        color: 'info'
+      })
+      return
+    }
+
+    const lieu = newLieu || prompt('Lieu de la mission:', dispo.lieu || '') || dispo.lieu || 'Mission'
+    
+    const updates = {
+      lieu: lieu,
+      type: 'urgence' as const, // Type RTDB pour mission
+      version: (dispo.version || 0) + 1,
+      updatedAt: Date.now(),
+      updatedBy: 'conversion-rapide'
+    }
+
+    await disponibilitesRTDBService.updateDisponibilite(dispo.id, updates)
+    
+    notify({
+      message: `✅ Disponibilité convertie en mission: ${lieu}`,
+      color: 'success'
+    })
+
+    // Rafraîchir l'affichage
+    await refreshDisponibilites(false)
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la conversion:', error)
+    notify({
+      message: 'Erreur lors de la conversion',
+      color: 'danger'
+    })
+  }
+}
+
+// Gestion du remplacement automatique des disponibilités en conflit avec les missions
+async function handleAutoReplacementLogic(date: string, collabId: string, newDispos: any[]): Promise<{ removedIds: string[]; removedEntries: Disponibilite[] }> {
+  console.log(`� handleAutoReplacementLogic CALLED: date=${date}, collabId=${collabId}, newDispos=`, newDispos)
+  
+  // Récupérer les disponibilités existantes pour cette date et ce collaborateur
+  const existing = (disponibilitesCache.value.get(date) || []).filter(d => 
+    d.collaborateurId === collabId && !(d as any)._cont
+  )
+
+  console.log(`🔍 Existing dispos:`, existing)
+
+  // Identifier les nouvelles missions
+  const newMissions = newDispos.filter(d => {
+    const kind = resolveDispoKind(d)
+    console.log(`🔍 Checking dispo:`, d, `kind:`, kind)
+    return kind.type === 'mission'
+  })
+
+  console.log(`🔍 New missions:`, newMissions)
+
+  const removedIds: string[] = []
+  const removedEntries: Disponibilite[] = []
+
+  // Pour chaque nouvelle mission, vérifier les conflits avec les disponibilités existantes
+  for (const mission of newMissions) {
+    const conflictingDispos = existing.filter(existingDispo => {
+      const existingKind = resolveDispoKind(existingDispo)
+      console.log(`🔍 Checking conflict: existing`, existingDispo, `kind:`, existingKind)
+      
+      // Seules les disponibilités de type "disponible" peuvent être remplacées par des missions
+      // Cela exclut les indisponibilités et autres missions
+      if (existingKind.type !== 'disponible') {
+        console.log(`🔍 Skipping replacement - not a disponible:`, existingKind.type)
+        return false
+      }
+      
+      // Vérifier le conflit horaire
+      const hasConflict = hasTimeConflict(mission, existingDispo)
+      console.log(`🔍 Time conflict result:`, hasConflict)
+      return hasConflict
+    })
+
+    console.log(`🔍 Conflicting dispos for mission:`, conflictingDispos)
+
+    // Supprimer automatiquement les disponibilités en conflit
+    for (const conflicting of conflictingDispos) {
+      if (conflicting.id) {
+        console.log(`🔄 Remplacement automatique: suppression dispo ${conflicting.id} pour mission ${mission.lieu}`)
+        await disponibilitesRTDBService.deleteDisponibilite(conflicting.id)
+        removedIds.push(conflicting.id)
+        removedEntries.push(conflicting as Disponibilite)
+        
+        // Retirer du cache local
+        const cached = disponibilitesCache.value.get(date) || []
+        const filtered = cached.filter(d => d.id !== conflicting.id)
+        disponibilitesCache.value.set(date, filtered)
+        
+        notify({
+          message: `🔄 Disponibilité remplacée par la mission`,
+          color: 'info'
+        })
+      }
+    }
+  }
+
+  return { removedIds, removedEntries }
+}
+
+// Vérifier si deux disponibilités ont un conflit horaire
+function hasTimeConflict(dispo1: any, dispo2: any): boolean {
+  const kind1 = resolveDispoKind(dispo1)
+  const kind2 = resolveDispoKind(dispo2)
+  
+  console.log(`🔍 hasTimeConflict: dispo1=`, dispo1, `kind1=`, kind1)
+  console.log(`🔍 hasTimeConflict: dispo2=`, dispo2, `kind2=`, kind2)
+  
+  // Si l'une des deux est full-day, il y a conflit
+  if (kind1.timeKind === 'full-day' || kind2.timeKind === 'full-day') {
+    console.log(`✅ hasTimeConflict: full-day conflict detected`)
+    return true
+  }
+  
+  // Si les deux ont des horaires, vérifier le chevauchement
+  if (kind1.timeKind === 'range' && kind2.timeKind === 'range') {
+    const start1 = dispo1.heure_debut
+    const end1 = dispo1.heure_fin
+    const start2 = dispo2.heure_debut
+    const end2 = dispo2.heure_fin
+    
+    console.log(`🔍 hasTimeConflict: range comparison - (${start1}-${end1}) vs (${start2}-${end2})`)
+    
+    if (start1 && end1 && start2 && end2) {
+      // Deux plages horaires se chevauchent si l'une commence avant que l'autre ne finisse
+      const hasConflict = start1 < end2 && start2 < end1
+      console.log(`✅ hasTimeConflict: range conflict =`, hasConflict)
+      return hasConflict
+    }
+  }
+  
+  // Si l'une a des créneaux et l'autre des horaires, conflit potentiel
+  if ((kind1.timeKind === 'slot' && kind2.timeKind === 'range') || 
+      (kind1.timeKind === 'range' && kind2.timeKind === 'slot')) return true
+      
+  // Si les deux ont des créneaux, vérifier s'ils se chevauchent
+  if (kind1.timeKind === 'slot' && kind2.timeKind === 'slot') {
+    const slots1 = kind1.slots || []
+    const slots2 = kind2.slots || []
+    return slots1.some(s1 => slots2.includes(s1))
+  }
+  
+  // Par défaut, pas de conflit
+  return false
 }
 
 // (setExistingType supprimée – inutilisée)
@@ -3505,7 +3706,9 @@ function cancelEditDispo() {
 }
 
 function setEditingType(type: string) {
+  console.log(`🎯 setEditingType called with:`, type)
   editingDispo.value.type = type as Disponibilite['type']
+  console.log(`🎯 editingDispo after setEditingType:`, editingDispo.value)
   // Reset timeKind si incompatible
   if (type === 'indisponible') {
     editingDispo.value.timeKind = 'full-day'
@@ -3531,6 +3734,15 @@ function setEditingTimeKind(timeKind: string) {
 }
 
 function toggleEditingSlot(slotValue: string) {
+  // Cas spécial : si on sélectionne "journee", passer en mode full-day
+  if (slotValue === 'journee') {
+    editingDispo.value.timeKind = 'full-day'
+    editingDispo.value.slots = []
+    editingDispo.value.heure_debut = ''
+    editingDispo.value.heure_fin = ''
+    return
+  }
+
   const currentSlots = editingDispo.value.slots || []
   editingDispo.value.slots = currentSlots.includes(slotValue)
     ? currentSlots.filter(s => s !== slotValue)
@@ -3539,38 +3751,43 @@ function toggleEditingSlot(slotValue: string) {
 
 const isEditFormValid = computed(() => {
   const dispo = editingDispo.value
+  console.log(`🔍 isEditFormValid check - dispo:`, dispo)
 
   
   if (!dispo.type || !dispo.timeKind) {
-
+    console.log(`❌ isEditFormValid: missing type (${dispo.type}) or timeKind (${dispo.timeKind})`)
     return false
   }
   
   if (dispo.timeKind === 'range') {
     if (!dispo.heure_debut || !dispo.heure_fin) {
-
+      console.log(`❌ isEditFormValid: missing hours for range - debut:${dispo.heure_debut} fin:${dispo.heure_fin}`)
       return false
     }
   }
   
   if (dispo.timeKind === 'slot') {
     if (!dispo.slots || dispo.slots.length === 0) {
-
+      console.log(`❌ isEditFormValid: missing slots for slot timeKind`)
       return false
     }
   }
   
   if (dispo.type === 'mission' && !dispo.lieu) {
-
+    console.log(`❌ isEditFormValid: mission without lieu - lieu:`, dispo.lieu)
     return false
   }
   
-
+  console.log(`✅ isEditFormValid: form is valid`)
   return true
 })
 
 function saveEditDispo() {
+  console.log(`🚀 saveEditDispo CALLED - isEditFormValid:`, isEditFormValid.value)
+  console.log(`🚀 saveEditDispo - editingDispo:`, editingDispo.value)
+  console.log(`🚀 saveEditDispo - isAddingNewDispo:`, isAddingNewDispo.value, `editingDispoIndex:`, editingDispoIndex.value)
   if (!isEditFormValid.value) {
+    console.log(`❌ saveEditDispo: form not valid, aborting`)
     return
   }
   
@@ -3600,6 +3817,7 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value.push(newDispo)
+    console.log('✅ saveEditDispo: ajout mission, selectedCellDispos =', selectedCellDispos.value)
 
   } else {
     // Modifier ligne existante
@@ -3612,12 +3830,19 @@ function saveEditDispo() {
       return
     }
     selectedCellDispos.value[index] = newDispo
+    console.log('✅ saveEditDispo: mise à jour mission, selectedCellDispos =', selectedCellDispos.value)
   }
   
+  console.log('🔁 saveEditDispo: before cancelEditDispo, selectedCellDispos =', selectedCellDispos.value)
   cancelEditDispo()
+  
+  // Enregistrer automatiquement la disponibilité
+  saveDispos()
 }
 
 async function saveDispos() {
+  console.log(`🚀 saveDispos CALLED - selectedCell:`, selectedCell.value)
+  console.log(`🚀 saveDispos: selectedCellDispos length =`, selectedCellDispos.value.length, selectedCellDispos.value)
   saving.value = true
   try {
     if (!selectedCell.value) return
@@ -3642,10 +3867,29 @@ async function saveDispos() {
 
     // Récupérer l'état avant édition
     const before = (disponibilitesCache.value.get(date) || []).filter(d => d.collaborateurId === collabId)
-  // Exclure les continuations (_cont==='end') de la sauvegarde: elles sont affichées pour contexte mais appartiennent à la veille
-  const after = selectedCellDispos.value.filter(d => (d as any)._cont !== 'end')
+    // Exclure les continuations (_cont==='end') de la sauvegarde: elles sont affichées pour contexte mais appartiennent à la veille
+    let after = selectedCellDispos.value.filter(d => (d as any)._cont !== 'end')
 
-    // Index par id
+    // NOUVELLE LOGIQUE : Remplacement automatique des disponibilités en conflit avec les missions
+    console.log(`🔧 About to call handleAutoReplacementLogic with:`, { date, collabId, after })
+    const replacementResult = await handleAutoReplacementLogic(date, collabId, after)
+
+    if (replacementResult.removedIds.length || replacementResult.removedEntries.length) {
+      const removedIdSet = new Set(replacementResult.removedIds)
+      const shouldRemove = (entry: Partial<Disponibilite>) => {
+        if (entry.id && removedIdSet.has(entry.id)) return true
+        return replacementResult.removedEntries.some(removed => !removed.id && !entry.id && removed.type === entry.type && removed.timeKind === entry.timeKind && removed.lieu === entry.lieu && removed.heure_debut === entry.heure_debut && removed.heure_fin === entry.heure_fin)
+      }
+
+      selectedCellDispos.value = selectedCellDispos.value.filter(d => !shouldRemove(d))
+      after = after.filter(d => !shouldRemove(d))
+      console.log(`🧹 Removed conflicting dispos from selection`, {
+        removedIds: replacementResult.removedIds,
+        after
+      })
+    }
+
+    // Recalculer les diff après éventuelles suppressions
     const beforeMap = new Map<string, any>()
     for (const d of before) if (d.id) beforeMap.set(d.id, d)
 
@@ -3841,6 +4085,12 @@ function clearAllFilters() {
       // Force recalcul agressif
       recomputeWindow(scroller)
       recomputeRowWindow(scroller)
+      
+      // Attendre que les données se rechargent puis aller à aujourd'hui
+      setTimeout(() => {
+        console.log('📅 [DEBUG] Filtres effacés, navigation vers aujourd\'hui')
+        goToToday()
+      }, 200)
     } else {
       // Sans scroller, force quand même le recalcul
       recomputeRowWindow(null as any)
@@ -3870,10 +4120,21 @@ function clearAllFilters() {
 function goToToday() {
   const scroller = planningScroll.value
   if (!scroller) return
-  const todayIndex = loadedDays.value.findIndex(d => d.isToday)
-  if (todayIndex < 0) return
+  
+  // Chercher l'index d'aujourd'hui dans les jours visibles (filtrés), pas dans tous les jours chargés
+  const todayIndex = visibleDays.value.findIndex(d => d.isToday)
+  
+  if (todayIndex < 0) {
+    // Aujourd'hui n'est pas dans la plage filtrée - afficher un message ou ne rien faire
+    console.log('📅 Aujourd\'hui n\'est pas visible avec les filtres actuels')
+    return
+  }
+  
+  // Calculer la position de scroll basée sur l'index dans visibleDays
   const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
   scroller.scrollTo({ left: centerOffset, behavior: 'smooth' })
+  
+  console.log('📅 Navigation vers aujourd\'hui:', { todayIndex, centerOffset })
   // Plus besoin d'updateTodayOverlayX - highlights gérés par CSS
 }
 
@@ -5186,8 +5447,8 @@ function measureAndSetHeaderHeight() {
   const headerH = header ? header.getBoundingClientRect().height : 0
   scroller.style.setProperty('--header-h', `${headerH}px`)
   // Mesure fine: hauteur de la rangée des mois (pour arrêter les traits de semaine au-dessus)
-  const monthsRow = scroller.querySelector('.excel-months-row') as HTMLElement | null
-  const monthsH = monthsRow ? monthsRow.getBoundingClientRect().height : 0
+  const weeksRow = scroller.querySelector('.excel-weeks-row') as HTMLElement | null
+  const monthsH = 0 // Plus besoin de calculer la hauteur des mois puisqu'on les a supprimés
   scroller.style.setProperty('--months-h', `${monthsH}px`)
 }
 
@@ -7588,6 +7849,16 @@ onUnmounted(() => {
   --week-sep-width: 3px;
 }
 
+/* Optimisation de l'espace pour maximiser la surface du planning */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important pour permettre au planning de grandir */
+  margin: 0;
+  padding: 0;
+}
+
 /* ========================================
    STYLES DE L'INTERFACE PRINCIPALE
    ======================================== */
@@ -8396,7 +8667,7 @@ onUnmounted(() => {
   contain-intrinsic-size: auto; /* ne pas réserver artificiellement la hauteur */
 }
 
-.excel-months-row, .excel-days-row {
+.excel-days-row {
   contain: layout paint;
 }
 
@@ -8503,6 +8774,23 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
+.excel-corner .today-btn:disabled,
+.excel-corner .today-btn.disabled {
+  background: #9CA3AF;
+  color: #D1D5DB;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.excel-corner .today-btn:disabled:hover,
+.excel-corner .today-btn.disabled:hover {
+  background: #9CA3AF;
+  transform: none;
+  box-shadow: none;
+}
+
 .excel-corner .today-btn .material-icons {
   font-size: 14px; /* Réduit de 16px → 14px */
 }
@@ -8576,7 +8864,6 @@ onUnmounted(() => {
 }
 
 
-.excel-months-row,
 .excel-days-row {
   display: flex;
   flex-shrink: 0;
@@ -8604,31 +8891,25 @@ onUnmounted(() => {
   color: #4b5563;
   font-weight: 600;
   letter-spacing: 0.2px;
+  position: relative;
 }
 
-.excel-month-cell {
-  background: #f5f5f5;
-  border-right: 1px solid #e0e0e0;
-  padding: 6px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 12px;
-  color: #333;
-  border-bottom: 1px solid #e0e0e0;
-  position: relative; /* pour ancrer le séparateur de fin de mois */
+/* Séparateur visuel pour les changements de mois dans la même semaine */
+.excel-week-cell.month-boundary {
+  border-left: 2px solid #9CA3AF;
 }
 
-/* Séparateur fin de mois dans la rangée des mois */
-.excel-month-cell::after {
+.excel-week-cell.month-boundary::before {
   content: '';
   position: absolute;
-  right: -1px; /* chevauche pour éviter double épaisseur */
+  left: -1px;
   top: 0;
   bottom: 0;
-  width: var(--week-sep-width, 3px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-  pointer-events: none;
+  width: 1px;
+  background: #6B7280;
+  border-radius: 0.5px;
 }
+
 
 .excel-day-cell {
   background: #ffffff;
@@ -9545,6 +9826,18 @@ body.dragging-selection .excel-cell {
   content: '';
   position: absolute;
   right: -1px;
+  top: 0;
+  bottom: 0;
+  width: var(--week-sep-width, 2px);
+  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
+  pointer-events: none;
+}
+
+.excel-cell.week-boundary-left::before,
+.excel-day-cell.week-boundary-left::before {
+  content: '';
+  position: absolute;
+  left: -1px;
   top: 0;
   bottom: 0;
   width: var(--week-sep-width, 2px);

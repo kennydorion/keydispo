@@ -377,6 +377,12 @@ const handleSave = async () => {
       lieu: editingDispo.value.lieu,
       slots: editingDispo.value.slots
     })
+    
+    notify({
+      message: 'Disponibilité ajoutée avec succès',
+      color: 'success'
+    })
+    
     handleClose()
   } catch (error) {
     console.error('❌ Erreur lors de la création de la disponibilité RTDB:', error)

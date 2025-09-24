@@ -1,5 +1,5 @@
 <template>
-  <div class="lieu-combobox" :class="[size, theme]">
+  <div ref="containerRef" class="lieu-combobox flip-up" :class="[size, theme]">
     <va-input
       v-model="inputValue"
       :label="label"
@@ -61,6 +61,7 @@ const emit = defineEmits<{
   (e: 'create', v: string): void
 }>()
 
+const containerRef = ref<HTMLElement | null>(null)
 const inputValue = ref(props.modelValue || '')
 const open = ref(false)
 const highlighted = ref(-1)
@@ -100,44 +101,28 @@ function onFocus() {
 function checkDropdownPosition() {
   // Petite temporisation pour que le DOM soit mis à jour
   setTimeout(() => {
-    const container = document.querySelector('.lieu-combobox')
+    const container = containerRef.value
     if (!container) return
     
     const rect = container.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const spaceBelow = viewportHeight - rect.bottom
     const spaceAbove = rect.top
     const dropdownHeight = 200 // max-height de la liste
     
     // Détecter si on est dans une modale
     const modal = container.closest('.va-modal__dialog, .dispo-modal-redesigned')
-    let modalSpaceBelow = spaceBelow
     let modalSpaceAbove = spaceAbove
     
     if (modal) {
       const modalRect = modal.getBoundingClientRect()
-      modalSpaceBelow = modalRect.bottom - rect.bottom
       modalSpaceAbove = rect.top - modalRect.top
     }
-    
-    // Utiliser l'espace de la modale si on est dedans, sinon l'espace viewport
-    const effectiveSpaceBelow = modal ? modalSpaceBelow : spaceBelow
     const effectiveSpaceAbove = modal ? modalSpaceAbove : spaceAbove
-    
-    // Si pas assez de place en bas mais plus de place en haut
-    if (effectiveSpaceBelow < Math.min(dropdownHeight, 150) && effectiveSpaceAbove > effectiveSpaceBelow) {
-      container.classList.add('flip-up')
-    } else {
-      container.classList.remove('flip-up')
-    }
-    
+
     // Ajuster la hauteur max selon l'espace disponible
     const list = container.querySelector('.cbx-list') as HTMLElement
     if (list) {
-      const maxHeight = Math.min(
-        dropdownHeight,
-        Math.max(effectiveSpaceBelow, effectiveSpaceAbove) - 20 // Marge de 20px
-      )
+      const availableUp = effectiveSpaceAbove - 20
+      const maxHeight = Math.min(dropdownHeight, Math.max(availableUp, 100))
       list.style.maxHeight = `${Math.max(maxHeight, 100)}px` // Min 100px
     }
   }, 0)
@@ -157,11 +142,6 @@ function onBlur() {
 function closeList() {
   open.value = false
   highlighted.value = -1
-  // Nettoyer les classes de positionnement
-  const container = document.querySelector('.lieu-combobox')
-  if (container) {
-    container.classList.remove('flip-up')
-  }
 }
 
 function clearValue() {
