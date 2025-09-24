@@ -226,7 +226,7 @@
               <div
                 v-if="isWeekBoundary(day.date)"
                 class="week-sep"
-        :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + ${idx} * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
+                :style="{ left: `calc(var(--grid-left-header, var(--sticky-left, 260px)) + ${getWeekSeparatorPosition(day.date, idx)} * var(--day-pitch-header, calc(var(--day-width, 100px) + 1px)) - 1px)` }"
               ></div>
             </template>
           </div>
@@ -2452,6 +2452,20 @@ function isWeekBoundary(dateStr: string): boolean {
   const d = new Date(dateStr + 'T12:00:00')
   // Lundi = 1 (début de nouvelle semaine ISO)
   return d.getDay() === 1
+}
+
+// Calcule la position correcte du séparateur en tenant compte du décalage de la première date
+function getWeekSeparatorPosition(dayDate: string, dayIndex: number): number {
+  if (visibleDays.value.length === 0) return dayIndex
+  
+  const firstDate = new Date(visibleDays.value[0].date + 'T12:00:00')
+  const currentDate = new Date(dayDate + 'T12:00:00')
+  
+  // Calculer la différence en jours depuis la première date visible
+  const diffTime = currentDate.getTime() - firstDate.getTime()
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+  
+  return diffDays
 }
 
 // Détecte la fin de mois (jour dont le lendemain change de mois)
