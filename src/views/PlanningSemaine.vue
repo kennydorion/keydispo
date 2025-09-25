@@ -9,6 +9,38 @@
 
   <!-- Contenu principal -->
   <div class="main-content">
+  <transition name="planning-warmup-fade">
+    <div v-if="isInitialLoad" class="planning-warmup-overlay" role="status" aria-live="polite">
+      <div class="warmup-card">
+        <div class="warmup-glow"></div>
+        <div class="warmup-header">
+          <div class="warmup-icon">
+            <va-icon name="calendar_month" size="32px" />
+          </div>
+          <div class="warmup-text">
+            <p class="warmup-title">Préparation du planning</p>
+            <p class="warmup-subtitle">On vous amène sur la date d'aujourd'hui…</p>
+          </div>
+        </div>
+        <div class="warmup-progress">
+          <div class="progress-track">
+            <div class="progress-bar" :style="{ width: warmupProgress + '%' }"></div>
+          </div>
+          <div class="progress-legend">{{ warmupLegend }}</div>
+        </div>
+        <ul class="warmup-steps">
+          <li v-for="step in warmupSteps" :key="step.id" :class="['warmup-step', step.status]">
+            <span class="step-icon">
+              <va-icon v-if="step.status === 'done'" name="check_circle" size="16px" />
+              <va-icon v-else-if="step.status === 'loading'" name="autorenew" size="16px" spin />
+              <va-icon v-else name="schedule" size="16px" />
+            </span>
+            <span class="step-label">{{ step.label }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </transition>
   <PlanningLoadingModal
     :show-modal="showLoadingModal"
     :loading-collaborateurs="loadingCollaborateurs"
@@ -311,30 +343,54 @@
             <div 
               class="collab-sticky" 
               :data-row-index="rowIndex"
-              :class="getCollaborateurRowClasses(rowIndex)"
+              :class="[
+                getCollaborateurRowClasses(rowIndex),
+                { 'loading-placeholder': loadingCollaborateurs || loadingDisponibilites }
+              ]"
               :style="{ '--collaborateur-color': getCollaborateurColor(collaborateur.id) }"
             >
-              <div class="collaborateur-color-bar"></div>
-              <div class="collaborateur-content">
-                <div class="collaborateur-info">
-                  <div 
-                    class="collaborateur-nom-complet clickable-name" 
-                    @click="openCollaborateurInfo(collaborateur)"
-                  >
-                    <span class="nom">{{ collaborateur.nom }}</span>
-                    <span class="prenom">{{ collaborateur.prenom }}</span>
+              <!-- Version normale -->
+              <template v-if="!loadingCollaborateurs && !loadingDisponibilites">
+                <div class="collaborateur-color-bar"></div>
+                <div class="collaborateur-content">
+                  <div class="collaborateur-info">
+                    <div 
+                      class="collaborateur-nom-complet clickable-name" 
+                      @click="openCollaborateurInfo(collaborateur)"
+                    >
+                      <span class="nom">{{ collaborateur.nom }}</span>
+                      <span class="prenom">{{ collaborateur.prenom }}</span>
+                    </div>
+                    <div class="collaborateur-metier" v-if="collaborateur.metier">{{ collaborateur.metier }}</div>
                   </div>
-                  <div class="collaborateur-metier" v-if="collaborateur.metier">{{ collaborateur.metier }}</div>
+                  <div class="collaborateur-actions">
+                    <a class="contact-icon phone-link" v-if="collaborateur.phone" :href="`tel:${phoneToHref(collaborateur.phone)}`" :title="`Appeler ${formatPhone(collaborateur.phone)}`">
+                      <va-icon name="phone" />
+                    </a>
+                    <a class="contact-icon email-link" v-if="collaborateur.email" :href="`mailto:${collaborateur.email}`" :title="`Écrire à ${collaborateur.email}`">
+                      <va-icon name="email" />
+                    </a>
+                  </div>
                 </div>
-                <div class="collaborateur-actions">
-                  <a class="contact-icon phone-link" v-if="collaborateur.phone" :href="`tel:${phoneToHref(collaborateur.phone)}`" :title="`Appeler ${formatPhone(collaborateur.phone)}`">
-                    <va-icon name="phone" />
-                  </a>
-                  <a class="contact-icon email-link" v-if="collaborateur.email" :href="`mailto:${collaborateur.email}`" :title="`Écrire à ${collaborateur.email}`">
-                    <va-icon name="email" />
-                  </a>
+              </template>
+
+              <!-- Version skeleton pendant le chargement -->
+              <template v-else>
+                <div class="collaborateur-color-bar skeleton-bar"></div>
+                <div class="collaborateur-content">
+                  <div class="collaborateur-info">
+                    <div class="collaborateur-nom-complet">
+                      <div class="skeleton-text skeleton-nom"></div>
+                      <div class="skeleton-text skeleton-prenom"></div>
+                    </div>
+                    <div class="skeleton-text skeleton-metier"></div>
+                  </div>
+                  <div class="collaborateur-actions">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-icon"></div>
+                  </div>
                 </div>
-              </div>
+              </template>
             </div>
             <!-- Grille des jours -->
             <div class="excel-planning-row" :style="{ minWidth: gridMinWidth, width: 'max-content' }">
@@ -420,7 +476,7 @@
                     
                     <!-- Bouton d'ajout pour cellules vides -->
                     <div 
-                      v-if="getCellDisposSorted(collaborateur.id, day.date).length === 0"
+                      v-if="getCellDisposSorted(collaborateur.id, day.date).length === 0 && !isDayLoaded(day.date) === false"
                       class="dispo-add-card"
                       :class="{ 'dragging-mode': isDraggingSelection }"
                       @click="onInnerAddClick(collaborateur.id, day.date, $event)"
@@ -913,6 +969,7 @@ if (typeof window !== 'undefined') {
 const allCollaborateurs = ref<Collaborateur[]>([])
 // Synchronisé avec le composable usePlanningData
 const loadingCollaborateurs = ref(false)
+const loadingDisponibilites = ref(false)
 const disponibilitesCache = ref<Map<string, Disponibilite[]>>(new Map())
 
 // État de chargement initial
@@ -921,6 +978,7 @@ const planningReady = ref(false)
 
 // Modale de chargement Vuestic - FORCÉE COMME FERMÉE
 const showLoadingModal = computed(() => false) // TEMPORAIREMENT FORCÉ À FALSE
+
 
 // État combiné : planning vraiment prêt - FORCÉ POUR DEBUG
 // (isPlanningFullyReady retiré: non utilisé)
@@ -980,7 +1038,6 @@ const isEmulatorMode = computed(() => {
          window.location.href.includes('emulator')
 })
 
-const loadingDisponibilites = ref(false)
 const fetchingRanges = ref(false)
 const extending = ref(false) // Déclaration déplacée ici pour éviter l'erreur "before initialization"
 
@@ -1008,6 +1065,78 @@ watch(isBusy, async (busy, prevBusy) => {
     }
   }
 }, { immediate: false })
+
+const warmupSteps = computed(() => {
+  const steps: Array<{ id: string; label: string; status: 'pending' | 'loading' | 'done' }> = []
+
+  const collaborateursStatus = loadingCollaborateurs.value
+    ? 'loading'
+    : allCollaborateurs.value.length > 0
+      ? 'done'
+      : 'pending'
+
+  const disponibilitesStatus = loadingDisponibilites.value
+    ? 'loading'
+    : disponibilitesCache.value.size > 0
+      ? 'done'
+      : collaborateursStatus === 'done'
+        ? 'pending'
+        : 'pending'
+
+  const realtimeStatus = (planningReady.value || isRealtimeActive.value)
+    ? 'done'
+    : (isBusy.value ? 'loading' : 'pending')
+
+  steps.push({
+    id: 'collaborateurs',
+    label: 'Initialisation des collaborateurs',
+    status: collaborateursStatus,
+  })
+
+  steps.push({
+    id: 'disponibilites',
+    label: 'Préparation des disponibilités',
+    status: disponibilitesStatus,
+  })
+
+  steps.push({
+    id: 'realtime',
+    label: 'Activation du temps réel',
+    status: realtimeStatus,
+  })
+
+  return steps
+})
+
+const warmupProgress = computed(() => {
+  const doneCount = warmupSteps.value.filter(step => step.status === 'done').length
+  const loadingCount = warmupSteps.value.filter(step => step.status === 'loading').length
+  const base = (doneCount / warmupSteps.value.length) * 100
+  const loadingBoost = loadingCount > 0 ? 10 : 0
+  return Math.min(100, Math.max(8, Math.round(base + loadingBoost)))
+})
+
+const warmupLegend = computed(() => {
+  if (warmupProgress.value >= 100 || planningReady.value) {
+    return 'Planning prêt, arrivée sur aujourd\'hui…'
+  }
+
+  const loadingStep = warmupSteps.value.find(step => step.status === 'loading')
+  if (loadingStep) {
+    switch (loadingStep.id) {
+      case 'collaborateurs':
+        return 'Connexion aux collaborateurs…'
+      case 'disponibilites':
+        return 'Récupération des disponibilités…'
+      case 'realtime':
+        return 'Connexion au temps réel…'
+      default:
+        return 'Initialisation en cours…'
+    }
+  }
+
+  return 'Préparation du planning…'
+})
 
 // Options de formulaire
 const allTypeOptions = [
@@ -2223,11 +2352,12 @@ watch(planningFilters.filterState, async (newFilters, oldFilters) => {
 
   // Politique de recentrage: rester/aller à aujourd'hui si la plage de dates n'a pas été modifiée,
   // ou si tous les filtres sont vidés.
-  if (allFiltersEmpty || !dateChanged) {
-    setTimeout(() => {
-      goToToday()
-    }, 150)
-  }
+  // DÉSACTIVÉ : Navigation déjà faite au chargement initial
+  // if (allFiltersEmpty || !dateChanged) {
+  //   setTimeout(() => {
+  //     goToToday()
+  //   }, 150)
+  // }
 
   // Force refresh automatique si les résultats ne s'affichent pas
   if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
@@ -3959,18 +4089,17 @@ function clearAllFilters() {
       recomputeWindow(scroller)
       recomputeRowWindow(scroller)
       
-      // Attendre que les données se rechargent puis aller à aujourd'hui
-      setTimeout(() => {
-        
-        goToToday()
-      }, 200)
+      // Plus besoin de naviguer vers aujourd'hui - c'est déjà fait au chargement initial
+      // setTimeout(() => {
+      //   goToToday()
+      // }, 200)
     } else {
       // Sans scroller, force quand même le recalcul
       recomputeRowWindow(null as any)
     }
     
-    // CORRECTION: Aller à la semaine actuelle au lieu de rester en juin
-    goToToday()
+    // Plus besoin de naviguer vers aujourd'hui - c'est déjà fait au chargement initial
+    // goToToday()
     
     // Double vérification après un court délai
     setTimeout(() => {
@@ -4938,6 +5067,19 @@ function generateInitialDays() {
     cursor.setDate(cursor.getDate() + 1)
   }
   loadedDays.value = days
+  
+  // CORRECTION : Positionner le scroll sur aujourd'hui après que le DOM soit complètement prêt
+  // et que les dimensions soient calculées
+  setTimeout(() => {
+    const scroller = planningScroll.value
+    if (!scroller) return
+    
+    const todayIndex = days.findIndex(d => d.isToday)
+    if (todayIndex >= 0) {
+      const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
+      scroller.scrollLeft = centerOffset // Scroll immédiat sans animation
+    }
+  }, 100) // Délai pour s'assurer que le DOM est prêt
 }
 
 // Extension dynamique lors du scroll
@@ -5776,7 +5918,8 @@ async function checkPlanningReadiness() {
     setTimeout(() => {
       planningReady.value = true
       
-      // Masquer l'overlay après une petite transition
+      // Masquer l'overlay après une petite transition - SANS naviguer vers aujourd'hui
+      // (la navigation vers aujourd'hui est déjà faite dans generateInitialDays)
       setTimeout(() => {
         isInitialLoad.value = false
       }, 300)
@@ -5968,7 +6111,10 @@ onMounted(async () => {
   // Initialiser les filtres depuis les paramètres de query
   initFiltersFromQuery()
   
+  // Attendre un peu avant de générer les jours pour éviter le flash sur juin
+  await new Promise(resolve => setTimeout(resolve, 50))
   generateInitialDays()
+  
   await planningData.loadCollaborateurs()
   
   // CORRECTION: Forcer la réactivité après le chargement des collaborateurs
@@ -7634,6 +7780,8 @@ onUnmounted(() => {
   /* Séparateur de semaine, utilisé partout (jours header, semaines header, body) */
   --week-sep-color: rgba(0, 0, 0, 0.10);
   --week-sep-width: 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Optimisation de l'espace pour maximiser la surface du planning */
@@ -7644,6 +7792,163 @@ onUnmounted(() => {
   min-height: 0; /* Important pour permettre au planning de grandir */
   margin: 0;
   padding: 0;
+}
+
+.planning-warmup-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, rgba(var(--va-primary-rgb), 0.12), rgba(17, 24, 39, 0.72));
+  backdrop-filter: blur(10px);
+  padding: clamp(16px, 5vw, 48px);
+}
+
+.warmup-card {
+  position: relative;
+  width: min(460px, 90vw);
+  border-radius: 24px;
+  padding: 32px clamp(24px, 4vw, 32px);
+  background: rgba(15, 23, 42, 0.78);
+  box-shadow: 0 28px 40px -24px rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  overflow: hidden;
+}
+
+.warmup-glow {
+  position: absolute;
+  inset: -30% -30% auto;
+  height: 200px;
+  background: radial-gradient(circle, rgba(var(--va-primary-rgb), 0.45), transparent 65%);
+  opacity: 0.6;
+  filter: blur(12px);
+  animation: warmup-glow 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes warmup-glow {
+  from { transform: translateY(-20px) rotate(0deg); opacity: 0.4; }
+  to { transform: translateY(20px) rotate(8deg); opacity: 0.8; }
+}
+
+.warmup-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+}
+
+.warmup-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(var(--va-primary-rgb), 0.25), rgba(255, 255, 255, 0.12));
+  color: #fff;
+}
+
+.warmup-title {
+  font-size: clamp(20px, 3vw, 24px);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.warmup-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.warmup-progress {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.35);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(135deg, rgba(var(--va-primary-rgb), 0.9), rgba(59, 130, 246, 0.95));
+  border-radius: inherit;
+  transition: width 0.45s ease;
+}
+
+.progress-legend {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.9);
+  letter-spacing: 0.02em;
+}
+
+.warmup-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.warmup-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid transparent;
+  transition: border-color 0.3s ease, transform 0.3s ease, background 0.3s ease;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.warmup-step.loading {
+  border-color: rgba(var(--va-primary-rgb), 0.25);
+  background: rgba(37, 99, 235, 0.22);
+  color: #fff;
+}
+
+.warmup-step.done {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(21, 128, 61, 0.22);
+  color: #dcfce7;
+}
+
+.warmup-step.pending {
+  opacity: 0.8;
+}
+
+.warmup-step .va-icon {
+  color: currentColor;
+}
+
+.step-label {
+  font-size: 14px;
+  flex: 1;
+}
+
+.planning-warmup-fade-enter-active,
+.planning-warmup-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.planning-warmup-fade-enter-from,
+.planning-warmup-fade-leave-to {
+  opacity: 0;
 }
 
 /* ========================================
@@ -8744,6 +9049,53 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
 }
 
+/* En-têtes des jours en chargement - skeleton screen moderne */
+.excel-day-cell.loading-placeholder {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+}
+
+.excel-day-cell.loading-placeholder .day-name,
+.excel-day-cell.loading-placeholder .day-number {
+  visibility: hidden;
+}
+
+.excel-day-cell.loading-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 10px;
+  background: linear-gradient(90deg, 
+    rgba(148, 163, 184, 0.2) 25%, 
+    rgba(203, 213, 225, 0.4) 50%, 
+    rgba(148, 163, 184, 0.2) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: 5px;
+  animation: shimmer 2s infinite linear;
+}
+
+.excel-day-cell.loading-placeholder::after {
+  content: '';
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 8px;
+  background: linear-gradient(90deg, 
+    rgba(203, 213, 225, 0.3) 0%, 
+    rgba(148, 163, 184, 0.4) 100%
+  );
+  border-radius: 4px;
+  opacity: 0.9;
+}
+
 .excel-day-cell.today {
   background: #e8f4fd; /* Bleu très clair au lieu de #1976d2 */
   color: #1565c0; /* Texte bleu foncé au lieu de blanc */
@@ -9483,81 +9835,107 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 1px #3b82f6;
 }
 
-/* Cellules en chargement - affichage moderne et informatif */
+/* Cellules en chargement - skeleton screen moderne */
 .excel-cell.loading-placeholder {
-  background: linear-gradient(
-    90deg,
-    var(--va-background-element) 25%,
-    color-mix(in srgb, var(--va-background-element) 85%, var(--va-primary)) 50%,
-    var(--va-background-element) 75%
-  );
-  background-size: 400% 100%;
-  animation: loadingShimmer 1.8s ease-in-out infinite;
-  border: 1px solid color-mix(in srgb, var(--va-primary) 20%, transparent);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   position: relative;
   cursor: wait;
+  overflow: hidden;
 }
 
 .excel-cell.loading-placeholder::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px;
+  top: 8px;
+  left: 8px;
+  right: 8px;
   height: 12px;
-  border: 2px solid color-mix(in srgb, var(--va-primary) 30%, transparent);
-  border-top: 2px solid var(--va-primary);
-  border-radius: 50%;
-  animation: loadingSpinner 1s linear infinite;
+  background: linear-gradient(90deg, 
+    rgba(148, 163, 184, 0.2) 25%, 
+    rgba(203, 213, 225, 0.4) 50%, 
+    rgba(148, 163, 184, 0.2) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 2s infinite linear;
 }
 
 .excel-cell.loading-placeholder::after {
   content: '';
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 6px;
+  bottom: 8px;
+  left: 8px;
+  width: 32px;
   height: 6px;
-  background: color-mix(in srgb, var(--va-primary) 60%, transparent);
-  border-radius: 50%;
-  animation: loadingPulse 1.5s ease-in-out infinite;
-}
-
-/* Animation shimmer pour loading */
-@keyframes loadingShimmer {
-  0% { background-position: -400% 0; }
-  100% { background-position: 400% 0; }
-}
-
-/* Animation spinner pour loading */
-@keyframes loadingSpinner {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* Animation pulse pour indicateur loading */
-@keyframes loadingPulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-/* Mode scroll rapide - loading encore plus visible */
-.excel-scroll.fast-scrolling .excel-cell.loading-placeholder {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--va-primary) 15%, var(--va-background-element)) 25%,
-    color-mix(in srgb, var(--va-primary) 25%, var(--va-background-element)) 50%,
-    color-mix(in srgb, var(--va-primary) 15%, var(--va-background-element)) 75%
+  background: linear-gradient(90deg, 
+    rgba(203, 213, 225, 0.3) 0%, 
+    rgba(148, 163, 184, 0.5) 100%
   );
-  animation: loadingShimmer 1.2s ease-in-out infinite;
+  border-radius: 3px;
+  opacity: 0.8;
 }
 
-.excel-scroll.fast-scrolling .excel-cell.loading-placeholder::before {
-  border-width: 3px;
-  width: 16px;
-  height: 16px;
-  animation: loadingSpinner 0.8s linear infinite;
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Skeleton pour la colonne collaborateur */
+.collab-sticky.loading-placeholder {
+  pointer-events: none;
+}
+
+.collab-sticky.loading-placeholder .skeleton-bar {
+  background: linear-gradient(90deg, 
+    rgba(203, 213, 225, 0.4) 0%, 
+    rgba(148, 163, 184, 0.6) 50%, 
+    rgba(203, 213, 225, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.collab-sticky.loading-placeholder .skeleton-text {
+  background: linear-gradient(90deg, 
+    rgba(203, 213, 225, 0.4) 0%, 
+    rgba(148, 163, 184, 0.6) 50%, 
+    rgba(203, 213, 225, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 4px;
+  margin: 2px 0;
+}
+
+.collab-sticky.loading-placeholder .skeleton-nom {
+  height: 14px;
+  width: 80px;
+}
+
+.collab-sticky.loading-placeholder .skeleton-prenom {
+  height: 14px;
+  width: 65px;
+}
+
+.collab-sticky.loading-placeholder .skeleton-metier {
+  height: 12px;
+  width: 90px;
+  opacity: 0.8;
+}
+
+.collab-sticky.loading-placeholder .skeleton-icon {
+  background: linear-gradient(90deg, 
+    rgba(203, 213, 225, 0.4) 0%, 
+    rgba(148, 163, 184, 0.6) 50%, 
+    rgba(203, 213, 225, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  margin: 0 2px;
 }
 
 .excel-cell.selected::after {
