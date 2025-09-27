@@ -3359,6 +3359,11 @@ function listHasDispoPartial(list: Partial<Disponibilite>[]) {
     return k.type === 'disponible' && (k.timeKind === 'slot' || k.timeKind === 'range')
   })
 }
+// Fonction utilitaire pour identifier les continuations overnight de la veille (pour validation de conflit)
+function isOvernightContinuationFromPrevDay(dispo: Partial<Disponibilite>): boolean {
+  return (dispo as any)._cont === 'end'
+}
+
 function wouldConflict(list: Partial<Disponibilite>[]): boolean {
   const hasIndispo = listHasIndispo(list)
   const hasDispo = listHasDispoAny(list)
@@ -3382,6 +3387,23 @@ function wouldConflict(list: Partial<Disponibilite>[]): boolean {
   return false
 }
 function wouldConflictWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): boolean {
+  // Si le candidat est full-day et qu'il n'y a que des continuations overnight de la veille,
+  // permettre l'ajout car une disponibilité full-day peut coexister avec des continuations overnight
+  const candidateKind = resolveDispoKind(sanitizeDisposition({ ...candidate }) as Disponibilite)
+  if (candidateKind.timeKind === 'full-day') {
+    // Vérifier si toutes les disponibilités existantes sont des continuations overnight
+    const onlyOvernightContinuations = existing.every(d => isOvernightContinuationFromPrevDay(d))
+    if (onlyOvernightContinuations) {
+      return false // Pas de conflit : full-day peut coexister avec des continuations overnight
+    }
+    
+    // Filtrer les continuations overnight pour les autres vérifications de conflit
+    const realExisting = existing.filter(d => !isOvernightContinuationFromPrevDay(d))
+    const list = [...realExisting.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })]
+    return wouldConflict(list)
+  }
+  
+  // Pour les autres types, appliquer la logique normale
   const list = [...existing.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })]
   return wouldConflict(list)
 }
@@ -3402,6 +3424,18 @@ function getConflictMessage(list: Partial<Disponibilite>[]): string | null {
   return null
 }
 function getConflictMessageWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): string | null {
+  // Appliquer la même logique que wouldConflictWithCandidate
+  const candidateKind = resolveDispoKind(sanitizeDisposition({ ...candidate }) as Disponibilite)
+  if (candidateKind.timeKind === 'full-day') {
+    const onlyOvernightContinuations = existing.every(d => isOvernightContinuationFromPrevDay(d))
+    if (onlyOvernightContinuations) {
+      return null // Pas de message de conflit
+    }
+    
+    const realExisting = existing.filter(d => !isOvernightContinuationFromPrevDay(d))
+    return getConflictMessage([...realExisting.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })])
+  }
+  
   return getConflictMessage([...existing.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })])
 }
 
