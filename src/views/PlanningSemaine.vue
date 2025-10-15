@@ -1782,11 +1782,55 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// AUTO-SCROLL DÉSACTIVÉ - DOM trop massif pour scroll performant
-// L'utilisateur scrolle manuellement avec trackpad/molette pendant la sélection Cmd+drag
+// Auto-scroll pendant la sélection - version simple
+let autoScrollTimer: number | null = null
+let currentScrollX = 0
+let currentScrollY = 0
+const EDGE_ZONE = 100
+const SCROLL_SPEED = 15
+
+function scrollTick() {
+  if (!planningScroll.value) return
+  planningScroll.value.scrollLeft += currentScrollX
+  planningScroll.value.scrollTop += currentScrollY
+}
+
+function handleAutoScroll(e: MouseEvent) {
+  if (!isDraggingSelection.value || !planningScroll.value) {
+    stopAutoScroll()
+    return
+  }
+
+  const rect = planningScroll.value.getBoundingClientRect()
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+  
+  currentScrollX = 0
+  currentScrollY = 0
+  
+  // Gauche/Droite
+  if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED
+  else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED
+  
+  // Haut/Bas
+  if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED
+  else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED
+  
+  // Démarrer/arrêter le timer
+  if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
+    autoScrollTimer = window.setInterval(scrollTick, 100)
+  } else if (currentScrollX === 0 && currentScrollY === 0) {
+    stopAutoScroll()
+  }
+}
 
 function stopAutoScroll() {
-  // Noop - auto-scroll désactivé
+  if (autoScrollTimer) {
+    clearInterval(autoScrollTimer)
+    autoScrollTimer = null
+  }
+  currentScrollX = 0
+  currentScrollY = 0
 }
 
 function onGridMouseMove(e: MouseEvent) {
@@ -1796,7 +1840,10 @@ function onGridMouseMove(e: MouseEvent) {
   _lastPointerX = e.clientX
   _lastPointerY = e.clientY
   
-  // Auto-scroll désactivé - l'utilisateur scrolle manuellement pendant la sélection
+  // Auto-scroll simple pendant la sélection
+  if (isDraggingSelection.value) {
+    handleAutoScroll(e)
+  }
   
   // Pendant le scroll rapide ou en cours de chargement, éviter les modifications DOM
   if (isScrollingFast.value || isBusy.value) {
