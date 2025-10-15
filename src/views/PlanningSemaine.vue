@@ -334,6 +334,9 @@
               :key="collaborateur.id"
               class="excel-row"
               :data-collaborateur-id="collaborateur.id"
+              :class="{
+                'row-disabled': selectedCollaborateurId && selectedCollaborateurId !== collaborateur.id
+              }"
               :style="{ 
                 height: rowHeight + 'px',
                 '--collaborateur-color': getCollaborateurColor(collaborateur.id)
@@ -798,6 +801,12 @@ const batchModalOpen = ref(false)
 const selectedCells = ref<Set<string>>(new Set())
 // (cellLocks retiré: la grille utilise getCellLockClasses() basé sur le service)
 const lockUpdateCounter = ref(0) // Force la réactivité des verrous
+
+// Computed: ID du collaborateur actuellement sélectionné (pour griser les autres lignes)
+const selectedCollaborateurId = computed(() => {
+  if (selectedCells.value.size === 0) return null
+  return getCurrentSelectedCollaborateur()
+})
 
 // État pour la sélection par lot
 const isSelectionMode = ref(false)
@@ -8988,6 +8997,13 @@ onUnmounted(() => {
   /* supprimer les contain qui peuvent empêcher le paint correct lorsqu'on translate le conteneur */
   contain: none;
   contain-intrinsic-size: auto; /* ne pas réserver artificiellement la hauteur */
+}
+
+/* Griser les lignes non sélectionnables pendant la sélection multiple */
+.excel-row.row-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 .excel-days-row {
