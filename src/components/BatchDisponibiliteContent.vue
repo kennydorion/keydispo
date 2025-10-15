@@ -44,7 +44,15 @@
               @create-lieu="$emit('create-lieu', $event)"
             />
             <div class="form-actions">
-              <!-- Bouton principal unique -->
+              <va-button 
+                @click="$emit('cancel-modal')" 
+                color="secondary" 
+                size="large" 
+                preset="secondary"
+              >
+                Annuler
+              </va-button>
+              <!-- Bouton principal avec même style que l'ajout simple -->
               <va-button 
                 @click="$emit('save-dispos')" 
                 color="success" 
@@ -52,7 +60,7 @@
                 :disabled="!isEditFormValid"
                 icon="add"
               >
-                Créer les disponibilités
+                Ajouter une disponibilité
               </va-button>
             </div>
           </div>
