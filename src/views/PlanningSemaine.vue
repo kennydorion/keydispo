@@ -1785,6 +1785,11 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
+// Variables pour l'auto-scroll
+let currentScrollX = 0
+let currentScrollY = 0
+let lastMouseEvent: MouseEvent | null = null
+
 // Fonction pour gérer l'auto-scroll pendant la sélection
 function handleAutoScroll(e: MouseEvent) {
   if (!isDraggingSelection.value || !planningScroll.value) {
@@ -1792,6 +1797,7 @@ function handleAutoScroll(e: MouseEvent) {
     return
   }
 
+  lastMouseEvent = e
   const scrollContainer = planningScroll.value
   const rect = scrollContainer.getBoundingClientRect()
   
@@ -1805,8 +1811,8 @@ function handleAutoScroll(e: MouseEvent) {
   const distanceFromTop = mouseY
   const distanceFromBottom = rect.height - mouseY
   
-  let scrollX = 0
-  let scrollY = 0
+  currentScrollX = 0
+  currentScrollY = 0
   
   // Scroll horizontal avec accélération progressive
   if (distanceFromLeft < EDGE_SCROLL_ZONE && distanceFromLeft > 0) {
@@ -1814,12 +1820,12 @@ function handleAutoScroll(e: MouseEvent) {
     const intensity = 1 - (distanceFromLeft / EDGE_SCROLL_ZONE)
     // Utiliser une courbe exponentielle pour une accélération plus naturelle
     const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    scrollX = -speed
+    currentScrollX = -speed
   } else if (distanceFromRight < EDGE_SCROLL_ZONE && distanceFromRight > 0) {
     // Proche du bord droit - scroll vers la droite
     const intensity = 1 - (distanceFromRight / EDGE_SCROLL_ZONE)
     const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    scrollX = speed
+    currentScrollX = speed
   }
   
   // Scroll vertical avec accélération progressive
@@ -1827,39 +1833,40 @@ function handleAutoScroll(e: MouseEvent) {
     // Proche du bord haut - scroll vers le haut
     const intensity = 1 - (distanceFromTop / EDGE_SCROLL_ZONE)
     const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    scrollY = -speed
+    currentScrollY = -speed
   } else if (distanceFromBottom < EDGE_SCROLL_ZONE && distanceFromBottom > 0) {
     // Proche du bord bas - scroll vers le bas
     const intensity = 1 - (distanceFromBottom / EDGE_SCROLL_ZONE)
     const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    scrollY = speed
+    currentScrollY = speed
   }
   
   // Démarrer ou arrêter l'auto-scroll selon si on est dans une zone
-  if (scrollX !== 0 || scrollY !== 0) {
+  if (currentScrollX !== 0 || currentScrollY !== 0) {
     if (!autoScrollInterval) {
       autoScrollInterval = window.setInterval(() => {
-        if (planningScroll.value) {
-          planningScroll.value.scrollLeft += scrollX
-          planningScroll.value.scrollTop += scrollY
+        if (planningScroll.value && (currentScrollX !== 0 || currentScrollY !== 0)) {
+          planningScroll.value.scrollLeft += currentScrollX
+          planningScroll.value.scrollTop += currentScrollY
           
-          // Déclencher manuellement l'événement mouseenter pour la cellule sous le curseur
-          // Cela permet de continuer la sélection pendant le scroll
-          const elementAtCursor = document.elementFromPoint(e.clientX, e.clientY)
-          if (elementAtCursor) {
-            const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
-            if (cellElement) {
-              const cellId = cellElement.getAttribute('data-cell-id')
-              if (cellId) {
-                const [collaborateurId, date] = cellId.split('_')
-                if (collaborateurId && date) {
-                  handleCellMouseEnter(collaborateurId, date)
+          // Utiliser requestAnimationFrame pour la détection de cellule (plus léger)
+          if (lastMouseEvent) {
+            const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
+            if (elementAtCursor) {
+              const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
+              if (cellElement) {
+                const cellId = cellElement.getAttribute('data-cell-id')
+                if (cellId) {
+                  const [collaborateurId, date] = cellId.split('_')
+                  if (collaborateurId && date) {
+                    handleCellMouseEnter(collaborateurId, date)
+                  }
                 }
               }
             }
           }
         }
-      }, 16) // ~60fps
+      }, 32) // 30fps au lieu de 60fps pour réduire la charge
     }
   } else {
     stopAutoScroll()
@@ -1871,6 +1878,9 @@ function stopAutoScroll() {
     clearInterval(autoScrollInterval)
     autoScrollInterval = null
   }
+  currentScrollX = 0
+  currentScrollY = 0
+  lastMouseEvent = null
 }
 
 function onGridMouseMove(e: MouseEvent) {
