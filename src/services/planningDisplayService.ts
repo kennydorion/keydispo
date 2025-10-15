@@ -224,6 +224,20 @@ export function getDispoTypeIcon(dispo: DisponibiliteDisplay): string {
 }
 
 /**
+ * Obtient le label texte du type de disponibilité
+ */
+export function getDispoTypeLabel(dispo: DisponibiliteDisplay): string {
+  const kind = resolveDispoKind(dispo)
+  
+  switch (kind.type) {
+    case 'mission': return 'Mission'
+    case 'indisponible': return 'Indisponible'
+    case 'disponible': return 'Disponible'
+    default: return 'Schedulé'
+  }
+}
+
+/**
  * Classe CSS pour le type de disponibilité
  */
 export function getDispoTypeClass(dispo: DisponibiliteDisplay): string {

@@ -457,15 +457,20 @@
                         :title="getDispoBarTitle(dispo as any, day.date)"
                         @click="onInnerDispoClick(dispo, collaborateur.id, day.date, $event)"
                       >
+                        <!-- Badge avec type icon en haut à gauche -->
+                        <div class="dispo-type-badge">
+                          <va-icon 
+                            :name="getDispoTypeIcon(dispo)" 
+                            size="9px" 
+                            class="dispo-badge-icon" 
+                          />
+                          <span class="dispo-type-text">{{ getDispoTypeLabel(dispo) }}</span>
+                        </div>
+                        
                         <!-- Affichage uniforme simplifié -->
                         <div class="dispo-unified-content">
                           <!-- Type de dispo + temporalité en une ligne -->
                           <div class="dispo-main-info">
-                            <va-icon 
-                              :name="getDispoTypeIcon(dispo)" 
-                              size="10px" 
-                              class="dispo-type-icon" 
-                            />
                             <span class="dispo-temporal">{{ getTemporalDisplay(dispo, day.date) }}</span>
                             <span v-if="isOvernightContinuation(dispo, day.date)" class="overnight-symbol" title="Suite">⤺</span>
                             <span v-if="isOvernightStart(dispo, day.date)" class="overnight-symbol" title="Continue">⤻</span>
@@ -634,6 +639,7 @@ import {
   slotLabel as sharedSlotLabel, 
   getTemporalDisplay as sharedGetTemporalDisplay, 
   getDispoTypeIcon as sharedGetDispoTypeIcon,
+  getDispoTypeLabel as sharedGetDispoTypeLabel,
   getDispoBarsLayoutClass as sharedGetDispoBarsLayoutClass
 } from '../services/planningDisplayService'
 import { toDateStr, addDaysStr, diffDays, calcMinPastDate } from '@/utils/dateHelpers'
@@ -3238,6 +3244,10 @@ function getDispoCardStyle(_dispo: Disponibilite) {
 
 function getDispoTypeIcon(dispo: Disponibilite) {
   return sharedGetDispoTypeIcon(dispo as any)
+}
+
+function getDispoTypeLabel(dispo: Disponibilite) {
+  return sharedGetDispoTypeLabel(dispo as any)
 }
 
 // (getDispoDisplayLabel supprimée – inutilisée)
@@ -12152,6 +12162,39 @@ body.dragging-selection .excel-cell {
   padding: 2px 4px;
 }
 
+/* Badge avec icône et label en haut à gauche */
+.dispo-type-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  padding: 1px 3px;
+  z-index: 20;
+  font-size: 7px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 45px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dispo-badge-icon {
+  flex-shrink: 0;
+  opacity: 1;
+}
+
+.dispo-type-text {
+  flex-shrink: 0;
+  opacity: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .dispo-main-info {
   display: flex;
   align-items: center;
@@ -12162,11 +12205,6 @@ body.dragging-selection .excel-cell {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.dispo-type-icon {
-  flex-shrink: 0;
-  opacity: 0.9;
 }
 
 .dispo-temporal {
@@ -12200,10 +12238,6 @@ body.dragging-selection .excel-cell {
   gap: 2px !important;
 }
 
-.dispo-bars.multi .dispo-type-icon {
-  font-size: 8px !important;
-}
-
 .dispo-bars.multi .overnight-symbol {
   font-size: 7px !important;
 }
@@ -12212,10 +12246,6 @@ body.dragging-selection .excel-cell {
 .dispo-bars.single .dispo-main-info {
   font-size: 10px;
   gap: 5px;
-}
-
-.dispo-bars.single .dispo-type-icon {
-  font-size: 12px !important;
 }
 
 /* =================================================
@@ -12258,8 +12288,16 @@ body.dragging-selection .excel-cell {
   margin-bottom: 1px !important;
 }
 
-.dispo-bars.multi .dispo-type-icon {
-  font-size: 8px !important;
+.dispo-bars.multi .dispo-type-badge {
+  top: 1px !important;
+  left: 1px !important;
+  padding: 0 2px !important;
+  font-size: 6px !important;
+  gap: 1px !important;
+}
+
+.dispo-bars.multi .dispo-badge-icon {
+  font-size: 6px !important;
 }
 
 .dispo-bars.multi .slot-tag {
