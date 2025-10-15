@@ -32,7 +32,7 @@
           <div class="section-header">
             <div class="section-title">
               <va-icon name="add_circle" color="success" />
-              <span>Nouvelle disponibilité</span>
+              <span>Nouvelle disponibilité (BATCH MODE ✨)</span>
             </div>
           </div>
           <div class="form-content">
@@ -86,9 +86,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DispoForm from './DispoForm.vue'
 import type { Collaborateur } from '@/types/planning'
+
+// Debug: vérifier que ce composant est bien chargé
+onMounted(() => {
+  console.log('✅ BatchDisponibiliteContent monté avec couleur:', props.collaborateurColor)
+})
 
 interface Disponibilite {
   id?: string
