@@ -1900,26 +1900,43 @@ function onGridMouseMove(e: MouseEvent) {
       return
     }
     ;(onGridMouseMove as any)._prevCell = cellElement
-    const dayIndex = cellElement.getAttribute('data-day-index')
-    const rowIndex = cellElement.getAttribute('data-row-index')
+    const dayIndexStr = cellElement.getAttribute('data-day-index')
+    const rowIndexStr = cellElement.getAttribute('data-row-index')
     
-    if (dayIndex && rowIndex && planningScroll.value) {
-      // Highlight colonne et ligne avec early-exit si déjà appliqué
-      const columnSelector = `[data-day-index="${dayIndex}"]`
-      const rowSelector = `[data-row-index="${rowIndex}"]`
+    if (dayIndexStr && rowIndexStr && planningScroll.value) {
+      const dayIndex = parseInt(dayIndexStr, 10)
+      const rowIndex = parseInt(rowIndexStr, 10)
+      
       const prevDay = (onGridMouseMove as any)._prevDayIndex
       const prevRow = (onGridMouseMove as any)._prevRowIndex
+      
       if (prevDay !== dayIndex || prevRow !== rowIndex) {
+        // Construire le cache si nécessaire
+        if (!_domCache.cacheValid) {
+          buildDOMCache()
+        }
+        
         // Nettoyer les highlights précédents une seule fois
         cleanHoverHighlights()
-        const columnCells = planningScroll.value.querySelectorAll(columnSelector)
-        columnCells.forEach(cell => {
-          if (!cell.hasAttribute('data-column-hover')) cell.setAttribute('data-column-hover', 'true')
-        })
-        const rowCells = planningScroll.value.querySelectorAll(rowSelector)
-        rowCells.forEach(cell => {
-          if (!cell.hasAttribute('data-row-hover')) cell.setAttribute('data-row-hover', 'true')
-        })
+        
+        // Utiliser le cache DOM au lieu de querySelectorAll
+        // Convertir dayIndex absolu en index local pour le cache
+        const localDayIndex = dayIndex - windowStartIndex.value
+        
+        const columnCells = _domCache.columnElements.get(localDayIndex)
+        if (columnCells) {
+          columnCells.forEach(cell => {
+            if (!cell.hasAttribute('data-column-hover')) cell.setAttribute('data-column-hover', 'true')
+          })
+        }
+        
+        const rowCells = _domCache.rowElements.get(rowIndex)
+        if (rowCells) {
+          rowCells.forEach(cell => {
+            if (!cell.hasAttribute('data-row-hover')) cell.setAttribute('data-row-hover', 'true')
+          })
+        }
+        
         ;(onGridMouseMove as any)._prevDayIndex = dayIndex
         ;(onGridMouseMove as any)._prevRowIndex = rowIndex
       }
@@ -2397,7 +2414,13 @@ watch(filteredCollaborateurs, async (newList) => {
 
 // DEBUG: Watcher pour surveiller les changements de windowedRows
 watch(windowedRows, (_newRows, _oldRows) => {
-  // debug removed
+  // Invalider le cache DOM quand la fenêtre virtuelle change
+  invalidateDOMCache('windowedRows changé')
+}, { immediate: false, deep: false })
+
+// Invalider le cache quand la fenêtre horizontale change (scroll)
+watch(windowedDays, (_newDays, _oldDays) => {
+  invalidateDOMCache('windowedDays changé')
 }, { immediate: false, deep: false })
 
 // CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
@@ -5401,7 +5424,36 @@ function updateCurrentVisibleMonth(scroller: HTMLElement) {
 }
 
 // Repositionne les overlays de hover en se basant sur la dernière position pointeur, utile pendant un scroll sans mousemove
+// Throttle pour updateHoverOnScroll - max 30fps (33ms)
+let updateHoverThrottleTimer: number | null = null
+let pendingUpdateHover: HTMLElement | null = null
+
 function updateHoverOnScroll(scroller: HTMLElement) {
+  if (!_lastPointerX && !_lastPointerY) return
+  
+  // Si un update est déjà programmé, mémoriser le scroller pour plus tard
+  if (updateHoverThrottleTimer !== null) {
+    pendingUpdateHover = scroller
+    return
+  }
+  
+  // Exécuter immédiatement
+  executeUpdateHover(scroller)
+  
+  // Activer le throttle
+  updateHoverThrottleTimer = window.setTimeout(() => {
+    updateHoverThrottleTimer = null
+    
+    // Si un update était en attente, l'exécuter maintenant
+    if (pendingUpdateHover) {
+      const scrollerToUpdate = pendingUpdateHover
+      pendingUpdateHover = null
+      executeUpdateHover(scrollerToUpdate)
+    }
+  }, 33) // Max 30 updates/seconde
+}
+
+function executeUpdateHover(scroller: HTMLElement) {
   if (!_lastPointerX && !_lastPointerY) return
   
   // Utiliser le cache ou recalculer si nécessaire
@@ -5454,8 +5506,22 @@ function updateHoverOnScroll(scroller: HTMLElement) {
 
 /**
  * Détecter et déclencher le hover sur la cellule sous le curseur après scroll
+ * Debounced pour réduire les appels à elementsFromPoint
  */
+let triggerHoverDebounceTimer: number | null = null
+
 function triggerHoverAtCursor() {
+  // Debounce à 100ms pour éviter les appels excessifs
+  if (triggerHoverDebounceTimer) {
+    clearTimeout(triggerHoverDebounceTimer)
+  }
+  
+  triggerHoverDebounceTimer = window.setTimeout(() => {
+    executeTriggerHover()
+  }, 100)
+}
+
+function executeTriggerHover() {
   if (!_lastPointerX || !_lastPointerY || !planningScroll.value) return
   
   // Obtenir l'élément directement sous la position du curseur
@@ -5482,24 +5548,37 @@ function triggerHoverAtCursor() {
       handleCellMouseEnter(collaborateurId, dayDate)
       
       // Mettre à jour les highlights visuels aussi
-      const dayIndex = cellElement.getAttribute('data-day-index')
-      const rowIndex = cellElement.getAttribute('data-row-index')
+      const dayIndexStr = cellElement.getAttribute('data-day-index')
+      const rowIndexStr = cellElement.getAttribute('data-row-index')
       
-      if (dayIndex && rowIndex) {
+      if (dayIndexStr && rowIndexStr) {
+        const dayIndex = parseInt(dayIndexStr, 10)
+        const rowIndex = parseInt(rowIndexStr, 10)
+        
+        // Construire le cache si nécessaire
+        if (!_domCache.cacheValid) {
+          buildDOMCache()
+        }
+        
         // Nettoyer les highlights précédents
         cleanHoverHighlights()
         
-        // Highlight toute la colonne
-        const columnCells = planningScroll.value.querySelectorAll(`[data-day-index="${dayIndex}"]`)
-        columnCells.forEach(cell => {
-          cell.setAttribute('data-column-hover', 'true')
-        })
+        // Utiliser le cache DOM au lieu de querySelectorAll
+        const localDayIndex = dayIndex - windowStartIndex.value
         
-        // Highlight toute la ligne
-        const rowCells = planningScroll.value.querySelectorAll(`[data-row-index="${rowIndex}"]`)
-        rowCells.forEach(cell => {
-          cell.setAttribute('data-row-hover', 'true')
-        })
+        const columnCells = _domCache.columnElements.get(localDayIndex)
+        if (columnCells) {
+          columnCells.forEach(cell => {
+            cell.setAttribute('data-column-hover', 'true')
+          })
+        }
+        
+        const rowCells = _domCache.rowElements.get(rowIndex)
+        if (rowCells) {
+          rowCells.forEach(cell => {
+            cell.setAttribute('data-row-hover', 'true')
+          })
+        }
       }
     }
   }
@@ -6811,14 +6890,14 @@ function startPresenceUpdates() {
   
   presenceUpdateInterval = setInterval(() => {
     forceUpdateCounter++
-    // Force une mise à jour complète toutes les 10 itérations (2 secondes)
-    if (forceUpdateCounter >= 10) {
+    // Force une mise à jour complète toutes les 5 itérations (2.5 secondes)
+    if (forceUpdateCounter >= 5) {
       forceUpdateCounter = 0
       hoveredCells.value = new Set() // Force le changement
       lockedCells.value = new Set()
     }
     updatePresenceSets()
-  }, 200) // Équilibre optimal : pas trop rapide pour l'envoi, assez rapide pour la réception
+  }, 500) // Optimisé : 500ms suffit pour la présence temps réel (économie CPU)
 }
 
 // Panning (drag pour scroll diagonal)
