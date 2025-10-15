@@ -1786,6 +1786,7 @@ let _debounceTimer: number | null = null
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
+const isAutoScrolling = ref(false) // Flag pour bloquer la sélection pendant l'auto-scroll
 const EDGE_ZONE = 100
 // Stratégie Google Sheets : gros sauts très espacés = minimum de reflows
 const SCROLL_JUMP_X = 80   // 80px par saut
@@ -1797,6 +1798,9 @@ function scrollTick() {
     stopAutoScroll()
     return
   }
+  
+  // Activer le flag d'auto-scroll
+  isAutoScrolling.value = true
   
   // Gros sauts espacés - technique Google Sheets
   if (currentScrollX !== 0) {
@@ -1852,6 +1856,8 @@ function stopAutoScroll() {
   if (planningScroll.value) {
     planningScroll.value.style.willChange = 'auto'
   }
+  // Désactiver le flag d'auto-scroll
+  isAutoScrolling.value = false
   currentScrollX = 0
   currentScrollY = 0
 }
@@ -1911,31 +1917,22 @@ function onGridMouseMove(e: MouseEvent) {
       const prevRow = (onGridMouseMove as any)._prevRowIndex
       
       if (prevDay !== dayIndex || prevRow !== rowIndex) {
-        // Construire le cache si nécessaire
-        if (!_domCache.cacheValid) {
-          buildDOMCache()
-        }
-        
         // Nettoyer les highlights précédents une seule fois
         cleanHoverHighlights()
         
-        // Utiliser le cache DOM au lieu de querySelectorAll
-        // Convertir dayIndex absolu en index local pour le cache
-        const localDayIndex = dayIndex - windowStartIndex.value
+        // Utiliser les sélecteurs directs (plus fiable que le cache pour data attributes)
+        const columnSelector = `[data-day-index="${dayIndex}"]`
+        const rowSelector = `[data-row-index="${rowIndex}"]`
         
-        const columnCells = _domCache.columnElements.get(localDayIndex)
-        if (columnCells) {
-          columnCells.forEach(cell => {
-            if (!cell.hasAttribute('data-column-hover')) cell.setAttribute('data-column-hover', 'true')
-          })
-        }
+        const columnCells = planningScroll.value.querySelectorAll(columnSelector)
+        columnCells.forEach(cell => {
+          if (!cell.hasAttribute('data-column-hover')) cell.setAttribute('data-column-hover', 'true')
+        })
         
-        const rowCells = _domCache.rowElements.get(rowIndex)
-        if (rowCells) {
-          rowCells.forEach(cell => {
-            if (!cell.hasAttribute('data-row-hover')) cell.setAttribute('data-row-hover', 'true')
-          })
-        }
+        const rowCells = planningScroll.value.querySelectorAll(rowSelector)
+        rowCells.forEach(cell => {
+          if (!cell.hasAttribute('data-row-hover')) cell.setAttribute('data-row-hover', 'true')
+        })
         
         ;(onGridMouseMove as any)._prevDayIndex = dayIndex
         ;(onGridMouseMove as any)._prevRowIndex = rowIndex
@@ -5555,25 +5552,21 @@ function executeTriggerHover() {
         const dayIndex = parseInt(dayIndexStr, 10)
         const rowIndex = parseInt(rowIndexStr, 10)
         
-        // Construire le cache si nécessaire
-        if (!_domCache.cacheValid) {
-          buildDOMCache()
-        }
-        
         // Nettoyer les highlights précédents
         cleanHoverHighlights()
         
-        // Utiliser le cache DOM au lieu de querySelectorAll
-        const localDayIndex = dayIndex - windowStartIndex.value
+        // Utiliser les sélecteurs directs (plus fiable)
+        const columnSelector = `[data-day-index="${dayIndex}"]`
+        const rowSelector = `[data-row-index="${rowIndex}"]`
         
-        const columnCells = _domCache.columnElements.get(localDayIndex)
+        const columnCells = planningScroll.value.querySelectorAll(columnSelector)
         if (columnCells) {
           columnCells.forEach(cell => {
             cell.setAttribute('data-column-hover', 'true')
           })
         }
         
-        const rowCells = _domCache.rowElements.get(rowIndex)
+        const rowCells = planningScroll.value.querySelectorAll(rowSelector)
         if (rowCells) {
           rowCells.forEach(cell => {
             cell.setAttribute('data-row-hover', 'true')
@@ -5962,6 +5955,10 @@ function handleCellMouseDown(collaborateurId: string, date: string, event: Mouse
 function handleCellMouseEnter(collaborateurId: string, date: string) {
   // Éviter de propager les survols pendant le scroll rapide
   if (isScrollingFast.value) return
+  
+  // BLOQUAGE: Ne pas ajouter de cellules pendant l'auto-scroll
+  if (isAutoScrolling.value) return
+  
   // Debounce minimal au niveau composant pour éviter du spam si la souris frôle
   if (hoverDebounceTimer) {
     clearTimeout(hoverDebounceTimer)
