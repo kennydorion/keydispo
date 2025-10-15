@@ -807,8 +807,8 @@ const dragStartCell = ref<string | null>(null)
 // Auto-scroll pendant la sélection
 let autoScrollAnimationFrame: number | null = null
 const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 8 // pixels par frame - ajusté pour requestAnimationFrame
-const SCROLL_SPEED_MAX = 20 // vitesse maximale quand on est tout près du bord
+const SCROLL_SPEED_BASE = 4 // pixels par frame à 60fps
+const SCROLL_SPEED_MAX = 12 // vitesse maximale quand on est tout près du bord
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1791,9 +1791,7 @@ let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
 let lastCellCheckTime = 0
 let lastDetectedCell = ''
-let lastScrollTime = 0
 const CELL_CHECK_INTERVAL = 100 // ms - vérifie la cellule toutes les 100ms max
-const SCROLL_INTERVAL = 33 // ms - 30fps pour le scroll (plus que suffisant)
 
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
@@ -1804,18 +1802,15 @@ function scrollAnimationLoop() {
 
   const now = performance.now()
   
-  // Appliquer le scroll seulement toutes les 33ms (30fps) au lieu de 60fps
-  if (now - lastScrollTime >= SCROLL_INTERVAL) {
-    lastScrollTime = now
-    // scrollBy() est plus optimisé que modifier scrollLeft/scrollTop
-    planningScroll.value.scrollBy({
-      left: currentScrollX,
-      top: currentScrollY,
-      behavior: 'instant'
-    })
-  }
+  // Appliquer le scroll à chaque frame pour fluidité maximale
+  // scrollBy() est plus optimisé que modifier scrollLeft/scrollTop
+  planningScroll.value.scrollBy({
+    left: currentScrollX,
+    top: currentScrollY,
+    behavior: 'instant'
+  })
   
-  // Throttle de la détection de cellule avec timestamp
+  // Throttle de la détection de cellule avec timestamp (c'est ça qui est lourd)
   if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
     lastCellCheckTime = now
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
@@ -1906,7 +1901,6 @@ function stopAutoScroll() {
   currentScrollY = 0
   lastMouseEvent = null
   lastCellCheckTime = 0
-  lastScrollTime = 0
   lastDetectedCell = ''
 }
 
