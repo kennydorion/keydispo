@@ -9264,23 +9264,23 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* Weekend: fond légèrement grisé pour samedi et dimanche */
+/* Weekend: fond légèrement orangé pour samedi et dimanche */
 /* Ces règles sont appliquées en premier, puis écrasées par les hovers si nécessaire */
 .excel-cell.day-6,
 .excel-cell.day-0 {
-  background-color: #f8f9fa;
+  background-color: #fff4e6;
 }
 
 .excel-day-cell.day-6,
 .excel-day-cell.day-0 {
-  background-color: #f8f9fa;
+  background-color: #fff4e6;
 }
 
 /* Les cartes de dispo dans les cellules weekend ont aussi un fond légèrement teinté */
 .excel-cell.day-6 .dispo-card,
 .excel-cell.day-0 .dispo-card {
-  background-color: #fcfcfd;
-  border-color: #e9ecef;
+  background-color: #ffe8cc;
+  border-color: #ffdfb3;
 }
 
 /* Garder le highlight du jour actuel même si c'est le weekend */
