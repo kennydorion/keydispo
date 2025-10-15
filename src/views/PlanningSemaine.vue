@@ -1782,15 +1782,16 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - version RAF optimisée
+// Auto-scroll pendant la sélection - version RAF ultra-rapide
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 let lastScrollUpdate = 0
 const EDGE_ZONE = 100
-const SCROLL_SPEED_X = 8  // 8px par frame = ~480px/sec à 60fps
-const SCROLL_SPEED_Y = 4  // 4px par frame = ~240px/sec à 60fps
-const SCROLL_UPDATE_THRESHOLD = 16 // Throttle handleAutoScroll à ~60fps max
+// Vitesses augmentées pour compenser les micro-lags du DOM massif
+const SCROLL_SPEED_X = 20  // 20px par frame = ~1200px/sec à 60fps
+const SCROLL_SPEED_Y = 10  // 10px par frame = ~600px/sec à 60fps
+const SCROLL_UPDATE_THRESHOLD = 16 // Throttle à ~60fps max
 
 function scrollTick() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
@@ -1798,13 +1799,12 @@ function scrollTick() {
     return
   }
   
-  // Utiliser scrollBy() optimisé au lieu de scrollLeft += pour éviter les reflows
-  if (currentScrollX !== 0 || currentScrollY !== 0) {
-    planningScroll.value.scrollBy({
-      left: currentScrollX,
-      top: currentScrollY,
-      behavior: 'instant'
-    })
+  // Assignation directe - la plus rapide possible
+  if (currentScrollX !== 0) {
+    planningScroll.value.scrollLeft += currentScrollX
+  }
+  if (currentScrollY !== 0) {
+    planningScroll.value.scrollTop += currentScrollY
   }
   
   // Continuer l'animation
@@ -1817,7 +1817,7 @@ function handleAutoScroll(e: MouseEvent) {
     return
   }
 
-  // Throttle : éviter de recalculer trop souvent (max 60fps)
+  // Throttle : éviter de recalculer trop souvent
   const now = performance.now()
   if (now - lastScrollUpdate < SCROLL_UPDATE_THRESHOLD) {
     return
@@ -1834,11 +1834,11 @@ function handleAutoScroll(e: MouseEvent) {
   currentScrollX = 0
   currentScrollY = 0
   
-  // Gauche/Droite
+  // Gauche/Droite - vitesse augmentée
   if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED_X
   else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED_X
   
-  // Haut/Bas
+  // Haut/Bas - vitesse augmentée
   if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED_Y
   else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED_Y
   
