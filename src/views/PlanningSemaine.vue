@@ -9250,10 +9250,10 @@ onUnmounted(() => {
 }
 
 /* Dimanche (header seulement): ajouter un trait épais pour marquer fin de semaine */
-.excel-day-cell.sunday {
+.excel-day-cell.day-0 {
   border-right: none; /* éviter doublon à droite */
 }
-.excel-day-cell.sunday::after {
+.excel-day-cell.day-0::after {
   content: '';
   position: absolute;
   right: -1px;
@@ -9265,24 +9265,10 @@ onUnmounted(() => {
 }
 
 /* Weekend: fond légèrement grisé pour samedi et dimanche */
-.excel-cell.day-6:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered),
-.excel-cell.day-0:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered) {
-  background-color: #f8f9fa !important;
-}
-
-/* Weekend avec hover: mélange du vert et du gris */
-.excel-cell.day-6.dom-column-hovered,
-.excel-cell.day-0.dom-column-hovered,
-.excel-cell.day-6.dom-row-hovered,
-.excel-cell.day-0.dom-row-hovered {
-  background-color: rgba(76, 175, 80, 0.08) !important;
-  background-image: linear-gradient(rgba(248, 249, 250, 0.5), rgba(248, 249, 250, 0.5));
-}
-
-.excel-cell.day-6:hover,
-.excel-cell.day-0:hover {
-  background-color: rgba(76, 175, 80, 0.24) !important;
-  background-image: linear-gradient(rgba(248, 249, 250, 0.3), rgba(248, 249, 250, 0.3));
+/* Ces règles sont appliquées en premier, puis écrasées par les hovers si nécessaire */
+.excel-cell.day-6,
+.excel-cell.day-0 {
+  background-color: #f8f9fa;
 }
 
 .excel-day-cell.day-6,
@@ -9291,8 +9277,8 @@ onUnmounted(() => {
 }
 
 /* Les cartes de dispo dans les cellules weekend ont aussi un fond légèrement teinté */
-.excel-cell.saturday .dispo-card,
-.excel-cell.sunday .dispo-card {
+.excel-cell.day-6 .dispo-card,
+.excel-cell.day-0 .dispo-card {
   background-color: #fcfcfd;
   border-color: #e9ecef;
 }
