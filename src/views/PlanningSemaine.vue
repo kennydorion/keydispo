@@ -4337,7 +4337,7 @@ function goToToday() {
   
   // Calculer la position de scroll basée sur l'index dans visibleDays
   const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
-  scroller.scrollTo({ left: centerOffset, behavior: 'smooth' })
+  scroller.scrollTo({ left: centerOffset, behavior: 'auto' })
   
   
   // Plus besoin d'updateTodayOverlayX - highlights gérés par CSS
