@@ -1721,8 +1721,12 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
     const date = new Date(day.date + 'T12:00:00')
-    if (date.getDay() === 0) { // dimanche = 0
+    const dayOfWeek = date.getDay()
+    
+    if (dayOfWeek === 0) { // dimanche = 0
       classes.push('sunday')
+    } else if (dayOfWeek === 6) { // samedi = 6
+      classes.push('saturday')
     }
   }
   
@@ -1741,13 +1745,17 @@ function getDayHeaderClasses(dayIndex: number) {
     classes.push('column-hovered')
   }
   
-  // Ajouter classe pour dimanche (pour supprimer bordure droite)
+  // Ajouter classe pour dimanche et samedi
   // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
     const date = new Date(day.date + 'T12:00:00')
-    if (date.getDay() === 0) { // dimanche = 0
+    const dayOfWeek = date.getDay()
+    
+    if (dayOfWeek === 0) { // dimanche = 0
       classes.push('sunday')
+    } else if (dayOfWeek === 6) { // samedi = 6
+      classes.push('saturday')
     }
   }
   
@@ -9273,6 +9281,28 @@ onUnmounted(() => {
   width: var(--week-sep-width, 4px); /* barre plus large uniforme */
   background: var(--week-sep-color, rgba(0,0,0,0.18));
   pointer-events: none;
+}
+
+/* Weekend: fond légèrement grisé pour samedi et dimanche */
+.excel-cell.saturday,
+.excel-cell.sunday {
+  background-color: #f8f9fa;
+}
+
+.excel-day-cell.saturday,
+.excel-day-cell.sunday {
+  background-color: #f8f9fa;
+}
+
+/* Garder le highlight du jour actuel même si c'est le weekend */
+.excel-day-cell[data-today="true"] {
+  background: #e3f2fd !important;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.excel-cell[data-today="true"] {
+  background: #e3f2fd !important;
 }
 
 /* (supprimé) séparateur sur header jours remplacé par overlay global */
