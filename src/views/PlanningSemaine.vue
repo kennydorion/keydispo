@@ -9286,12 +9286,19 @@ onUnmounted(() => {
 /* Weekend: fond légèrement grisé pour samedi et dimanche */
 .excel-cell.saturday,
 .excel-cell.sunday {
-  background-color: #f8f9fa;
+  background-color: #f8f9fa !important;
 }
 
 .excel-day-cell.saturday,
 .excel-day-cell.sunday {
   background-color: #f8f9fa;
+}
+
+/* Les cartes de dispo dans les cellules weekend ont aussi un fond légèrement teinté */
+.excel-cell.saturday .dispo-card,
+.excel-cell.sunday .dispo-card {
+  background-color: #fcfcfd;
+  border-color: #e9ecef;
 }
 
 /* Garder le highlight du jour actuel même si c'est le weekend */
