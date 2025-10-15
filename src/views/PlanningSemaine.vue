@@ -1904,15 +1904,13 @@ function onGridMouseMove(e: MouseEvent) {
     const rowIndex = cellElement.getAttribute('data-row-index')
     
     if (dayIndex && rowIndex && planningScroll.value) {
-      // Nettoyer les highlights précédents
-      cleanHoverHighlights()
-      
       // Highlight colonne et ligne avec early-exit si déjà appliqué
       const columnSelector = `[data-day-index="${dayIndex}"]`
       const rowSelector = `[data-row-index="${rowIndex}"]`
       const prevDay = (onGridMouseMove as any)._prevDayIndex
       const prevRow = (onGridMouseMove as any)._prevRowIndex
       if (prevDay !== dayIndex || prevRow !== rowIndex) {
+        // Nettoyer les highlights précédents une seule fois
         cleanHoverHighlights()
         const columnCells = planningScroll.value.querySelectorAll(columnSelector)
         columnCells.forEach(cell => {
@@ -2690,7 +2688,7 @@ function onGridMouseLeave() {
 }
 
 // Fonction centralisée pour nettoyer les highlights crosshair
-// Throttle pour cleanHoverHighlights - max 10fps (100ms)
+// Throttle pour cleanHoverHighlights - max 30fps (33ms) pour réactivité
 let cleanHoverThrottleTimer: number | null = null
 let pendingCleanHover = false
 
@@ -2718,7 +2716,7 @@ function cleanHoverHighlights() {
       pendingCleanHover = false
       executeCleanHover()
     }
-  }, 100) // Max 10 nettoyages/seconde
+  }, 33) // Max 30 nettoyages/seconde pour meilleure réactivité
 }
 
 function executeCleanHover() {
