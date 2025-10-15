@@ -805,10 +805,10 @@ const isDraggingSelection = ref(false)
 const dragStartCell = ref<string | null>(null)
 
 // Auto-scroll pendant la sélection
-let autoScrollInterval: number | null = null
+let autoScrollAnimationFrame: number | null = null
 const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 25 // pixels par frame - augmenté pour un scroll plus rapide
-const SCROLL_SPEED_MAX = 50 // vitesse maximale quand on est tout près du bord
+const SCROLL_SPEED_BASE = 1.5 // pixels par frame - ajusté pour requestAnimationFrame
+const SCROLL_SPEED_MAX = 4 // vitesse maximale quand on est tout près du bord
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1790,6 +1790,38 @@ let currentScrollX = 0
 let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
 
+// Boucle d'animation pour le scroll fluide
+function scrollAnimationLoop() {
+  if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
+    stopAutoScroll()
+    return
+  }
+
+  // Appliquer le scroll
+  planningScroll.value.scrollLeft += currentScrollX
+  planningScroll.value.scrollTop += currentScrollY
+  
+  // Détecter la cellule sous le curseur et continuer la sélection
+  if (lastMouseEvent && isDraggingSelection.value) {
+    const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
+    if (elementAtCursor) {
+      const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
+      if (cellElement) {
+        const cellId = cellElement.getAttribute('data-cell-id')
+        if (cellId) {
+          const [collaborateurId, date] = cellId.split('_')
+          if (collaborateurId && date) {
+            handleCellMouseEnter(collaborateurId, date)
+          }
+        }
+      }
+    }
+  }
+  
+  // Continuer la boucle
+  autoScrollAnimationFrame = requestAnimationFrame(scrollAnimationLoop)
+}
+
 // Fonction pour gérer l'auto-scroll pendant la sélection
 function handleAutoScroll(e: MouseEvent) {
   if (!isDraggingSelection.value || !planningScroll.value) {
@@ -1841,42 +1873,18 @@ function handleAutoScroll(e: MouseEvent) {
     currentScrollY = speed
   }
   
-  // Démarrer ou arrêter l'auto-scroll selon si on est dans une zone
-  if (currentScrollX !== 0 || currentScrollY !== 0) {
-    if (!autoScrollInterval) {
-      autoScrollInterval = window.setInterval(() => {
-        if (planningScroll.value && (currentScrollX !== 0 || currentScrollY !== 0)) {
-          planningScroll.value.scrollLeft += currentScrollX
-          planningScroll.value.scrollTop += currentScrollY
-          
-          // Utiliser requestAnimationFrame pour la détection de cellule (plus léger)
-          if (lastMouseEvent) {
-            const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
-            if (elementAtCursor) {
-              const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
-              if (cellElement) {
-                const cellId = cellElement.getAttribute('data-cell-id')
-                if (cellId) {
-                  const [collaborateurId, date] = cellId.split('_')
-                  if (collaborateurId && date) {
-                    handleCellMouseEnter(collaborateurId, date)
-                  }
-                }
-              }
-            }
-          }
-        }
-      }, 32) // 30fps au lieu de 60fps pour réduire la charge
-    }
-  } else {
+  // Démarrer l'animation si nécessaire
+  if ((currentScrollX !== 0 || currentScrollY !== 0) && autoScrollAnimationFrame === null) {
+    autoScrollAnimationFrame = requestAnimationFrame(scrollAnimationLoop)
+  } else if (currentScrollX === 0 && currentScrollY === 0) {
     stopAutoScroll()
   }
 }
 
 function stopAutoScroll() {
-  if (autoScrollInterval !== null) {
-    clearInterval(autoScrollInterval)
-    autoScrollInterval = null
+  if (autoScrollAnimationFrame !== null) {
+    cancelAnimationFrame(autoScrollAnimationFrame)
+    autoScrollAnimationFrame = null
   }
   currentScrollX = 0
   currentScrollY = 0
