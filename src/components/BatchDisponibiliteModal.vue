@@ -14,46 +14,24 @@
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
   >
-    <DispoEditContent
-      :selected-cell="mockSelectedCell"
+    <BatchDisponibiliteContent
       :selected-collaborateur="mockSelectedCollaborateur"
       :collaborateur-color="avatarColor"
-  :formatted-date="formattedDateRange"
-      :selected-cell-dispos="mockSelectedCellDispos"
-      :editing-dispo-index="null"
-      :is-adding-new-dispo="true"
+      :formatted-date="formattedDateRange"
       :editing-dispo="editingDispo"
       :type-options="typeOptions"
       :slot-options="slotOptions"
       :lieux-options-strings="lieuxExistants"
       :is-edit-form-valid="isFormValid"
       :saving="saving"
-      :time-kind-options="timeKindOptions"
       :time-kind-options-filtered="timeKindOptionsFiltered"
-      :is-detected-overnight="isOvernightSchedule"
-  :is-collaborator-view="props.isCollaboratorView"
-  :header-stat-number="selectedDatesCount"
-  :header-stat-label="selectedDatesLabel"
       :get-type-icon="getTypeIcon"
-      :get-type-text="getTypeText"
-      :get-type-color="getTypeColor"
-      :get-dispo-type-class="getDispoTypeClass"
-      :get-slot-text="getSlotText"
       :get-time-kind-icon="getTimeKindIcon"
       :get-user-initials="getUserInitials"
-      :is-overnight-time="isOvernightTime"
       @cancel-modal="handleClose"
       @save-dispos="handleSave"
-      @set-editing-type="setEditingType"
-      @set-editing-time-kind="setEditingTimeKind"
-      @toggle-editing-slot="toggleEditingSlot"
-      @update-editing-lieu="updateEditingLieu"
-      @save-edit-dispo="handleSave"
-      @cancel-edit-dispo="handleClose"
-      @add-new-dispo-line="() => {}"
-      @edit-dispo-line="() => {}"
-      @remove-dispo="() => {}"
       @create-lieu="onCreateLieu"
+      @update:editing-dispo="(v) => Object.assign(editingDispo, v)"
     />
   </va-modal>
 </template>
@@ -65,17 +43,14 @@ import { useToast } from 'vuestic-ui'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
 import { getLastFormPreferences, saveFormPreferences } from '../services/dispoFormPreferences'
-import DispoEditContent from './DispoEditContent.vue'
+import BatchDisponibiliteContent from './BatchDisponibiliteContent.vue'
 import {
   slotOptions,
-  timeKindOptions,
   typeOptionsFor,
   timeKindOptionsFilteredFor,
   isFormValid as isDraftValid,
   detectOvernight,
   getTypeIcon,
-  getTypeColor,
-  getSlotText,
   getTimeKindIcon,
   mapUITypeToRTDB,
   mapUITimeKindToRTDB,
@@ -159,13 +134,6 @@ const editingDispo = ref({
 })
 
 // Mock data for DispoEditContent
-const mockSelectedCell = computed(() => ({
-  collaborateurId: props.selectedCollaborateur?.id || '',
-  date: props.selectedDates[0] || ''
-}))
-
-const mockSelectedCellDispos = computed(() => [])
-
 const mockSelectedCollaborateur = computed(() => {
   if (!props.selectedCollaborateur) return null
   
@@ -191,11 +159,7 @@ const formattedDateRange = computed(() => {
   return `${dates.length} dates · ${first} → ${last}`
 })
 
-// Header stats customisation pour l'alignement visuel avec la modale classique
-const selectedDatesCount = computed(() => props.selectedDates.length)
-const selectedDatesLabel = computed(() => selectedDatesCount.value > 1 ? 'Dates sélectionnées' : 'Date sélectionnée')
-
-// Options pour DispoEditContent
+// Options pour BatchDisponibiliteContent
 const typeOptions = computed(() => typeOptionsFor(!!props.isCollaboratorView))
 // timeKindOptions fourni via import, mais filtré selon type
 const timeKindOptionsFiltered = computed(() => timeKindOptionsFilteredFor(editingDispo.value.type as any))
@@ -211,67 +175,12 @@ const avatarColor = computed(() => {
 
 const isFormValid = computed(() => isDraftValid(editingDispo.value as any))
 
-const isOvernightSchedule = computed(() => detectOvernight(editingDispo.value as any))
-
-// Helper functions for DispoEditContent
-const getTypeText = (type: string) => {
-  const option = typeOptions.value.find(opt => opt.value === type)
-  return option?.text || type
-}
-
-const getDispoTypeClass = (dispo: any) => {
-  return `type-${dispo.type || 'unknown'}`
-}
-const isOvernightTime = (start?: string, end?: string) => {
-  if (!start || !end) return false
-  const d = { type: editingDispo.value.type, timeKind: 'range', heure_debut: start, heure_fin: end, slots: [] } as any
-  return detectOvernight(d)
-}
-
-// Event handlers for DispoEditContent
-const setEditingType = (type: string) => {
-  editingDispo.value.type = type as any
-}
-
-const setEditingTimeKind = (timeKind: string) => {
-  editingDispo.value.timeKind = timeKind as any
-  
-  // Reset related fields when changing time kind
-  if (timeKind === 'full-day') {
-    editingDispo.value.heure_debut = ''
-    editingDispo.value.heure_fin = ''
-    editingDispo.value.slots = []
-  } else if (timeKind === 'slot') {
-    editingDispo.value.heure_debut = ''
-    editingDispo.value.heure_fin = ''
-  } else if (timeKind === 'range') {
-    editingDispo.value.slots = []
-    if (!editingDispo.value.heure_debut) editingDispo.value.heure_debut = '09:00'
-    if (!editingDispo.value.heure_fin) editingDispo.value.heure_fin = '17:00'
-  }
-}
-
-const toggleEditingSlot = (slot: string) => {
-  if (!editingDispo.value.slots) editingDispo.value.slots = []
-  
-  const index = editingDispo.value.slots.indexOf(slot)
-  if (index > -1) {
-    editingDispo.value.slots.splice(index, 1)
-  } else {
-    editingDispo.value.slots.push(slot)
-  }
-}
-
-const updateEditingLieu = (lieu: string) => {
-  editingDispo.value.lieu = lieu
-}
-
 const onCreateLieu = (lieu: string) => {
   if (lieu && !lieuxExistants.value.includes(lieu)) {
     lieuxExistants.value.push(lieu)
     lieuxExistants.value.sort()
   }
-  editingDispo.value.lieu = lieu
+  // Mettre à jour le lieu dans editingDispo via le v-model de DispoForm
 }
 
 const handleClose = () => {
