@@ -9308,9 +9308,10 @@ onUnmounted(() => {
 
 /* Weekend: fond légèrement orangé pour samedi et dimanche */
 /* Approche inversée: le fond orangé ne s'applique QUE quand il n'y a PAS de hover */
-.excel-cell.day-6:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover),
-.excel-cell.day-0:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover) {
-  background-color: #fff4e6 !important;
+/* SANS !important pour laisser les styles inline gagner, mais spécificité augmentée */
+.excel-scroll .excel-cell.day-6:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover),
+.excel-scroll .excel-cell.day-0:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover) {
+  background-color: #fff4e6;
 }
 
 .excel-day-cell.day-6,
