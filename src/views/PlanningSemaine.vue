@@ -812,6 +812,7 @@ const selectedCollaborateurId = computed(() => {
 const isSelectionMode = ref(false)
 const isDraggingSelection = ref(false)
 const dragStartCell = ref<string | null>(null)
+const hasMouseMoved = ref(false) // Flag pour distinguer clic simple vs drag
 
 // Auto-scroll DÉSACTIVÉ - DOM trop massif pour performance acceptable
 // L'utilisateur scrolle manuellement avec trackpad/molette pendant la sélection
@@ -5728,7 +5729,6 @@ async function setupPlanningInteractions() {
 
 // Nouvelle fonction de gestion de clic de cellule
 function handleCellClickNew(collaborateurId: string, date: string, event: MouseEvent) {
-  const cellId = `${collaborateurId}-${date}`
   
   // Vérifier si la cellule est verrouillée par un autre utilisateur
   if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
@@ -5767,40 +5767,15 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
     event.preventDefault()
     event.stopPropagation()
     
-    // IMPORTANT: Si on vient de finir un drag, ne pas re-toggler la cellule
-    // (elle a déjà été togglée par handleCellMouseDown)
+    // Le toggle a déjà été fait par handleCellMouseDown
+    // On nettoie juste les flags ici
     if (isDraggingSelection.value) {
       isDraggingSelection.value = false
       dragStartCell.value = null
-      return
+      hasMouseMoved.value = false
     }
     
-    
-    
-    // RESTRICTION ULTRA-STRICTE: interdire toute sélection sur un autre collaborateur
-    if (selectedCells.value.size > 0 && !canAddCellToSelection(collaborateurId)) {
-  getCurrentSelectedCollaborateur()
-      
-      return
-    }
-    
-    // Toggle la sélection
-    if (selectedCells.value.has(cellId)) {
-      selectedCells.value.delete(cellId)
-      
-    } else {
-      selectedCells.value.add(cellId)
-      
-    }
-    
-    // Validation post-ajout (sécurité)
-    if (!validateSingleCollaboratorSelection()) {
-      
-      cleanSelectionToSingleCollaborator()
-    }
-    // Forcer la réactivité
-    selectedCells.value = new Set(selectedCells.value)
-    
+    return // Ne rien faire d'autre, pas de re-toggle
     
   } else {
     // Clic normal 
@@ -5946,6 +5921,9 @@ function handleCellMouseDown(collaborateurId: string, date: string, event: Mouse
       return
     }
     
+    // Réinitialiser le flag de mouvement
+    hasMouseMoved.value = false
+    
     isDraggingSelection.value = true
     dragStartCell.value = `${collaborateurId}-${date}`
     
@@ -5989,6 +5967,9 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
 
   
   if (isDraggingSelection.value) {
+    // Marquer qu'on a bougé la souris pendant le drag
+    hasMouseMoved.value = true
+    
     const cellId = `${collaborateurId}-${date}`
     
     // VALIDATION ULTRA-STRICTE: Bloquer immédiatement toute tentative de changement de collaborateur
