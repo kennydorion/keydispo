@@ -804,11 +804,10 @@ const isSelectionMode = ref(false)
 const isDraggingSelection = ref(false)
 const dragStartCell = ref<string | null>(null)
 
-// Auto-scroll pendant la sélection
-let autoScrollAnimationFrame: number | null = null
+// Auto-scroll pendant la sélection - simple setInterval comme Excel
 const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 4 // pixels par frame à 60fps
-const SCROLL_SPEED_MAX = 12 // vitesse maximale quand on est tout près du bord
+const SCROLL_SPEED_BASE = 10 // pixels par tick à 100ms
+const SCROLL_SPEED_MAX = 30 // vitesse maximale quand on est tout près du bord
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1789,35 +1788,23 @@ let _debounceTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
-let lastCellCheckTime = 0
 let lastDetectedCell = ''
-let lastActualScrollTime = 0
-const CELL_CHECK_INTERVAL = 100 // ms
-const SCROLL_APPLY_INTERVAL = 50 // ms - throttle pour réduire reflows
+let autoScrollTimer: number | null = null
+const SCROLL_INTERVAL = 100 // ms - simple setInterval comme Excel/Sheets
 
-// Boucle d'animation pour le scroll fluide
-function scrollAnimationLoop() {
+// Fonction de scroll simple
+function scrollTick() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
     stopAutoScroll()
     return
   }
 
-  const now = performance.now()
+  // Appliquer le scroll
+  planningScroll.value.scrollLeft += currentScrollX
+  planningScroll.value.scrollTop += currentScrollY
   
-  // Throttle du scroll pour éviter 60 reflows/sec sur DOM massif
-  if (now - lastActualScrollTime >= SCROLL_APPLY_INTERVAL) {
-    const timeSinceLastScroll = now - lastActualScrollTime
-    lastActualScrollTime = now
-    // Compenser le throttling en multipliant par frames perdues
-    const compensation = Math.min(timeSinceLastScroll / 16.67, 3)
-    planningScroll.value.scrollLeft += currentScrollX * compensation
-    planningScroll.value.scrollTop += currentScrollY * compensation
-  }
-  
-  // Throttle de la détection de cellule
-  if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
-    lastCellCheckTime = now
-    
+  // Détecter la cellule sous le curseur
+  if (lastMouseEvent && isDraggingSelection.value) {
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
     if (elementAtCursor) {
       const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
@@ -1833,9 +1820,6 @@ function scrollAnimationLoop() {
       }
     }
   }
-  
-  // Continuer la boucle
-  autoScrollAnimationFrame = requestAnimationFrame(scrollAnimationLoop)
 }
 
 // Fonction pour gérer l'auto-scroll pendant la sélection
@@ -1889,24 +1873,22 @@ function handleAutoScroll(e: MouseEvent) {
     currentScrollY = speed
   }
   
-  // Démarrer l'animation si nécessaire
-  if ((currentScrollX !== 0 || currentScrollY !== 0) && autoScrollAnimationFrame === null) {
-    autoScrollAnimationFrame = requestAnimationFrame(scrollAnimationLoop)
+  // Démarrer le timer si nécessaire
+  if ((currentScrollX !== 0 || currentScrollY !== 0) && autoScrollTimer === null) {
+    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
   } else if (currentScrollX === 0 && currentScrollY === 0) {
     stopAutoScroll()
   }
 }
 
 function stopAutoScroll() {
-  if (autoScrollAnimationFrame !== null) {
-    cancelAnimationFrame(autoScrollAnimationFrame)
-    autoScrollAnimationFrame = null
+  if (autoScrollTimer !== null) {
+    clearInterval(autoScrollTimer)
+    autoScrollTimer = null
   }
   currentScrollX = 0
   currentScrollY = 0
   lastMouseEvent = null
-  lastCellCheckTime = 0
-  lastActualScrollTime = 0
   lastDetectedCell = ''
 }
 
