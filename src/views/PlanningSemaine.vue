@@ -804,10 +804,8 @@ const isSelectionMode = ref(false)
 const isDraggingSelection = ref(false)
 const dragStartCell = ref<string | null>(null)
 
-// Auto-scroll pendant la sélection - simple setInterval comme Excel
-const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 10 // pixels par tick à 100ms
-const SCROLL_SPEED_MAX = 30 // vitesse maximale quand on est tout près du bord
+// Auto-scroll DÉSACTIVÉ - DOM trop massif pour performance acceptable
+// L'utilisateur scrolle manuellement avec trackpad/molette pendant la sélection
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1784,112 +1782,18 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Variables pour l'auto-scroll
-let currentScrollX = 0
-let currentScrollY = 0
-let lastMouseEvent: MouseEvent | null = null
-let lastDetectedCell = ''
-let autoScrollTimer: number | null = null
-const SCROLL_INTERVAL = 100 // ms - simple setInterval comme Excel/Sheets
-
-// Fonction de scroll simple
-function scrollTick() {
-  if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
-    stopAutoScroll()
-    return
-  }
-
-  // Appliquer le scroll
-  planningScroll.value.scrollLeft += currentScrollX
-  planningScroll.value.scrollTop += currentScrollY
-  
-  // Détecter la cellule sous le curseur
-  if (lastMouseEvent && isDraggingSelection.value) {
-    const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
-    if (elementAtCursor) {
-      const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
-      if (cellElement) {
-        const cellId = cellElement.getAttribute('data-cell-id')
-        if (cellId && cellId !== lastDetectedCell) {
-          lastDetectedCell = cellId
-          const [collaborateurId, date] = cellId.split('_')
-          if (collaborateurId && date) {
-            handleCellMouseEnter(collaborateurId, date)
-          }
-        }
-      }
-    }
-  }
-}
+// AUTO-SCROLL DÉSACTIVÉ - DOM trop massif pour scroll performant
+// L'utilisateur doit scroller manuellement pendant la sélection
 
 // Fonction pour gérer l'auto-scroll pendant la sélection
-function handleAutoScroll(e: MouseEvent) {
-  if (!isDraggingSelection.value || !planningScroll.value) {
-    stopAutoScroll()
-    return
-  }
-
-  lastMouseEvent = e
-  const scrollContainer = planningScroll.value
-  const rect = scrollContainer.getBoundingClientRect()
-  
-  // Position de la souris relative au conteneur
-  const mouseX = e.clientX - rect.left
-  const mouseY = e.clientY - rect.top
-  
-  // Calculer les distances par rapport aux bords
-  const distanceFromLeft = mouseX
-  const distanceFromRight = rect.width - mouseX
-  const distanceFromTop = mouseY
-  const distanceFromBottom = rect.height - mouseY
-  
-  currentScrollX = 0
-  currentScrollY = 0
-  
-  // Scroll horizontal avec accélération progressive
-  if (distanceFromLeft < EDGE_SCROLL_ZONE && distanceFromLeft > 0) {
-    // Proche du bord gauche - scroll vers la gauche
-    const intensity = 1 - (distanceFromLeft / EDGE_SCROLL_ZONE)
-    // Utiliser une courbe exponentielle pour une accélération plus naturelle
-    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    currentScrollX = -speed
-  } else if (distanceFromRight < EDGE_SCROLL_ZONE && distanceFromRight > 0) {
-    // Proche du bord droit - scroll vers la droite
-    const intensity = 1 - (distanceFromRight / EDGE_SCROLL_ZONE)
-    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    currentScrollX = speed
-  }
-  
-  // Scroll vertical avec accélération progressive
-  if (distanceFromTop < EDGE_SCROLL_ZONE && distanceFromTop > 0) {
-    // Proche du bord haut - scroll vers le haut
-    const intensity = 1 - (distanceFromTop / EDGE_SCROLL_ZONE)
-    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    currentScrollY = -speed
-  } else if (distanceFromBottom < EDGE_SCROLL_ZONE && distanceFromBottom > 0) {
-    // Proche du bord bas - scroll vers le bas
-    const intensity = 1 - (distanceFromBottom / EDGE_SCROLL_ZONE)
-    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
-    currentScrollY = speed
-  }
-  
-  // Démarrer le timer si nécessaire
-  if ((currentScrollX !== 0 || currentScrollY !== 0) && autoScrollTimer === null) {
-    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
-  } else if (currentScrollX === 0 && currentScrollY === 0) {
-    stopAutoScroll()
-  }
+function handleAutoScroll(_e: MouseEvent) {
+  // Auto-scroll désactivé car trop lourd en performance
+  // L'utilisateur peut scroller manuellement avec trackpad/molette pendant la sélection
+  return
 }
 
 function stopAutoScroll() {
-  if (autoScrollTimer !== null) {
-    clearInterval(autoScrollTimer)
-    autoScrollTimer = null
-  }
-  currentScrollX = 0
-  currentScrollY = 0
-  lastMouseEvent = null
-  lastDetectedCell = ''
+  // Noop - auto-scroll désactivé
 }
 
 function onGridMouseMove(e: MouseEvent) {
