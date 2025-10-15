@@ -113,6 +113,24 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     }
   })
 
+  // Throttle pour recomputeWindow : max 60fps
+  let recomputeThrottleTimer: number | null = null
+  let pendingRecomputeScroller: HTMLElement | null | undefined = null
+  
+  function recomputeWindowThrottled(scroller?: HTMLElement | null) {
+    pendingRecomputeScroller = scroller
+    
+    if (recomputeThrottleTimer !== null) {
+      return // Déjà planifié
+    }
+    
+    recomputeThrottleTimer = window.setTimeout(() => {
+      recomputeWindow(pendingRecomputeScroller)
+      recomputeThrottleTimer = null
+      pendingRecomputeScroller = null
+    }, 16) // 16ms = ~60fps max
+  }
+
   function recomputeWindow(scroller?: HTMLElement | null) {
     const el = scroller
     // Si le scroller n'est pas encore disponible (ex: premier tick après mount),
@@ -178,7 +196,7 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     windowEndIndex,
     windowOffsetPx,
     windowedDays,
-    recomputeWindow,
+    recomputeWindow: recomputeWindowThrottled, // Version throttlée par défaut
     isScrollingFast,
     // rows
     rowWindowStartIndex,
