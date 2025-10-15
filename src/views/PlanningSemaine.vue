@@ -2168,14 +2168,26 @@ function updateHighlightWithWASM(columnIndex: number, rowIndex: number) {
   if (columnIndex >= 0 && columnIndex !== _currentHighlightedColumn) {
     const newColumnElements = _domCache.columnElements.get(columnIndex)
     if (newColumnElements) {
-      newColumnElements.forEach(el => el.classList.add('dom-column-hovered'))
+      newColumnElements.forEach(el => {
+        el.classList.add('dom-column-hovered')
+        // FORCE inline style pour weekend - priorité absolue
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.12)'
+        }
+      })
     }
   }
   
   if (rowIndex >= 0 && rowIndex !== _currentHighlightedRow) {
     const newRowElements = _domCache.rowElements.get(rowIndex)
     if (newRowElements) {
-      newRowElements.forEach(el => el.classList.add('dom-row-hovered'))
+      newRowElements.forEach(el => {
+        el.classList.add('dom-row-hovered')
+        // FORCE inline style pour weekend - priorité absolue
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.16)'
+        }
+      })
     }
   }
   
@@ -2195,7 +2207,13 @@ function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: numbe
   if (_currentHighlightedColumn !== columnIndex && _currentHighlightedColumn >= 0) {
     const oldColumnElements = _domCache.columnElements.get(_currentHighlightedColumn)
     if (oldColumnElements) {
-      oldColumnElements.forEach(el => el.classList.remove('dom-column-hovered'))
+      oldColumnElements.forEach(el => {
+        el.classList.remove('dom-column-hovered')
+        // Nettoyer le style inline pour weekend
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = ''
+        }
+      })
     }
   }
   
@@ -2203,7 +2221,13 @@ function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: numbe
   if (_currentHighlightedRow !== rowIndex && _currentHighlightedRow >= 0) {
     const oldRowElements = _domCache.rowElements.get(_currentHighlightedRow)
     if (oldRowElements) {
-      oldRowElements.forEach(el => el.classList.remove('dom-row-hovered'))
+      oldRowElements.forEach(el => {
+        el.classList.remove('dom-row-hovered')
+        // Nettoyer le style inline pour weekend
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = ''
+        }
+      })
     }
   }
   
@@ -2211,7 +2235,13 @@ function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: numbe
   if (columnIndex >= 0 && columnIndex !== _currentHighlightedColumn) {
     const newColumnElements = _domCache.columnElements.get(columnIndex)
     if (newColumnElements) {
-      newColumnElements.forEach(el => el.classList.add('dom-column-hovered'))
+      newColumnElements.forEach(el => {
+        el.classList.add('dom-column-hovered')
+        // FORCE inline style pour weekend - priorité absolue
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.12)'
+        }
+      })
     }
   }
   
@@ -2219,7 +2249,13 @@ function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: numbe
   if (rowIndex >= 0 && rowIndex !== _currentHighlightedRow) {
     const newRowElements = _domCache.rowElements.get(rowIndex)
     if (newRowElements) {
-      newRowElements.forEach(el => el.classList.add('dom-row-hovered'))
+      newRowElements.forEach(el => {
+        el.classList.add('dom-row-hovered')
+        // FORCE inline style pour weekend - priorité absolue
+        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
+          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.16)'
+        }
+      })
     }
   }
   
@@ -2744,6 +2780,12 @@ function executeCleanHover() {
   hoveredElements.forEach(el => {
     el.removeAttribute('data-column-hover')
     el.removeAttribute('data-row-hover')
+  })
+  
+  // Nettoyer les styles inline weekend
+  const weekendHoveredElements = planningScroll.value.querySelectorAll('.excel-cell.day-6, .excel-cell.day-0')
+  weekendHoveredElements.forEach(el => {
+    (el as HTMLElement).style.backgroundColor = ''
   })
 }
 
