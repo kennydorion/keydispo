@@ -623,15 +623,6 @@ function getDispoContinuationClass(dispo: CollaborateurDisponibilite & { _cont?:
 }
 
 // ====== TOOLTIP/TITLE comme dans le planning admin ======
-function fullTimeLabel(d: CollaborateurDisponibilite): string {
-  const s = (d.heure_debut || '').substring(0, 5)
-  const e = (d.heure_fin || '').substring(0, 5)
-  if (!s || !e) return ''
-  const sFr = s.replace(':', 'h')
-  const eFr = e.replace(':', 'h')
-  return `de ${sFr} à ${eFr}`
-}
-
 function canonicalizeLieu(lieu: string): string {
   return canonicalizeLieuShared(lieu)
 }
@@ -661,34 +652,30 @@ function getDispoBarTitle(dispo: CollaborateurDisponibilite, _cellDate: string):
     return parts.join(' · ')
   }
 
+  const temporal = planningDisplayService.getTemporalDisplay(dispo as any)
+
   if (k.type === 'mission') {
+    const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
     if (k.timeKind === 'slot' && k.slots?.length) {
-      const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
       const st = slotsTooltip(k.slots)
-      return lieu ? `${lieu} — ${st}` : st
+      return lieu ? (st ? `${lieu} — ${st}` : lieu) : (st || 'Mission')
     }
-    if ((k.timeKind === 'range' || k.timeKind === 'overnight') && dispo.heure_debut && dispo.heure_fin) {
-      const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
-      return lieu ? `${lieu} ${fullTimeLabel(dispo)}` : fullTimeLabel(dispo)
-    }
-    return dispo.lieu ? canonicalizeLieu(dispo.lieu) : 'Mission'
+    return lieu ? (temporal ? `${lieu} — ${temporal}` : lieu) : (temporal || 'Mission')
   }
 
   if (k.type === 'disponible') {
     if (k.timeKind === 'slot' && k.slots?.length) {
-      return slotsTooltip(k.slots)
+      const st = slotsTooltip(k.slots)
+      if (st) return st
     }
-    if ((k.timeKind === 'range' || k.timeKind === 'overnight') && dispo.heure_debut && dispo.heure_fin) {
-      return fullTimeLabel(dispo)
-    }
-    return 'Disponible'
+    return temporal || 'Disponible'
   }
 
   if (k.type === 'indisponible') {
     return 'Indisponible'
   }
 
-  return dispo.heure_debut && dispo.heure_fin ? fullTimeLabel(dispo) : ''
+  return temporal || ''
 }
 
 // Copie exacte de la fonction du planning admin

@@ -356,7 +356,7 @@ const handleSave = async () => {
       heure_fin: editingDispo.value.heure_fin || '',
   type: mapUITypeToRTDB(editingDispo.value.type as any),
   timeKind: mapUITimeKindToRTDB(editingDispo.value.timeKind as any),
-      isFullDay: editingDispo.value.timeKind === 'full-day',
+      isFullDay: editingDispo.value.timeKind === 'full-day' || editingDispo.value.timeKind === 'overnight',
       slots: editingDispo.value.slots || [],
       updatedBy: 'collaborateur-modal'
     }

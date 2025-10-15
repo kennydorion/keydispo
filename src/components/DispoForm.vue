@@ -17,31 +17,41 @@
 
     <div v-if="modelValue.type !== 'indisponible'" class="form-group">
       <label class="form-label">Format horaire</label>
-      <div class="button-grid">
+      <!-- Ligne 1: Journée et Nuit -->
+      <div class="button-grid-two-cols">
         <button 
-          v-for="formatOpt in timeKindOptions" 
-          :key="formatOpt.value" 
-          :class="['format-button', { 'active': modelValue.timeKind === formatOpt.value }]" 
-          @click="updateField('timeKind', formatOpt.value)"
+          :class="['format-button', { 'active': modelValue.timeKind === 'full-day' }]" 
+          @click="updateField('timeKind', 'full-day')"
         >
-          <va-icon :name="getTimeKindIcon(formatOpt.value)" size="18px" />
-          <span>{{ formatOpt.text }}</span>
+          <va-icon name="brightness_5" size="18px" />
+          <span>Journée</span>
+        </button>
+        <button 
+          @click="setNightQuickly"
+          :class="['format-button', { 'active': modelValue.timeKind === 'overnight' }]"
+        >
+          <va-icon name="nights_stay" size="18px" />
+          <span>Nuit</span>
         </button>
       </div>
-    </div>
-
-    <div v-if="modelValue.type === 'mission'" class="form-group">
-      <label class="form-label">Lieu de mission</label>
-      <LieuCombobox 
-        :model-value="modelValue.lieu || ''" 
-        @update:model-value="updateField('lieu', $event)" 
-        :options="lieuxOptions" 
-        label="" 
-        size="large" 
-        theme="light" 
-        class="lieu-input" 
-        @create="$emit('create-lieu', $event)" 
-      />
+      
+      <!-- Ligne 2: Créneaux et Horaires -->
+      <div class="button-grid-two-cols">
+        <button 
+          :class="['format-button', { 'active': modelValue.timeKind === 'slot' }]" 
+          @click="updateField('timeKind', 'slot')"
+        >
+          <va-icon name="view_module" size="18px" />
+          <span>Créneaux</span>
+        </button>
+        <button 
+          :class="['format-button', { 'active': modelValue.timeKind === 'range' }]" 
+          @click="updateField('timeKind', 'range')"
+        >
+          <va-icon name="schedule" size="18px" />
+          <span>Horaires</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="modelValue.timeKind === 'range'" class="form-group">
@@ -92,6 +102,20 @@
           {{ slot.text }}
         </button>
       </div>
+    </div>
+
+    <div v-if="modelValue.type === 'mission'" class="form-group">
+      <label class="form-label">Lieu de mission</label>
+      <LieuCombobox 
+        :model-value="modelValue.lieu || ''" 
+        @update:model-value="updateField('lieu', $event)" 
+        :options="lieuxOptions" 
+        label="" 
+        size="large" 
+        theme="light" 
+        class="lieu-input" 
+        @create="$emit('create-lieu', $event)" 
+      />
     </div>
   </div>
 </template>
@@ -146,8 +170,13 @@ function updateField(field: keyof DispoFormData, value: any) {
   
   if (field === 'timeKind') {
     if (value === 'full-day') {
-      updated.heure_debut = '00:00'
-      updated.heure_fin = '23:59'
+      updated.heure_debut = ''
+      updated.heure_fin = ''
+      updated.slots = []
+    } else if (value === 'overnight') {
+      // Nuit: comme "Journée" mais affiche "Nuit" - pas d'heures spécifiques
+      updated.heure_debut = ''
+      updated.heure_fin = ''
       updated.slots = []
     } else if (value === 'range') {
       updated.heure_debut = updated.heure_debut || '09:00'
@@ -170,6 +199,10 @@ function toggleSlot(slotValue: string) {
     : [...currentSlots, slotValue]
   
   updateField('slots', newSlots)
+}
+
+function setNightQuickly() {
+  updateField('timeKind', 'overnight')
 }
 </script>
 
@@ -205,6 +238,15 @@ function toggleSlot(slotValue: string) {
   gap: 0.5rem;
   box-sizing: border-box;
   max-width: 100%;
+}
+
+.button-grid-two-cols {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
 }
 
 .type-button,

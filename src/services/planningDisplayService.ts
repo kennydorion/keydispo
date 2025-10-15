@@ -90,7 +90,12 @@ export function resolveDispoKind(dispo: DisponibiliteDisplay) {
       case 'flexible':
         // flexible: utilisé pour les plages horaires et la journée complète
         if (dispo.heure_debut && dispo.heure_fin) {
-          timeKind = 'range'
+          // Range simple (pas de détection overnight automatique)
+          if ((dispo.heure_debut === '00:00') && (dispo.heure_fin === '23:59' || dispo.heure_fin === '24:00' || dispo.heure_fin === '00:00')) {
+            timeKind = 'full-day'
+          } else {
+            timeKind = 'range'
+          }
         } else if (providedSlots.length > 0) {
           timeKind = 'slot'
         } else {
@@ -113,6 +118,7 @@ export function resolveDispoKind(dispo: DisponibiliteDisplay) {
     if ((debut === '00:00') && (fin === '23:59' || fin === '24:00' || fin === '00:00')) {
       timeKind = 'full-day'
     } else {
+      // Range simple (pas de détection overnight automatique)
       timeKind = 'range'
     }
   }
@@ -150,6 +156,11 @@ export function getTemporalDisplay(dispo: DisponibiliteDisplay): string {
     return 'Journée'
   }
   
+  // 🔧 PRIORITÉ 1.5: Nuit (overtime) - afficher "Nuit" comme "Journée"
+  if (kind.timeKind === 'overnight') {
+    return 'Nuit'
+  }
+  
   // 🔧 PRIORITÉ 2: Créneaux (slots)
   if (kind.timeKind === 'slot' && kind.slots?.length > 0) {
     const validSlots = kind.slots.filter(s => s && s.trim())
@@ -160,8 +171,8 @@ export function getTemporalDisplay(dispo: DisponibiliteDisplay): string {
     }
   }
   
-  // 🔧 PRIORITÉ 3: Horaires précis (range ou overnight)
-  if ((kind.timeKind === 'range' || kind.timeKind === 'overnight') && dispo.heure_debut && dispo.heure_fin) {
+  // 🔧 PRIORITÉ 3: Horaires précis (range)
+  if (kind.timeKind === 'range' && dispo.heure_debut && dispo.heure_fin) {
     return formatTimeForCard(dispo)
   }
   

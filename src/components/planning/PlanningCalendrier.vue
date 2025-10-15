@@ -36,7 +36,7 @@
               class="availability-item"
               @click="editDisponibilite(dispo)"
             >
-              <div class="availability-time">{{ dispo.heure_debut }} - {{ dispo.heure_fin }}</div>
+              <div class="availability-time">{{ temporalDisplay(dispo) }}</div>
               <div class="availability-location">{{ dispo.lieu }}</div>
             </div>
           </div>
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import * as planningDisplayService from '@/services/planningDisplayService'
 import { useModalA11y } from '@/composables/useModalA11y'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/services/firebase'
@@ -222,6 +223,19 @@ onMounted(() => {
 })
 
 onUnmounted(() => { if (currentListener.value) disponibilitesRTDBService.stopListener(currentListener.value) })
+
+// Affichage temporel unifié pour les cartes
+function temporalDisplay(dispo: any) {
+  return planningDisplayService.getTemporalDisplay({
+    date: dispo.date,
+    lieu: dispo.lieu,
+    heure_debut: dispo.heure_debut,
+    heure_fin: dispo.heure_fin,
+    type: dispo.type,
+    timeKind: dispo.timeKind,
+    slots: dispo.slots,
+  } as any)
+}
 </script>
 
 <style scoped>

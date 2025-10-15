@@ -15,16 +15,17 @@ export interface DispoDraft {
 }
 
 export const slotOptions = [
-  { value: 'journee', text: 'Journée' },
   { value: 'morning', text: 'Matin' },
+  { value: 'noon', text: 'Midi' },
   { value: 'afternoon', text: 'Après-midi' },
-  { value: 'night', text: 'Nuit' },
+  { value: 'evening', text: 'Soir' },
 ]
 
 export const timeKindOptions = [
-  { value: 'full-day', text: 'Journée complète' },
-  { value: 'slot', text: 'Créneaux standards' },
-  { value: 'range', text: 'Horaires personnalisées' },
+  { value: 'full-day', text: 'Journée' },
+  { value: 'overnight', text: 'Nuit' },
+  { value: 'range', text: 'Heures' },
+  { value: 'slot', text: 'Créneaux' },
 ]
 
 export function typeOptionsFor(isCollaboratorView: boolean) {
@@ -51,6 +52,7 @@ export function isFormValid(d: DispoDraft): boolean {
   if (!d?.type) return false
   if (d.type === 'indisponible') return true
   if (d.timeKind === 'full-day') return true
+  if (d.timeKind === 'overnight') return true // Nuit est toujours valide, pas besoin d'horaires
   if (d.timeKind === 'range') return !!(d.heure_debut && d.heure_fin)
   if (d.timeKind === 'slot') return !!(d.slots && d.slots.length > 0)
   return false
@@ -100,7 +102,7 @@ export function getSlotText(slots?: string[]): string {
 
 // Mapping UI -> RTDB (conserver sémantique actuelle du projet)
 export type RTDBType = 'standard' | 'formation' | 'urgence' | 'maintenance'
-export type RTDBTimeKind = 'fixed' | 'flexible'
+export type RTDBTimeKind = 'fixed' | 'flexible' | 'overnight'
 
 export function mapUITypeToRTDB(ui: UIType): RTDBType {
   switch (ui) {
@@ -114,9 +116,9 @@ export function mapUITypeToRTDB(ui: UIType): RTDBType {
 export function mapUITimeKindToRTDB(kind: UITimeKind): RTDBTimeKind {
   switch (kind) {
     case 'slot': return 'fixed'
+    case 'overnight': return 'overnight' // Préserver overnight explicitement
     case 'range':
     case 'full-day':
-    case 'overnight':
     default:
       return 'flexible'
   }

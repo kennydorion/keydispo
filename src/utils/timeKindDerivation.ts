@@ -17,9 +17,12 @@ export interface DisponibiliteData {
  * RÈGLES DE PRIORITÉ :
  * 1. Slots présents → 'slot'
  * 2. Flag isFullDay → 'full-day' 
- * 3. Heures avec fin < début → 'overnight'
- * 4. Heures normales → 'range'
- * 5. Fallback → 'range'
+ * 3. Heures présentes → 'range'
+ * 4. Fallback → 'range'
+ * 
+ * NOTE: 'overnight' n'est JAMAIS dérivé automatiquement.
+ * C'est un choix explicite de l'utilisateur (bouton "Nuit").
+ * Overnight = journée complète affichée comme "Nuit" (pas de plage horaire sur 2 jours).
  */
 export function deriveTimeKindFromData(dispo: DisponibiliteData): TimeKind {
   // 1. Priorité aux slots si présents
@@ -32,14 +35,10 @@ export function deriveTimeKindFromData(dispo: DisponibiliteData): TimeKind {
     return 'full-day'
   }
   
-  // 3. Dérivation depuis les heures pour range/overnight
+  // 3. Range si heures présentes (peu importe si fin < début)
   const start = (dispo?.heure_debut || '').toString()
   const end = (dispo?.heure_fin || '').toString()
   if (start && end) {
-    // overnight si fin < début (comparaison HH:MM lexicographique valable pour format HH:MM)
-    if (end < start) {
-      return 'overnight'
-    }
     return 'range'
   }
   

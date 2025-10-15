@@ -341,12 +341,12 @@ const handleSave = async () => {
       }
     }
 
-    const mapUITimeKindToRTDB = (uiTimeKind: string): 'fixed' | 'flexible' => {
+    const mapUITimeKindToRTDB = (uiTimeKind: string): 'fixed' | 'flexible' | 'overnight' => {
       switch (uiTimeKind) {
         case 'range': return 'flexible'
         case 'slot': return 'fixed'
         case 'full-day': return 'flexible'
-        case 'overnight': return 'flexible'
+        case 'overnight': return 'overnight' // Préserver overnight explicitement
         default: return 'flexible'
       }
     }
@@ -365,7 +365,7 @@ const handleSave = async () => {
       heure_fin: editingDispo.value.heure_fin || '',
       type: mapUITypeToRTDB(editingDispo.value.type),
       timeKind: mapUITimeKindToRTDB(editingDispo.value.timeKind),
-      isFullDay: editingDispo.value.timeKind === 'full-day',
+      isFullDay: editingDispo.value.timeKind === 'full-day' || editingDispo.value.timeKind === 'overnight',
       slots: editingDispo.value.slots || [],
       updatedBy: 'collaborateur-modal'
     }

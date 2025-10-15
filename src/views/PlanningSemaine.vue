@@ -225,7 +225,7 @@
       <va-button
         color="primary"
         icon="bolt"
-        @click="batchModalOpen = true"
+        @click="openBatchModal"
         :size="isMobileView ? 'small' : 'medium'"
       >
         {{ isMobileView ? `Ajouter des dispos (${selectedCells.size})` : `Ajouter des dispos (${selectedCells.size})` }}
@@ -513,14 +513,14 @@
       @close="() => { modalA11y.onClose(); cancelModal() }"
     >
       <DispoEditContent
-        v-if="selectedCell && showDispoModal"
-        :selected-cell="selectedCell"
-  :selected-collaborateur="getSelectedCollaborateur() || null"
+        v-if="(selectedCell || isBatchMode) && showDispoModal"
+        :selected-cell="selectedCell || mockBatchCell"
+        :selected-collaborateur="getSelectedCollaborateur() || null"
         :collaborateur-color="getCollaborateurColor(getSelectedCollaborateur()?.id || '')"
-        :formatted-date="formatModalDate(selectedCell.date)"
+        :formatted-date="isBatchMode ? batchDateRangeFormatted : formatModalDate(selectedCell?.date || '')"
         :selected-cell-dispos="selectedCellDispos"
         :editing-dispo-index="editingDispoIndex"
-        :is-adding-new-dispo="isAddingNewDispo"
+        :is-adding-new-dispo="isAddingNewDispo || isBatchMode"
         :editing-dispo="editingDispo"
         :type-options="typeOptions"
         :slot-options="slotOptions"
@@ -530,7 +530,8 @@
         :time-kind-options="timeKindOptionsFor(editingDispo.type)"
         :time-kind-options-filtered="timeKindOptionsFilteredFor(editingDispo.type)"
         :is-detected-overnight="isDetectedOvernight"
-  :is-collaborator-view="isCollaborateurInterface && !canAccessAdminFeatures"
+        :is-collaborator-view="isCollaborateurInterface && !canAccessAdminFeatures"
+        :is-batch-mode="isBatchMode"
         :get-type-icon="getTypeIcon"
         :get-type-text="getTypeText"
         :get-type-color="getTypeColor"
@@ -548,9 +549,10 @@
         @toggle-editing-slot="toggleEditingSlot"
         @create-lieu="onCreateLieu"
         @cancel-edit-dispo="cancelEditDispo"
-        @save-edit-dispo="saveEditDispo"
+        @save-edit-dispo="() => { if (isBatchMode) { saveBatchDispos() } else { saveEditDispo() } }"
+        @delete-batch-dispos="deleteBatchDispos"
         @add-new-dispo-line="addNewDispoLine"
-  @update-editing-lieu="(v) => { editingDispo.lieu = v }"
+        @update-editing-lieu="(v) => { editingDispo.lieu = v }"
       />
       
       <CollabEditContent
@@ -562,22 +564,13 @@
         @save-notes="handleSaveCollaborateurNotes"
         @edit-collaborateur="handleEditCollaborateur"
       />
+
+      
     </va-modal>
 
   </div> <!-- Fin excel-planning-container -->
 
-  <!-- Modal de sélection par lot (admin seulement) -->
-  <BatchDisponibiliteModal
-    v-if="InterfaceManager.canAccessAdminFeatures.value"
-    v-model="batchModalOpen"
-    :selected-cells="Array.from(selectedCells)"
-    :selected-collaborateur="extractCollaborateurFromSelection"
-    :selected-dates="extractDatesFromSelection"
-    :lieux-options="lieuOptions"
-    @batch-created="handleBatchCreate"
-  />
-
-  <!-- Dashboard Firestore supprimé: migration vers RTDB terminée -->
+  
 
   <!-- Indicateurs de cellules en cours d'édition -->
   <div class="active-editing-indicators">
@@ -620,7 +613,6 @@ import { useRoute } from 'vue-router'
 import { useToast } from 'vuestic-ui'
 import FiltersHeaderNew from '../components/FiltersHeaderNew.vue'
 import { defineAsyncComponent } from 'vue'
-const BatchDisponibiliteModal = defineAsyncComponent(() => import('../components/BatchDisponibiliteModal.vue'))
 // Composant de chargement nécessaire pour l'UX
 import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
 const DispoEditContent = defineAsyncComponent(() => import('@/components/DispoEditContent.vue'))
@@ -801,6 +793,9 @@ const saving = ref(false)
 // Nouveaux états pour les fonctionnalités ajoutées
 const collaborateurs = ref<Collaborateur[]>([])
 const batchModalOpen = ref(false)
+const isBatchMode = ref(false)
+const batchDates = ref<string[]>([])
+const batchCollaborateurId = ref<string>('')
 const selectedCells = ref<Set<string>>(new Set())
 // (cellLocks retiré: la grille utilise getCellLockClasses() basé sur le service)
 const lockUpdateCounter = ref(0) // Force la réactivité des verrous
@@ -1188,6 +1183,22 @@ const showModal = computed({
       showCollabModal.value = false
     }
   }
+})
+
+// Batch mode: Créer une fausse cellule pour le mode batch
+const mockBatchCell = computed(() => {
+  if (!isBatchMode.value || batchDates.value.length === 0) return null
+  return { collaborateurId: batchCollaborateurId.value, date: batchDates.value[0] }
+})
+
+// Batch mode: Formater la plage de dates sélectionnées
+const batchDateRangeFormatted = computed(() => {
+  if (batchDates.value.length === 0) return ''
+  if (batchDates.value.length === 1) return formatModalDate(batchDates.value[0])
+  const sorted = [...batchDates.value].sort()
+  const first = new Date(sorted[0]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+  const last = new Date(sorted[sorted.length - 1]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+  return `${sorted.length} dates · ${first} → ${last}`
 })
 
 // État d'édition de ligne
@@ -2852,15 +2863,7 @@ function partForDay(d: Disponibilite, day: string): 'start'|'middle'|'end'|null 
 
 // (timeLabelForCell supprimée – inutilisée)
 
-// Label complet pour l'info-bulle (montre toujours début et fin, même en overnight)
-function fullTimeLabel(d: Disponibilite): string {
-  const s = (d.heure_debut || '').substring(0, 5)
-  const e = (d.heure_fin || '').substring(0, 5)
-  if (!s || !e) return ''
-  const sFr = s.replace(':', 'h')
-  const eFr = e.replace(':', 'h')
-  return `de ${sFr} à ${eFr}`
-}
+// (fullTimeLabel supprimée – remplacée par getTemporalDisplay unifié)
 
 
 type CellDispo = Disponibilite & { _cont?: 'start'|'end' }
@@ -3058,7 +3061,7 @@ function sanitizeDisposition(d: Partial<Disponibilite>): Partial<Disponibilite> 
   }
 
   if (type === 'disponible') {
-    if (timeKind !== 'full-day' && timeKind !== 'range' && timeKind !== 'slot') {
+    if (timeKind !== 'full-day' && timeKind !== 'range' && timeKind !== 'slot' && timeKind !== 'overnight') {
       timeKind = 'full-day'
     }
     // disponible: pas de lieu
@@ -3075,6 +3078,10 @@ function sanitizeDisposition(d: Partial<Disponibilite>): Partial<Disponibilite> 
     }
     if (timeKind === 'range') {
       return { ...d, type, timeKind, isFullDay: false, lieu: '', slots: [] }
+    }
+    if (timeKind === 'overnight') {
+      // Overnight = "Journée de nuit" (un seul jour, pas d'heures, juste affiche "Nuit")
+      return { ...d, type, timeKind: 'overnight', isFullDay: true, lieu: '', heure_debut: '', heure_fin: '', slots: [] }
     }
     // full-day
     return { ...d, type, timeKind: 'full-day', isFullDay: true, lieu: '', heure_debut: '', heure_fin: '', slots: [] }
@@ -3163,6 +3170,7 @@ function getCellKindClass(collaborateurId: string, date: string) {
 function getDispoBarTitle(dispo: Disponibilite, _cellDate: string): string {
   const k = resolveDispoKind(dispo)
 
+  // Helper pour libellé des créneaux avec horaires indicatifs
   const slotRange = (s: string) => {
     const map: Record<string, [string, string]> = {
       morning: ['06:00', '12:00'],
@@ -3180,38 +3188,39 @@ function getDispoBarTitle(dispo: Disponibilite, _cellDate: string): string {
   const slotsTooltip = (slots?: string[]) => {
     const arr = (slots || []).filter(Boolean)
     if (!arr.length) return ''
+    // On affiche le libellé du créneau et une plage indicative
     const parts = arr.map(s => `${sharedSlotLabel(s)} (${slotRange(s)})`)
     return parts.join(' · ')
   }
-  
+
+  // Affichage temporel unifié (gère "Nuit", "Journée", horaires, créneaux)
+  const temporal = sharedGetTemporalDisplay(dispo as any)
+
   if (k.type === 'mission') {
+    const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
     if (k.timeKind === 'slot' && k.slots?.length) {
-      const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
       const st = slotsTooltip(k.slots)
-      return lieu ? `${lieu} — ${st}` : st
+      if (st) return lieu ? `${lieu} — ${st}` : st
+      return lieu || 'Mission'
     }
-    if ((k.timeKind === 'range' || k.timeKind === 'overnight') && dispo.heure_debut && dispo.heure_fin) {
-      const lieu = dispo.lieu ? canonicalizeLieu(dispo.lieu) : ''
-      return lieu ? `${lieu} ${fullTimeLabel(dispo)}` : fullTimeLabel(dispo)
-    }
-    return dispo.lieu ? canonicalizeLieu(dispo.lieu) : 'Mission'
+    // Pour range/overnight/full-day: concaténer lieu + temporal
+    if (temporal) return lieu ? `${lieu} — ${temporal}` : (lieu || temporal)
+    return lieu || 'Mission'
   }
-  
+
   if (k.type === 'disponible') {
     if (k.timeKind === 'slot' && k.slots?.length) {
-      return slotsTooltip(k.slots)
+      const st = slotsTooltip(k.slots)
+      if (st) return st
     }
-    if ((k.timeKind === 'range' || k.timeKind === 'overnight') && dispo.heure_debut && dispo.heure_fin) {
-      return fullTimeLabel(dispo)
-    }
-    return 'Disponible'
+    return temporal || 'Disponible'
   }
-  
+
   if (k.type === 'indisponible') {
     return 'Indisponible'
   }
-  
-  return dispo.heure_debut && dispo.heure_fin ? fullTimeLabel(dispo) : ''
+
+  return temporal || ''
 }
 
 // ============================================
@@ -3439,6 +3448,13 @@ function openDispoModal(collaborateurId: string, date: string) {
 
 
 function getSelectedCollaborateur(): Collaborateur | null {
+  // En mode batch, utiliser batchCollaborateurId
+  if (isBatchMode.value && batchCollaborateurId.value) {
+    const c = filteredCollaborateurs.value.find(c => c.id === batchCollaborateurId.value)
+    return c || null
+  }
+  
+  // En mode simple, utiliser selectedCell
   if (!selectedCell.value) return null
   const c = filteredCollaborateurs.value.find(c => c.id === selectedCell.value!.collaborateurId)
   return c || null
@@ -3454,6 +3470,72 @@ function formatModalDate(date: string) {
     day: 'numeric'
   })
 }
+
+/**
+ * Ouvrir le modal en mode batch (multi-dates)
+ */
+function openBatchModal() {
+  // Ouvre la modale en mode batch à partir des cellules sélectionnées
+  
+  if (selectedCells.value.size === 0) {
+    console.warn('❌ Aucune cellule sélectionnée')
+    return
+  }
+  
+  // Extraire le collaborateur et les dates (format attendu: `${collabId}-${YYYY-MM-DD}`)
+  const cellsArray = Array.from(selectedCells.value)
+  const firstCellId = cellsArray[0]
+  // Utiliser slice pour être robuste même si l'ID contient des underscores
+  const collabId = firstCellId.slice(0, -11)
+  batchCollaborateurId.value = collabId
+  // Filtrer pour ne garder que les cellules du même collaborateur
+  const sameCollabCells = cellsArray.filter(id => id.startsWith(collabId + '-'))
+  batchDates.value = sameCollabCells.map(cellId => cellId.slice(-10))
+  if (batchDates.value.length === 0) {
+    notify({ message: 'Sélection invalide: aucune date pour ce collaborateur', color: 'warning', position: 'top-right' })
+    return
+  }
+  
+  // Récupérer les disponibilités existantes pour toutes les dates sélectionnées
+  const existingDispos: any[] = []
+  for (const date of batchDates.value) {
+    const dayDispos = getDisponibilites(collabId, date)
+    dayDispos.forEach(dispo => {
+      // Ajouter l'info de date pour l'affichage
+      existingDispos.push({
+        ...dispo,
+        _batchDate: date,
+        _batchFormattedDate: formatModalDate(date)
+      })
+    })
+  }
+  
+  // Affecter les dispos existantes pour affichage dans la modale
+  selectedCellDispos.value = existingDispos
+  
+  // Initialiser le formulaire
+  const prefs = getLastFormPreferences()
+  editingDispo.value = {
+    type: prefs.type || 'disponible',
+    timeKind: prefs.timeKind || 'full-day',
+    heure_debut: prefs.heure_debut || '09:00',
+    heure_fin: prefs.heure_fin || '17:00',
+    lieu: prefs.lieu || '',
+    slots: Array.isArray(prefs.slots) ? prefs.slots : []
+  }
+  
+  // console.debug('Prefs:', prefs)
+  
+  // Ouvrir le modal
+  isBatchMode.value = true
+  isAddingNewDispo.value = true
+  showDispoModal.value = true
+  // Double assurance en fin de tick
+  setTimeout(() => {
+    if (!showDispoModal.value) showDispoModal.value = true
+  }, 0)
+}
+
 
 const canAddDispo = computed(() => {
   const d = newDispo.value
@@ -3961,6 +4043,11 @@ function setEditingTimeKind(timeKind: string) {
     editingDispo.value.slots = []
     editingDispo.value.heure_debut = ''
     editingDispo.value.heure_fin = ''
+  } else if (timeKind === 'overnight') {
+    // Nuit = comme journée: pas d'heures, pas de slots, juste un flag d'affichage
+    editingDispo.value.slots = []
+    editingDispo.value.heure_debut = ''
+    editingDispo.value.heure_fin = ''
   }
 }
 
@@ -3982,7 +4069,6 @@ function toggleEditingSlot(slotValue: string) {
 
 const isEditFormValid = computed(() => {
   const dispo = editingDispo.value
-
   
   if (!dispo.type || !dispo.timeKind) {
     return false
@@ -4030,14 +4116,9 @@ function saveEditDispo() {
   const newDispo = sanitizeDisposition(processedDispo) as Disponibilite
   
   if (isAddingNewDispo.value) {
-    // Ajouter nouvelle ligne
-    const temp = [...selectedCellDispos.value, newDispo]
-    if (wouldConflict(temp)) {
-      // const msg = getConflictMessage(temp) || 'Conflit: combinaison invalide pour cette journée.'
-      // notify({ message: msg, color: 'warning', position: 'top-right', duration: 3000 })
-      return
-    }
-    selectedCellDispos.value.push(newDispo)
+    // Mode simple: remplacement complet des dispos existantes par la nouvelle
+    // pour uniformiser avec le comportement batch.
+    selectedCellDispos.value = [newDispo]
     
     // Sauvegarder les préférences de formulaire pour réutilisation
     saveFormPreferences({
@@ -4067,6 +4148,259 @@ function saveEditDispo() {
   
   // Enregistrer automatiquement la disponibilité
   saveDispos()
+}
+
+/**
+ * Sauvegarder les disponibilités en mode batch (plusieurs dates)
+ */
+async function saveBatchDispos() {
+  if (!isBatchMode.value || batchDates.value.length === 0 || !batchCollaborateurId.value) {
+    return
+  }
+  
+  if (!isEditFormValid.value) {
+    notify({
+      message: 'Veuillez compléter le formulaire (type, durée, et lieu si mission).',
+      color: 'warning',
+      position: 'top-right',
+      duration: 3000
+    })
+    return
+  }
+  
+  saving.value = true
+  try {
+    const collabId = batchCollaborateurId.value
+    const tenantId = AuthService.currentTenantId || 'keydispo'
+    
+    // Préparer la disponibilité à créer
+    let processedDispo = { ...editingDispo.value }
+    
+    // Détection automatique des missions overnight
+    if (processedDispo.timeKind === 'range' && processedDispo.heure_debut && processedDispo.heure_fin) {
+      const startTime = parseInt(processedDispo.heure_debut.split(':')[0])
+      const endTime = parseInt(processedDispo.heure_fin.split(':')[0])
+      
+      if (endTime < startTime || (endTime === startTime && processedDispo.heure_fin < processedDispo.heure_debut)) {
+        // Garder timeKind comme 'range' mais le système détectera automatiquement l'overnight
+      }
+    }
+    
+  const newDispo = sanitizeDisposition(processedDispo) as Disponibilite
+    
+    // Créer la disponibilité pour chaque date sélectionnée (remplace les existantes)
+    for (const date of batchDates.value) {
+      // 0) Supprimer d'abord les disponibilités existantes de ce collaborateur sur cette date
+      const existingDispos = getDisponibilites(collabId, date)
+      
+      // 1) Nettoyage optimiste du cache local (supprimer les existantes du collaborateur)
+      const existingCache = disponibilitesCache.value.get(date) || []
+      const filteredCache = existingCache.filter(d => d.collaborateurId !== collabId)
+      
+      // 2) Ajouter la nouvelle disponibilité au cache
+      const localId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const localDispo: any = {
+        id: localId,
+        collaborateurId: collabId,
+        date,
+        type: newDispo.type,
+        timeKind: newDispo.timeKind,
+        isFullDay: newDispo.timeKind === 'full-day',
+        lieu: newDispo.lieu || '',
+        heure_debut: newDispo.heure_debut || '',
+        heure_fin: newDispo.heure_fin || '',
+        slots: newDispo.slots || [],
+        tenantId,
+      }
+      disponibilitesCache.value.set(date, [...filteredCache, localDispo])
+      
+      // 3) Suppression distante des disponibilités existantes
+      for (const existingDispo of existingDispos) {
+        if (existingDispo.id) {
+          try {
+            await disponibilitesRTDBService.deleteDisponibilite(existingDispo.id)
+          } catch (e) {
+            console.error('Échec suppression existante pour', date, existingDispo.id, e)
+          }
+        }
+      }
+      
+      // 4) Persistance distante de la nouvelle disponibilité (RTDB)
+      const canonLieu = newDispo.lieu ? canonicalizeLieu(newDispo.lieu) : ''
+      
+      // Mapper les types legacy vers RTDB
+      const mapLegacyTypeToRTDB = (legacyType: string | undefined): 'standard' | 'formation' | 'urgence' | 'maintenance' => {
+        switch (legacyType) {
+          case 'mission': return 'urgence'
+          case 'disponible': return 'standard'
+          case 'indisponible': return 'maintenance'
+          default: return 'standard'
+        }
+      }
+      
+      const mapLegacyTimeKindToRTDB = (legacyTimeKind: string | undefined): 'flexible' | 'fixed' | 'overnight' => {
+        switch (legacyTimeKind) {
+          case 'range': return 'flexible'
+          case 'slot': return 'fixed'
+          case 'full-day': return 'flexible'
+          case 'overnight': return 'overnight' // Préserver overnight explicitement
+          default: return 'flexible'
+        }
+      }
+      
+      const dispoData = {
+        date,
+        collaborateurId: collabId,
+        tenantId,
+        type: mapLegacyTypeToRTDB(newDispo.type),
+        timeKind: mapLegacyTimeKindToRTDB(newDispo.timeKind),
+        heure_debut: newDispo.heure_debut || '',
+        heure_fin: newDispo.heure_fin || '',
+        lieu: canonLieu,
+        slots: newDispo.slots || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'ui',
+        version: 1
+      }
+      
+      try {
+        await disponibilitesRTDBService.createDisponibilite(dispoData as any)
+      } catch (e) {
+        console.error('Échec création distante pour', date, e)
+      }
+    }
+    
+    // Sauvegarder les préférences de formulaire
+    saveFormPreferences({
+      type: processedDispo.type,
+      timeKind: processedDispo.timeKind,
+      heure_debut: processedDispo.heure_debut || '09:00',
+      heure_fin: processedDispo.heure_fin || '17:00',
+      lieu: processedDispo.lieu || '',
+      slots: processedDispo.slots || []
+    })
+    
+    // Afficher notification de succès
+    notify({ 
+      message: `${batchDates.value.length} disponibilité${batchDates.value.length > 1 ? 's' : ''} mise${batchDates.value.length > 1 ? 's' : ''} à jour`, 
+      color: 'success',
+      position: 'top-right',
+      duration: 3000
+    })
+    
+    // Mettre à jour selectedCellDispos pour refléter le remplacement
+    const newBatchDispos: any[] = []
+    for (const date of batchDates.value) {
+      newBatchDispos.push({
+        ...newDispo,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        collaborateurId: collabId,
+        date,
+        _batchDate: date,
+        _batchFormattedDate: formatModalDate(date)
+      })
+    }
+    selectedCellDispos.value = newBatchDispos
+    
+    // Nettoyer la sélection et fermer le modal
+    clearSelection()
+    cancelModal()
+    // Optionnel: synchroniser en arrière-plan pour remplacer les IDs temporaires
+    setTimeout(() => {
+      refreshDisponibilites(false)
+    }, 400)
+    
+  } catch (error: any) {
+    console.error('Erreur lors de la création batch:', error)
+    notify({ 
+      message: 'Erreur lors de la création des disponibilités', 
+      color: 'danger',
+      position: 'top-right',
+      duration: 4000
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+/**
+ * Supprimer toutes les disponibilités des dates sélectionnées en mode batch
+ */
+async function deleteBatchDispos() {
+  if (!isBatchMode.value || batchDates.value.length === 0 || !batchCollaborateurId.value) {
+    return
+  }
+  
+  // Compter les disponibilités à supprimer
+  let totalDispos = 0
+  for (const date of batchDates.value) {
+    const existingDispos = getDisponibilites(batchCollaborateurId.value, date)
+    totalDispos += existingDispos.length
+  }
+  
+  if (totalDispos === 0) {
+    notify({
+      message: 'Aucune disponibilité à supprimer sur les dates sélectionnées.',
+      color: 'info',
+      position: 'top-right',
+      duration: 3000
+    })
+    return
+  }
+  
+  saving.value = true
+  try {
+    const collabId = batchCollaborateurId.value
+    
+    // Supprimer pour chaque date sélectionnée
+    for (const date of batchDates.value) {
+      const existingDispos = getDisponibilites(collabId, date)
+      
+      // 1) Suppression optimiste du cache local
+      const existingCache = disponibilitesCache.value.get(date) || []
+      const filteredCache = existingCache.filter(d => d.collaborateurId !== collabId)
+      disponibilitesCache.value.set(date, filteredCache)
+      
+      // 2) Suppression distante (RTDB)
+      for (const dispo of existingDispos) {
+        if (dispo.id) {
+          try {
+            await disponibilitesRTDBService.deleteDisponibilite(dispo.id)
+          } catch (e) {
+            console.error('Échec suppression distante pour', date, dispo.id, e)
+          }
+        }
+      }
+    }
+    
+    // Vider la liste des dispos dans la modale
+    selectedCellDispos.value = []
+    
+    // Afficher notification de succès
+    notify({ 
+      message: `${totalDispos} disponibilité${totalDispos > 1 ? 's' : ''} supprimée${totalDispos > 1 ? 's' : ''}`, 
+      color: 'success',
+      position: 'top-right',
+      duration: 3000
+    })
+    
+    // Optionnel: synchroniser en arrière-plan
+    setTimeout(() => {
+      refreshDisponibilites(false)
+    }, 400)
+    
+  } catch (error: any) {
+    console.error('Erreur lors de la suppression batch:', error)
+    notify({ 
+      message: 'Erreur lors de la suppression des disponibilités', 
+      color: 'danger',
+      position: 'top-right',
+      duration: 4000
+    })
+  } finally {
+    saving.value = false
+  }
 }
 
 async function saveDispos() {
@@ -4151,12 +4485,12 @@ async function saveDispos() {
         }
       }
       
-      const mapLegacyTimeKindToRTDB = (legacyTimeKind: string | undefined): 'flexible' | 'fixed' => {
+      const mapLegacyTimeKindToRTDB = (legacyTimeKind: string | undefined): 'flexible' | 'fixed' | 'overnight' => {
         switch (legacyTimeKind) {
           case 'range': return 'flexible'
           case 'slot': return 'fixed'
           case 'full-day': return 'flexible'
-          case 'overnight': return 'flexible'
+          case 'overnight': return 'overnight' // Préserver overnight explicitement
           default: return 'flexible'
         }
       }
@@ -4180,7 +4514,7 @@ async function saveDispos() {
         type: mapLegacyTypeToRTDB(d.type),
         timeKind: mapLegacyTimeKindToRTDB(d.timeKind),
         slots: Array.isArray(d.slots) ? d.slots : [],
-        isFullDay: d.timeKind === 'full-day',
+        isFullDay: d.timeKind === 'full-day' || d.timeKind === 'overnight', // overnight aussi full-day
         // audit minimal
         version: 1,
         updatedAt: Date.now(),
@@ -4209,24 +4543,25 @@ async function saveDispos() {
         }
       }
       
-      const mapLegacyTimeKindToRTDB = (legacyTimeKind: string | undefined): 'flexible' | 'fixed' => {
+      const mapLegacyTimeKindToRTDB = (legacyTimeKind: string | undefined): 'flexible' | 'fixed' | 'overnight' => {
         switch (legacyTimeKind) {
           case 'range': return 'flexible'
           case 'slot': return 'fixed'
           case 'full-day': return 'flexible'
-          case 'overnight': return 'flexible'
+          case 'overnight': return 'overnight' // Préserver overnight explicitement
           default: return 'flexible'
         }
       }
       
       const updatedData = {
         lieu: canonLieu || '',
+        // Overnight n'a pas d'heures (comme full-day)
         heure_debut: d.timeKind === 'range' ? (d.heure_debut || '') : '',
         heure_fin: d.timeKind === 'range' ? (d.heure_fin || '') : '',
         type: mapLegacyTypeToRTDB(d.type),
         timeKind: mapLegacyTimeKindToRTDB(d.timeKind),
         slots: Array.isArray(d.slots) ? d.slots : [],
-        isFullDay: d.timeKind === 'full-day',
+        isFullDay: d.timeKind === 'full-day' || d.timeKind === 'overnight', // overnight aussi full-day
         updatedAt: Date.now(),
         updatedBy: 'ui',
       }
@@ -4389,16 +4724,13 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
         }
       }
       
-      const deriveTimeKindFromData = (dispo: any): 'range' | 'slot' | 'full-day' | 'overnight' => {
-        if (dispo?.slots && Array.isArray(dispo.slots) && dispo.slots.length > 0) return 'slot'
-        if (dispo?.isFullDay) return 'full-day'
-        const start = (dispo?.heure_debut || '').toString()
-        const end = (dispo?.heure_fin || '').toString()
-        if (start && end) {
-          if (end < start) return 'overnight'
-          return 'range'
+      const mapRTDBTimeKindToLegacy = (rtdbTimeKind: string | undefined): 'range' | 'slot' | 'full-day' | 'overnight' => {
+        switch (rtdbTimeKind) {
+          case 'fixed': return 'slot'
+          case 'flexible': return dispo.isFullDay ? 'full-day' : 'range'
+          case 'overnight': return 'overnight' // Préserver overnight explicitement depuis RTDB
+          default: return 'range'
         }
-        return 'range'
       }
       
       const formatted = {
@@ -4409,7 +4741,7 @@ async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
         heure_debut: dispo.heure_debut || '',
         heure_fin: dispo.heure_fin || '',
         type: mapRTDBTypeToLegacy(dispo.type),
-  timeKind: deriveTimeKindFromData(dispo),
+        timeKind: mapRTDBTimeKindToLegacy(dispo.timeKind), // Lire directement depuis RTDB
         slots: Array.isArray(dispo.slots) ? dispo.slots : undefined,
         isFullDay: dispo.isFullDay ?? undefined,
         nom: dispo.nom || '',
@@ -4575,6 +4907,7 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
                 heure_fin: dispo.heure_fin || ''
               })
             : null
+          
           const formatted = {
             id: dispo.id,
             collaborateurId: dispo.collaborateurId,
@@ -4583,7 +4916,7 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
             heure_debut: dispo.heure_debut || '',
             heure_fin: dispo.heure_fin || '',
             type: normalized ? normalized.type : mapTypeAnyToLegacy(dispo.type as any),
-            timeKind: normalized ? normalized.timeKind : deriveTimeKindFromData(dispo), // ✅ DÉRIVATION CENTRALISÉE
+            timeKind: normalized ? normalized.timeKind : (dispo.timeKind === 'overnight' ? 'overnight' : (dispo.timeKind === 'fixed' ? (Array.isArray(dispo.slots) && dispo.slots.length > 0 ? 'slot' : (dispo.heure_debut && dispo.heure_fin ? 'range' : 'range')) : (dispo.timeKind === 'flexible' ? ((dispo.heure_debut && dispo.heure_fin) ? 'range' : (Array.isArray(dispo.slots) && dispo.slots.length > 0 ? 'slot' : 'full-day')) : (dispo.heure_debut && dispo.heure_fin ? 'range' : 'full-day')))),
             slots: Array.isArray(dispo.slots) ? dispo.slots : undefined,
             isFullDay: dispo.isFullDay ?? undefined,
             nom: dispo.nom || '',
@@ -4678,6 +5011,7 @@ function startRealtimeSync() {
               heure_fin: dispo.heure_fin || ''
             })
           : null
+        
         byDate.get(date)!.push({
           id: dispo.id,
           collaborateurId: dispo.collaborateurId,
@@ -4692,7 +5026,7 @@ function startRealtimeSync() {
           heure_debut: dispo.heure_debut || '',
           heure_fin: dispo.heure_fin || '',
           type: normalized ? normalized.type : mapTypeAnyToLegacy(dispo.type as any),
-          timeKind: normalized ? normalized.timeKind : deriveTimeKindFromData(dispo), // ✅ DÉRIVATION CENTRALISÉE
+          timeKind: normalized ? normalized.timeKind : (dispo.timeKind === 'overnight' ? 'overnight' : (dispo.timeKind === 'fixed' ? (Array.isArray(dispo.slots) && dispo.slots.length > 0 ? 'slot' : (dispo.heure_debut && dispo.heure_fin ? 'range' : 'range')) : (dispo.timeKind === 'flexible' ? ((dispo.heure_debut && dispo.heure_fin) ? 'range' : (Array.isArray(dispo.slots) && dispo.slots.length > 0 ? 'slot' : 'full-day')) : (dispo.heure_debut && dispo.heure_fin ? 'range' : 'full-day')))),
           slots: Array.isArray(dispo.slots) ? dispo.slots : undefined,
           isFullDay: dispo.isFullDay ?? undefined,
           tenantId: dispo.tenantId,
@@ -5250,6 +5584,11 @@ function handleEditClose() {
   selectedCollaborateur.value = null
   selectedCellDispos.value = []
   selectedCollabDispos.value = []
+  
+  // Réinitialiser le mode batch
+  isBatchMode.value = false
+  batchDates.value = []
+  batchCollaborateurId.value = ''
   
   // État nettoyé après fermeture du formulaire
 }
@@ -6086,92 +6425,6 @@ function handleWindowMouseLeave() {
 }
 
 // Gestion de la création par lot
-async function handleBatchCreate(data: any) {
-  // Lot créé
-  
-  // Ajouter immédiatement les nouvelles disponibilités au cache local
-  for (const date of data.dates) {
-    const existingDispos = disponibilitesCache.value.get(date) || []
-    
-    // Créer la nouvelle disponibilité pour le cache local
-    const newDispo: any = {
-      id: `temp-${Date.now()}-${Math.random()}`, // ID temporaire
-      collaborateurId: data.collaborateur.id,
-      nom: data.collaborateur.nom,
-      prenom: data.collaborateur.prenom,
-      metier: data.collaborateur.metier || '',
-      phone: data.collaborateur.phone || '',
-      email: data.collaborateur.email || '',
-      ville: data.collaborateur.ville || '',
-      date: date,
-      lieu: data.dispoData.lieu || '',
-      heure_debut: data.dispoData.heureDebut || '',
-      heure_fin: data.dispoData.heureFin || '',
-      type: data.dispoData.type,
-      timeKind: data.dispoData.timeKind,
-      isFullDay: data.dispoData.timeKind === 'full_day',
-      slots: [],
-      tenantId: 'keydispo'
-    }
-    
-    
-    
-    // Ajouter au cache local
-    disponibilitesCache.value.set(date, [...existingDispos, newDispo])
-    
-    
-  }
-  
-  // Fermer le modal et vider la sélection
-  batchModalOpen.value = false
-  clearSelection()
-  
-  // Actualiser les lieux après ajout
-  updateLieuxOptions()
-  
-  notify({
-    message: `✅ Disponibilités créées avec succès`,
-    color: 'success'
-  })
-  
-  // Effectuer un refresh en arrière-plan pour synchroniser avec les vrais IDs Firestore
-  setTimeout(async () => {
-    // Refresh automatique après batch (sans vider le cache)
-    await refreshDisponibilites(false) // false = ne pas vider le cache
-    
-    // Nettoyer les données temporaires après que les vraies soient arrivées
-    setTimeout(() => {
-      
-      cleanupTemporaryData(data.dates)
-    }, 1000)
-  }, 500)
-}
-
-// Nettoyer les données temporaires (IDs commençant par "temp-")
-function cleanupTemporaryData(dates: string[]) {
-  let cleanedCount = 0
-  
-  dates.forEach(date => {
-    const existingDispos = disponibilitesCache.value.get(date) || []
-    const cleanedDispos = existingDispos.filter(d => {
-      const isTemp = d.id?.startsWith('temp-')
-      if (isTemp) {
-        cleanedCount++
-        
-      }
-      return !isTemp
-    })
-    
-    if (cleanedDispos.length !== existingDispos.length) {
-      disponibilitesCache.value.set(date, cleanedDispos)
-    }
-  })
-  
-  if (cleanedCount > 0) {
-    // Données temporaires nettoyées
-  }
-}
-
 // Vérifier que le planning est vraiment prêt visuellement
 async function checkPlanningReadiness() {
   // Attendre que Vue ait fini de rendre
@@ -6272,38 +6525,6 @@ function getCollaborateurColor(collaborateurId: string): string {
   return collFromLocal?.color || '#666'
 }
 
-// Extraction des données des cellules sélectionnées pour le modal par lot
-const extractDatesFromSelection = computed(() => {
-  const dates = new Set<string>()
-  selectedCells.value.forEach(cellId => {
-    // La date est les 10 derniers caractères (YYYY-MM-DD)
-    const date = cellId.slice(-10)
-    if (date) dates.add(date)
-  })
-  return Array.from(dates).sort()
-})
-
-const extractCollaborateurFromSelection = computed(() => {
-  // Si toutes les cellules sélectionnées sont du même collaborateur, on le retourne
-  const collaborateurIds = new Set<string>()
-  selectedCells.value.forEach(cellId => {
-    // L'ID du collaborateur est tout sauf les 11 derniers caractères (date: -YYYY-MM-DD)
-    const collaborateurId = cellId.slice(0, -11)
-    if (collaborateurId) collaborateurIds.add(collaborateurId)
-  })
-  // Retourner l'objet collaborateur seulement s'il n'y en a qu'un seul
-  if (collaborateurIds.size === 1) {
-    const collaborateurId = Array.from(collaborateurIds)[0]
-    // Chercher d'abord dans la liste centralisée/filtrée (source fiable affichée)
-    const fromFiltered = filteredCollaborateurs.value.find(c => c.id === collaborateurId)
-    if (fromFiltered) return fromFiltered
-    // Fallback sur la liste locale si nécessaire
-    const fromLocal = collaborateurs.value.find(c => c.id === collaborateurId)
-    if (fromLocal) return fromLocal
-  }
-  return null
-})
-
 // === Gestion du modal d'informations collaborateur ===
 
 const openCollaborateurInfo = async (collaborateur: Collaborateur) => {
@@ -6380,8 +6601,8 @@ const handleSaveCollaborateurNotes = async (collaborateur: Collaborateur, notes:
 onMounted(async () => {
   // Initialiser les filtres depuis les paramètres de query
   initFiltersFromQuery()
-  
-  // Attendre un peu avant de générer les jours pour éviter le flash sur juin
+
+  // Génération des jours initiaux
   await new Promise(resolve => setTimeout(resolve, 50))
   generateInitialDays()
   
@@ -11197,7 +11418,7 @@ body.dragging-selection .excel-cell {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 1000;
+  z-index: 9999 !important;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11206,11 +11427,13 @@ body.dragging-selection .excel-cell {
   border-radius: 25px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   animation: slideInUp 0.3s ease-out;
+  pointer-events: auto !important;
 }
 
 .batch-action-fab .fab-content {
   display: flex;
   align-items: center;
+  pointer-events: auto !important;
 }
 
 .go-to-today-fab {

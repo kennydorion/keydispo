@@ -117,7 +117,9 @@
             >
               <span class="date">{{ formatDate(dispo.date) }}</span>
               <span class="lieu">{{ dispo.lieu }}</span>
-              <span class="horaire">{{ dispo.heure_debut }} - {{ dispo.heure_fin }}</span>
+              <span class="horaire">
+                {{ temporalDisplay(dispo) }}
+              </span>
             </div>
           </div>
         </div>
@@ -128,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import * as planningDisplayService from '@/services/planningDisplayService'
 import { useModalA11y } from '@/composables/useModalA11y'
 import PlanningStatusPanel from './PlanningStatusPanel.vue'
 import PlanningSelectionBar from './PlanningSelectionBar.vue'
@@ -222,6 +225,11 @@ function getUserColorWrapper(uid: string): string {
   const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4']
   const hash = uid.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
   return colors[hash % colors.length]
+}
+
+// Affichage temporel unifié (heures/créneaux/journée/nuit)
+function temporalDisplay(dispo: { date: string; lieu: string; heure_debut?: string; heure_fin?: string; type?: string; timeKind?: string; slots?: string[] }) {
+  return planningDisplayService.getTemporalDisplay(dispo as any)
 }
 
 // Configuration du composable useCollabPresence

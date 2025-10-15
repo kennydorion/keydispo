@@ -1214,14 +1214,16 @@ function mapRTDBTypeToUI(rtdbType: string | undefined): 'disponible' | 'indispon
   }
 }
 
-function mapRTDBTimeKindToUI(rtdbTimeKind: string | undefined): 'range' | 'slot' | 'full-day' | 'overnight' {
+function mapRTDBTimeKindToUI(rtdbTimeKind: string | undefined, dispo?: any): 'range' | 'slot' | 'full-day' | 'overnight' {
   switch (rtdbTimeKind) {
     case 'range': return 'range'
-  case 'slot': return 'slot'
-  case 'full-day': return 'full-day'
-  case 'overnight': return 'overnight'
-  case 'fixed': return 'range'
-  case 'flexible': return 'range'
+    case 'slot': return 'slot'
+    case 'full-day': return 'full-day'
+    case 'overnight': return 'overnight' // Préserver overnight explicitement
+    case 'fixed': return 'slot'
+    case 'flexible': 
+      // Si flexible avec isFullDay, c'est full-day, sinon range
+      return dispo?.isFullDay ? 'full-day' : 'range'
     default: return 'range'
   }
 }

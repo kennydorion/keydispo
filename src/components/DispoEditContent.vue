@@ -27,7 +27,19 @@
         <div class="section-header">
           <div class="section-title">
             <va-icon name="event_available" color="primary" />
-            <span>Mes disponibilités</span>
+            <span>Disponibilités existantes</span>
+          </div>
+          <div v-if="isBatchMode && selectedCellDispos.length > 0" class="section-actions">
+            <va-button
+              @click="$emit('delete-batch-dispos')"
+              color="danger"
+              icon="delete_sweep"
+              size="small"
+              preset="secondary"
+              :disabled="saving"
+            >
+              Supprimer tout
+            </va-button>
           </div>
         </div>
         <div v-if="selectedCellDispos.length === 0" class="empty-state">
@@ -47,6 +59,10 @@
               <div class="type-indicator">
                 <va-icon :name="getTypeIcon(dispo.type)" size="18px" />
                 <span class="type-text">{{ getTypeText(dispo.type) }}</span>
+              </div>
+              <div v-if="isBatchMode && dispo._batchFormattedDate" class="batch-date-pill">
+                <va-icon name="event" size="12px" />
+                <span>{{ dispo._batchFormattedDate }}</span>
               </div>
               <div v-if="dispo._cont === 'end'" class="continuation-pill" title="Suite de la veille">⤺ Suite</div>
               <div v-if="editingDispoIndex === index" class="editing-badge">
@@ -72,6 +88,10 @@
               <div v-else-if="isSlotDisplay(dispo)" class="detail-row">
                 <va-icon name="view_module" size="14px" />
                 <span>{{ getSlotText(slotsFor(dispo)) }}</span>
+              </div>
+              <div v-else-if="isOvernightDisplay(dispo)" class="detail-row">
+                <va-icon name="nights_stay" size="14px" />
+                <span>Nuit</span>
               </div>
               <div v-else-if="isFullDayDisplay(dispo)" class="detail-row">
                 <va-icon name="today" size="14px" />
@@ -124,10 +144,11 @@
               </va-button>
               <!-- Bouton principal avec libellé clair -->
               <va-button 
-                @click="$emit('save-edit-dispo')" 
+                @click="() => {
+                  $emit('save-edit-dispo')
+                }" 
                 :color="isAddingNewDispo ? 'success' : 'primary'" 
                 size="large" 
-                :disabled="!isEditFormValid"
                 :icon="isAddingNewDispo ? 'add' : 'save'"
               >
                 {{ isAddingNewDispo ? 'Ajouter une disponibilité' : 'Modifier la disponibilité' }}
@@ -173,6 +194,9 @@ interface Disponibilite {
   // Métadonnées pour overnight (continuation, etc.)
   _cont?: 'start' | 'end'
   date?: string
+  // Métadonnées pour mode batch
+  _batchDate?: string
+  _batchFormattedDate?: string
 }
 
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
@@ -196,6 +220,7 @@ const props = defineProps<{
   timeKindOptionsFiltered: Array<{ text: string; value: string }>
   isDetectedOvernight: boolean
   isCollaboratorView?: boolean
+  isBatchMode?: boolean
   headerStatNumber?: number
   headerStatLabel?: string
   getTypeIcon: (t: any) => string
@@ -219,6 +244,7 @@ const emit = defineEmits<{
   (e: 'create-lieu', value: string): void
   (e: 'cancel-edit-dispo'): void
   (e: 'save-edit-dispo'): void
+  (e: 'delete-batch-dispos'): void
   (e: 'add-new-dispo-line'): void
   (e: 'update-editing-lieu', value: string): void
 }>()
@@ -258,12 +284,18 @@ function isSlotDisplay(d: Disponibilite) {
 
 function isRangeLikeDisplay(d: Disponibilite) {
   const k = resolveKind(d)
-  return (k.timeKind === 'range' || k.timeKind === 'overnight') && !!d.heure_debut && !!d.heure_fin
+  // Overnight ne doit PAS être traité comme une plage horaire ici
+  return k.timeKind === 'range' && !!d.heure_debut && !!d.heure_fin
 }
 
 function isFullDayDisplay(d: Disponibilite) {
   const k = resolveKind(d)
   return k.timeKind === 'full-day'
+}
+
+function isOvernightDisplay(d: Disponibilite) {
+  const k = resolveKind(d)
+  return k.timeKind === 'overnight'
 }
 
 function slotsFor(d: Disponibilite): string[] | undefined {
@@ -272,7 +304,7 @@ function slotsFor(d: Disponibilite): string[] | undefined {
   return k.slots
 }
 
-// Tri: continuations d'abord, ensuite slots, puis plages (par début), journée en dernier
+// Tri: continuations d'abord, ensuite slots, puis plages (par début), journée/overnight en dernier
 const sortedSelectedCellDispos = computed(() => {
   const slotOrder: Record<string, number> = { morning: 1, midday: 2, afternoon: 3, evening: 4, night: 5 }
   const toMin = (t?: string) => {
@@ -288,13 +320,21 @@ const sortedSelectedCellDispos = computed(() => {
   }
   const rangeStartKey = (d: Disponibilite) => toMin(d.heure_debut)
   const contEndKey = (d: Disponibilite) => toMin(d.heure_fin)
-  return [...props.selectedCellDispos].slice().sort((a, b) => {
+  // Fusionner la ligne en cours d'édition avec les valeurs du formulaire pour un rendu live
+  const enhanced = props.selectedCellDispos.map((d, i) => {
+    if (props.editingDispoIndex === i && props.editingDispo) {
+      return { ...d, ...props.editingDispo }
+    }
+    return d
+  })
+
+  return enhanced.slice().sort((a, b) => {
     const ka = resolveKind(a)
     const kb = resolveKind(b)
 
-    // full-day en dernier
-    const aFD = ka.timeKind === 'full-day'
-    const bFD = kb.timeKind === 'full-day'
+    // full-day et overnight en dernier
+    const aFD = ka.timeKind === 'full-day' || ka.timeKind === 'overnight'
+    const bFD = kb.timeKind === 'full-day' || kb.timeKind === 'overnight'
     if (aFD && !bFD) return 1
     if (bFD && !aFD) return -1
 
@@ -495,6 +535,9 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--gray-200);
   box-sizing: border-box;
   max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .section-title {
@@ -580,7 +623,8 @@ onBeforeUnmount(() => {
 
 .editing-badge,
 .readonly-badge,
-.continuation-pill {
+.continuation-pill,
+.batch-date-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -603,6 +647,12 @@ onBeforeUnmount(() => {
 .continuation-pill {
   background: rgba(17, 24, 39, 0.1);
   color: #111827;
+}
+
+.batch-date-pill {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  font-weight: 500;
 }
 
 .card-content {
