@@ -1783,14 +1783,7 @@ let _debounceTimer: number | null = null
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
 // AUTO-SCROLL DÉSACTIVÉ - DOM trop massif pour scroll performant
-// L'utilisateur doit scroller manuellement pendant la sélection
-
-// Fonction pour gérer l'auto-scroll pendant la sélection
-function handleAutoScroll(_e: MouseEvent) {
-  // Auto-scroll désactivé car trop lourd en performance
-  // L'utilisateur peut scroller manuellement avec trackpad/molette pendant la sélection
-  return
-}
+// L'utilisateur scrolle manuellement avec trackpad/molette pendant la sélection Cmd+drag
 
 function stopAutoScroll() {
   // Noop - auto-scroll désactivé
@@ -1803,10 +1796,7 @@ function onGridMouseMove(e: MouseEvent) {
   _lastPointerX = e.clientX
   _lastPointerY = e.clientY
   
-  // Gérer l'auto-scroll pendant la sélection
-  if (isDraggingSelection.value) {
-    handleAutoScroll(e)
-  }
+  // Auto-scroll désactivé - l'utilisateur scrolle manuellement pendant la sélection
   
   // Pendant le scroll rapide ou en cours de chargement, éviter les modifications DOM
   if (isScrollingFast.value || isBusy.value) {
