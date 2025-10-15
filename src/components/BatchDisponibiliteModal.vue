@@ -64,6 +64,7 @@ import { useModalA11y } from '@/composables/useModalA11y'
 import { useToast } from 'vuestic-ui'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
+import { getLastFormPreferences, saveFormPreferences } from '../services/dispoFormPreferences'
 import DispoEditContent from './DispoEditContent.vue'
 import {
   slotOptions,
@@ -146,13 +147,15 @@ const { init: notify } = useToast()
 const modalA11y = useModalA11y()
 
 // Forme de données pour le composant DispoEditContent
+// Initialiser avec les dernières préférences sauvegardées
+const savedPrefs = getLastFormPreferences()
 const editingDispo = ref({
-  type: 'disponible' as 'mission' | 'disponible' | 'indisponible',
-  timeKind: 'full-day' as 'range' | 'slot' | 'full-day' | 'overnight',
-  heure_debut: '09:00',
-  heure_fin: '17:00',
-  lieu: '',
-  slots: [] as string[]
+  type: savedPrefs.type as 'mission' | 'disponible' | 'indisponible',
+  timeKind: savedPrefs.timeKind as 'range' | 'slot' | 'full-day' | 'overnight',
+  heure_debut: savedPrefs.heure_debut,
+  heure_fin: savedPrefs.heure_fin,
+  lieu: savedPrefs.lieu,
+  slots: [...savedPrefs.slots] as string[]
 })
 
 // Mock data for DispoEditContent
@@ -345,6 +348,16 @@ const handleSave = async () => {
     
     // Créer toutes les disponibilités via le service RTDB
   await disponibilitesRTDBService.createMultipleDisponibilites(disponibilitesToCreate)
+    
+    // Sauvegarder les préférences de formulaire pour réutilisation
+    saveFormPreferences({
+      type: editingDispo.value.type,
+      timeKind: editingDispo.value.timeKind,
+      heure_debut: editingDispo.value.heure_debut,
+      heure_fin: editingDispo.value.heure_fin,
+      lieu: editingDispo.value.lieu,
+      slots: editingDispo.value.slots
+    })
     
     // Émettre l'événement avec toutes les dates créées
     emit('batch-created', {

@@ -664,6 +664,7 @@ import type { Collaborateur } from '../types/planning'
 // ⚠️ OPTIMISATION D'URGENCE
 import { emergencyOptimization } from '../services/emergencyOptimization'
 import { slotOptions } from '../services/dispoFormOptions'
+import { getLastFormPreferences, saveFormPreferences } from '../services/dispoFormPreferences'
 import { useVirtualGrid } from '@/composables/useVirtualGrid'
 import { useCollabPresence } from '@/composables/useCollabPresence'
 import { usePlanningFilters } from '@/composables/usePlanningFilters'
@@ -1192,13 +1193,15 @@ const showModal = computed({
 // État d'édition de ligne
 const editingDispoIndex = ref<number | null>(null)
 const isAddingNewDispo = ref(false)
+// Initialiser avec les dernières préférences sauvegardées
+const savedPrefs = getLastFormPreferences()
 const editingDispo = ref<Partial<Disponibilite>>({
-  type: 'disponible',
-  timeKind: 'full-day', // Valeur par défaut normale
-  heure_debut: '09:00',
-  heure_fin: '17:00',
-  lieu: '',
-  slots: []
+  type: savedPrefs.type,
+  timeKind: savedPrefs.timeKind,
+  heure_debut: savedPrefs.heure_debut,
+  heure_fin: savedPrefs.heure_fin,
+  lieu: savedPrefs.lieu,
+  slots: savedPrefs.slots
 })
 
 // Options métiers/lieux utilisant le système centralisé
@@ -3909,13 +3912,15 @@ function addNewDispoLine() {
 
   editingDispoIndex.value = null
   isAddingNewDispo.value = true
+  // Charger les dernières préférences sauvegardées
+  const prefs = getLastFormPreferences()
   editingDispo.value = {
-    type: 'disponible',
-    timeKind: 'full-day',
-    heure_debut: '09:00',
-    heure_fin: '17:00',
-    lieu: '',
-    slots: []
+    type: prefs.type,
+    timeKind: prefs.timeKind,
+    heure_debut: prefs.heure_debut,
+    heure_fin: prefs.heure_fin,
+    lieu: prefs.lieu,
+    slots: [...prefs.slots] // Copier le tableau pour éviter les mutations
   }
 
 }
@@ -4034,6 +4039,15 @@ function saveEditDispo() {
     }
     selectedCellDispos.value.push(newDispo)
     
+    // Sauvegarder les préférences de formulaire pour réutilisation
+    saveFormPreferences({
+      type: processedDispo.type,
+      timeKind: processedDispo.timeKind,
+      heure_debut: processedDispo.heure_debut || '09:00',
+      heure_fin: processedDispo.heure_fin || '17:00',
+      lieu: processedDispo.lieu || '',
+      slots: processedDispo.slots || []
+    })
 
   } else {
     // Modifier ligne existante
