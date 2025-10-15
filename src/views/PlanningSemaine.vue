@@ -2768,7 +2768,7 @@ function cleanHoverHighlights() {
       pendingCleanHover = false
       executeCleanHover()
     }
-  }, 33) // Max 30 nettoyages/seconde pour meilleure réactivité
+  }, 50) // Max 20 nettoyages/seconde pour éviter les artefacts visuels
 }
 
 function executeCleanHover() {
@@ -5483,7 +5483,7 @@ function updateHoverOnScroll(scroller: HTMLElement) {
       pendingUpdateHover = null
       executeUpdateHover(scrollerToUpdate)
     }
-  }, 33) // Max 30 updates/seconde
+  }, 50) // Max 20 updates/seconde pour éviter les artefacts visuels
 }
 
 function executeUpdateHover(scroller: HTMLElement) {
@@ -5544,14 +5544,14 @@ function executeUpdateHover(scroller: HTMLElement) {
 let triggerHoverDebounceTimer: number | null = null
 
 function triggerHoverAtCursor() {
-  // Debounce à 100ms pour éviter les appels excessifs
+  // Debounce à 150ms pour éviter les artefacts visuels lors de mouvements rapides
   if (triggerHoverDebounceTimer) {
     clearTimeout(triggerHoverDebounceTimer)
   }
   
   triggerHoverDebounceTimer = window.setTimeout(() => {
     executeTriggerHover()
-  }, 100)
+  }, 150)
 }
 
 function executeTriggerHover() {
