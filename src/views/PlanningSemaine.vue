@@ -458,22 +458,29 @@
                         @click="onInnerDispoClick(dispo, collaborateur.id, day.date, $event)"
                       >
                         <!-- Badge avec type icon en haut à gauche -->
+                        <!-- Badge avec type icon en haut à gauche -->
                         <div class="dispo-type-badge">
                           <va-icon 
                             :name="getDispoTypeIcon(dispo)" 
-                            size="9px" 
+                            size="10px" 
                             class="dispo-badge-icon" 
                           />
-                          <span class="dispo-type-text">{{ getDispoTypeLabel(dispo) }}</span>
                         </div>
                         
                         <!-- Affichage uniforme simplifié -->
                         <div class="dispo-unified-content">
                           <!-- Type de dispo + temporalité en une ligne -->
                           <div class="dispo-main-info">
-                            <span class="dispo-temporal">{{ getTemporalDisplay(dispo, day.date) }}</span>
-                            <span v-if="isOvernightContinuation(dispo, day.date)" class="overnight-symbol" title="Suite">⤺</span>
-                            <span v-if="isOvernightStart(dispo, day.date)" class="overnight-symbol" title="Continue">⤻</span>
+                            <!-- Pour indisponible, afficher juste "Indisponible" -->
+                            <template v-if="resolveDispoKind(dispo).type === 'indisponible'">
+                              <span class="dispo-indisponible-label">Indisponible</span>
+                            </template>
+                            <!-- Pour les autres, afficher horaires/créneaux -->
+                            <template v-else>
+                              <span class="dispo-temporal">{{ getTemporalDisplay(dispo, day.date) }}</span>
+                              <span v-if="isOvernightContinuation(dispo, day.date)" class="overnight-symbol" title="Suite">⤺</span>
+                              <span v-if="isOvernightStart(dispo, day.date)" class="overnight-symbol" title="Continue">⤻</span>
+                            </template>
                           </div>
                         </div>
                         
@@ -639,7 +646,6 @@ import {
   slotLabel as sharedSlotLabel, 
   getTemporalDisplay as sharedGetTemporalDisplay, 
   getDispoTypeIcon as sharedGetDispoTypeIcon,
-  getDispoTypeLabel as sharedGetDispoTypeLabel,
   getDispoBarsLayoutClass as sharedGetDispoBarsLayoutClass
 } from '../services/planningDisplayService'
 import { toDateStr, addDaysStr, diffDays, calcMinPastDate } from '@/utils/dateHelpers'
@@ -3244,10 +3250,6 @@ function getDispoCardStyle(_dispo: Disponibilite) {
 
 function getDispoTypeIcon(dispo: Disponibilite) {
   return sharedGetDispoTypeIcon(dispo as any)
-}
-
-function getDispoTypeLabel(dispo: Disponibilite) {
-  return sharedGetDispoTypeLabel(dispo as any)
 }
 
 // (getDispoDisplayLabel supprimée – inutilisée)
@@ -10778,7 +10780,7 @@ body.dragging-selection .excel-cell {
 }
 
 .dispo-lieu {
-  font-size: 7px;
+  font-size: 8px;
   opacity: 0.8;
   font-weight: 500;
   white-space: nowrap;
@@ -12169,18 +12171,17 @@ body.dragging-selection .excel-cell {
   left: 2px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-  padding: 1px 3px;
   z-index: 20;
   font-size: 7px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  max-width: 45px;
+  max-width: 50px;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-height: 12px;
 }
 
 .dispo-badge-icon {
@@ -12188,18 +12189,21 @@ body.dragging-selection .excel-cell {
   opacity: 1;
 }
 
-.dispo-type-text {
+.dispo-indisponible-label {
   flex-shrink: 0;
   opacity: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
 }
 
 .dispo-main-info {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
