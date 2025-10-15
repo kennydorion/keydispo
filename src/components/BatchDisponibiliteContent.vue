@@ -1,7 +1,10 @@
 <template>
   <div v-if="selectedCollaborateur" class="dispo-modal-redesigned batch-mode" ref="modalRootRef">
     <!-- HEADER -->
-    <div class="header-section" :style="{ '--collaborateur-color': collaborateurColor }">
+    <div class="header-section" :style="{ 
+      background: `linear-gradient(135deg, ${collaborateurColor} 0%, ${collaborateurColor}dd 100%)`,
+      '--collaborateur-color': collaborateurColor 
+    }">
       <div class="header-background"></div>
       <div class="header-content">
         <div class="collaborateur-info">
