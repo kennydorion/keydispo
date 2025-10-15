@@ -1782,20 +1782,26 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - version simple
+// Auto-scroll pendant la sélection - version RAF pour fluidité maximale
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 const EDGE_ZONE = 100
-// Vitesses optimisées : intervalle 50ms (20fps) avec incréments plus petits pour fluidité
-const SCROLL_SPEED_X = 25
-const SCROLL_SPEED_Y = 10
-const SCROLL_INTERVAL = 50 // 20 fois par seconde pour plus de fluidité
+// RAF pour fluidité maximale à 60fps avec petits incréments
+const SCROLL_SPEED_X = 8  // 8px par frame = ~480px/sec à 60fps
+const SCROLL_SPEED_Y = 4  // 4px par frame = ~240px/sec à 60fps
 
 function scrollTick() {
-  if (!planningScroll.value) return
+  if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
+    stopAutoScroll()
+    return
+  }
+  
   planningScroll.value.scrollLeft += currentScrollX
   planningScroll.value.scrollTop += currentScrollY
+  
+  // Continuer l'animation
+  autoScrollTimer = requestAnimationFrame(scrollTick)
 }
 
 function handleAutoScroll(e: MouseEvent) {
@@ -1808,28 +1814,31 @@ function handleAutoScroll(e: MouseEvent) {
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
   
+  const prevScrollX = currentScrollX
+  const prevScrollY = currentScrollY
+  
   currentScrollX = 0
   currentScrollY = 0
   
-  // Gauche/Droite - 25px toutes les 50ms = 500px/sec
+  // Gauche/Droite - petits incréments pour fluidité RAF
   if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED_X
   else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED_X
   
-  // Haut/Bas - 10px toutes les 50ms = 200px/sec
+  // Haut/Bas - petits incréments pour fluidité RAF
   if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED_Y
   else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED_Y
   
-  // Démarrer/arrêter le timer avec intervalle plus court pour fluidité
+  // Démarrer RAF si nécessaire
   if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
-    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
-  } else if (currentScrollX === 0 && currentScrollY === 0) {
+    autoScrollTimer = requestAnimationFrame(scrollTick)
+  } else if (currentScrollX === 0 && currentScrollY === 0 && (prevScrollX !== 0 || prevScrollY !== 0)) {
     stopAutoScroll()
   }
 }
 
 function stopAutoScroll() {
   if (autoScrollTimer) {
-    clearInterval(autoScrollTimer)
+    cancelAnimationFrame(autoScrollTimer)
     autoScrollTimer = null
   }
   currentScrollX = 0
