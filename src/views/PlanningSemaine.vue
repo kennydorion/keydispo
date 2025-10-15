@@ -1792,14 +1792,8 @@ let lastMouseEvent: MouseEvent | null = null
 let lastCellCheckTime = 0
 let lastDetectedCell = ''
 let lastActualScrollTime = 0
-const CELL_CHECK_INTERVAL = 100 // ms - vérifie la cellule toutes les 100ms max
-const SCROLL_APPLY_INTERVAL = 50 // ms - applique le scroll toutes les 50ms pour éviter reflow constant
-
-// Debug performance
-let frameCount = 0
-let lastFpsLog = 0
-let scrollCallCount = 0
-let cellCheckCount = 0
+const CELL_CHECK_INTERVAL = 100 // ms
+const SCROLL_APPLY_INTERVAL = 50 // ms - throttle pour réduire reflows
 
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
@@ -1809,38 +1803,20 @@ function scrollAnimationLoop() {
   }
 
   const now = performance.now()
-  frameCount++
   
-  // Log FPS toutes les secondes
-  if (now - lastFpsLog > 1000) {
-    console.log(`[Auto-scroll] FPS: ${frameCount}, Scrolls: ${scrollCallCount}, Cell checks: ${cellCheckCount}`)
-    frameCount = 0
-    scrollCallCount = 0
-    cellCheckCount = 0
-    lastFpsLog = now
-  }
-  
-  // Throttle AGRESSIF du scroll pour éviter 60 reflows/sec
+  // Throttle du scroll pour éviter 60 reflows/sec sur DOM massif
   if (now - lastActualScrollTime >= SCROLL_APPLY_INTERVAL) {
+    const timeSinceLastScroll = now - lastActualScrollTime
     lastActualScrollTime = now
-    const scrollStart = performance.now()
-    // Accumuler le scroll pour compenser le throttling
-    const scrollAmount = (now - lastActualScrollTime + SCROLL_APPLY_INTERVAL) / 16.67 // frames perdues
-    planningScroll.value.scrollLeft += currentScrollX * Math.min(scrollAmount, 3)
-    planningScroll.value.scrollTop += currentScrollY * Math.min(scrollAmount, 3)
-    const scrollTime = performance.now() - scrollStart
-    scrollCallCount++
-    
-    if (scrollTime > 5) {
-      console.warn(`[Auto-scroll] scroll lent: ${scrollTime.toFixed(2)}ms`)
-    }
+    // Compenser le throttling en multipliant par frames perdues
+    const compensation = Math.min(timeSinceLastScroll / 16.67, 3)
+    planningScroll.value.scrollLeft += currentScrollX * compensation
+    planningScroll.value.scrollTop += currentScrollY * compensation
   }
   
-  // Throttle de la détection de cellule avec timestamp (c'est ça qui est lourd)
+  // Throttle de la détection de cellule
   if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
     lastCellCheckTime = now
-    cellCheckCount++
-    const checkStart = performance.now()
     
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
     if (elementAtCursor) {
@@ -1851,20 +1827,10 @@ function scrollAnimationLoop() {
           lastDetectedCell = cellId
           const [collaborateurId, date] = cellId.split('_')
           if (collaborateurId && date) {
-            const enterStart = performance.now()
             handleCellMouseEnter(collaborateurId, date)
-            const enterTime = performance.now() - enterStart
-            if (enterTime > 10) {
-              console.warn(`[Auto-scroll] handleCellMouseEnter() lent: ${enterTime.toFixed(2)}ms`)
-            }
           }
         }
       }
-    }
-    
-    const checkTime = performance.now() - checkStart
-    if (checkTime > 10) {
-      console.warn(`[Auto-scroll] Cell check lent: ${checkTime.toFixed(2)}ms`)
     }
   }
   
@@ -1942,12 +1908,6 @@ function stopAutoScroll() {
   lastCellCheckTime = 0
   lastActualScrollTime = 0
   lastDetectedCell = ''
-  // Reset debug counters
-  frameCount = 0
-  scrollCallCount = 0
-  cellCheckCount = 0
-  lastFpsLog = 0
-  console.log('[Auto-scroll] Stopped')
 }
 
 function onGridMouseMove(e: MouseEvent) {
