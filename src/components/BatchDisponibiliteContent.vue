@@ -132,17 +132,30 @@ const localEditingDispo = computed({
 </script>
 
 <style scoped>
-/* Réutiliser les mêmes styles que DispoEditContent */
+/* === TOUS LES STYLES DE DispoEditContent POUR UNIFORMITÉ COMPLÈTE === */
+:root { --footer-height:72px; }
+
 .dispo-modal-redesigned {
+  width: min(92vw, 560px);
+  max-height: 90vh;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px -8px rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  max-height: inherit;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .dispo-modal-redesigned * {
   box-sizing: border-box;
+  max-width: 100%;
+}
+
+.dispo-modal-redesigned input,
+.dispo-modal-redesigned select,
+.dispo-modal-redesigned textarea {
   max-width: 100%;
 }
 
@@ -152,6 +165,18 @@ const localEditingDispo = computed({
   padding: 1rem 1.5rem;
   color: white;
   flex-shrink: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.header-section::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: transparent;
 }
 
 .header-background {
@@ -220,41 +245,199 @@ const localEditingDispo = computed({
   flex: 1;
   overflow-y: auto;
   padding: 1rem 1rem 0.75rem;
-  background: #f8f9fa;
+  background: #fafbfc;
+  scrollbar-width: thin;
 }
 
-.section-card {
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+.section-card { 
+  background:#fff; 
+  border:1px solid var(--gray-200); 
+  border-radius:10px; 
+  margin-bottom:1rem; 
+  overflow:hidden; 
+}
+
+.edit-card {
+  border: 1.5px solid var(--success-color);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.01) 100%);
+}
+
+.edit-card .section-header {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.04) 100%);
+  border-bottom-color: rgba(16, 185, 129, 0.15);
 }
 
 .section-header {
-  padding: 1rem 1.25rem;
-  background: linear-gradient(to bottom, #fafbfc, #f3f4f6);
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--gray-800);
 }
 
 .form-content {
-  padding: 1.25rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .form-actions {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gray-200);
+  margin-top: 1rem;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.form-actions .va-button {
+  min-width: 120px;
+  font-weight: 600;
+}
+
+.form-actions .va-button--primary,
+.form-actions .va-button--success {
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%) !important;
+  border-color: #388e3c !important;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.25) !important;
+}
+
+.form-actions .va-button--primary:hover,
+.form-actions .va-button--success:hover {
+  background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3) !important;
+}
+
+.form-actions .va-button--secondary {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.25) !important;
+}
+
+.form-actions .va-button--secondary:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
+}
+
+/* === TRANSITIONS === */
+.form-appear-enter-active,
+.form-appear-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-appear-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
+.form-appear-leave-to {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.98);
+}
+
+.footer-actions { 
+  display:flex; 
+  gap:0.75rem; 
+  justify-content:flex-end; 
+  padding:0.9rem 1.25rem; 
+  background:#fff; 
+  border-top:1px solid var(--gray-200); 
+  flex-shrink:0; 
+  box-shadow:0 -2px 6px -2px rgba(0,0,0,0.08); 
+}
+
+.cancel-button {
+  min-width: 120px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.25) !important;
+}
+
+.cancel-button:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dispo-modal-redesigned { 
+    width:100vw; 
+    max-width:100%; 
+    border-radius:0; 
+    height:100dvh; 
+    max-height:100dvh; 
+    height:100svh;
+    max-height:100svh; 
+    display:flex; 
+    flex-direction:column; 
+    border:0; 
+    box-shadow:none; 
+    position:relative;
+  }
+  
+  .header-section { 
+    position:sticky; 
+    top:0; 
+    z-index:10; 
+  }
+  
+  .modal-body { 
+    flex:1; 
+    padding:0.85rem 0.85rem 0.5rem; 
+    overflow-y:auto; 
+    -webkit-overflow-scrolling:touch; 
+    overscroll-behavior:contain; 
+    touch-action:pan-y; 
+    min-height:0; 
+    padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom) + 1rem);
+  }
+  
+  .footer-actions { 
+    position:fixed; 
+    left:0; 
+    right:0; 
+    bottom:0; 
+    padding:0.75rem env(safe-area-inset-right) calc(0.75rem + env(safe-area-inset-bottom)) env(safe-area-inset-left); 
+    background:#fff; 
+    z-index:1000; 
+    backdrop-filter: blur(8px); 
+    -webkit-backdrop-filter: blur(8px); 
+    border-top:1px solid rgba(0,0,0,0.12);
+    box-shadow:0 -2px 10px -2px rgba(0,0,0,0.25);
+    border-radius:0; 
+  }
+  
+  .collaborateur-avatar { 
+    width:36px; 
+    height:36px; 
+    font-size:1rem; 
+  }
+  
+  .cancel-button { 
+    flex:1; 
+    min-width:auto; 
+  }
 }
 </style>
