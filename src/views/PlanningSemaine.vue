@@ -806,8 +806,9 @@ const dragStartCell = ref<string | null>(null)
 
 // Auto-scroll pendant la sélection
 let autoScrollInterval: number | null = null
-const EDGE_SCROLL_ZONE = 80 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 10 // pixels par frame
+const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
+const SCROLL_SPEED_BASE = 25 // pixels par frame - augmenté pour un scroll plus rapide
+const SCROLL_SPEED_MAX = 50 // vitesse maximale quand on est tout près du bord
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1807,26 +1808,31 @@ function handleAutoScroll(e: MouseEvent) {
   let scrollX = 0
   let scrollY = 0
   
-  // Scroll horizontal
+  // Scroll horizontal avec accélération progressive
   if (distanceFromLeft < EDGE_SCROLL_ZONE && distanceFromLeft > 0) {
     // Proche du bord gauche - scroll vers la gauche
     const intensity = 1 - (distanceFromLeft / EDGE_SCROLL_ZONE)
-    scrollX = -SCROLL_SPEED_BASE * intensity
+    // Utiliser une courbe exponentielle pour une accélération plus naturelle
+    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
+    scrollX = -speed
   } else if (distanceFromRight < EDGE_SCROLL_ZONE && distanceFromRight > 0) {
     // Proche du bord droit - scroll vers la droite
     const intensity = 1 - (distanceFromRight / EDGE_SCROLL_ZONE)
-    scrollX = SCROLL_SPEED_BASE * intensity
+    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
+    scrollX = speed
   }
   
-  // Scroll vertical
+  // Scroll vertical avec accélération progressive
   if (distanceFromTop < EDGE_SCROLL_ZONE && distanceFromTop > 0) {
     // Proche du bord haut - scroll vers le haut
     const intensity = 1 - (distanceFromTop / EDGE_SCROLL_ZONE)
-    scrollY = -SCROLL_SPEED_BASE * intensity
+    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
+    scrollY = -speed
   } else if (distanceFromBottom < EDGE_SCROLL_ZONE && distanceFromBottom > 0) {
     // Proche du bord bas - scroll vers le bas
     const intensity = 1 - (distanceFromBottom / EDGE_SCROLL_ZONE)
-    scrollY = SCROLL_SPEED_BASE * intensity
+    const speed = SCROLL_SPEED_BASE + (SCROLL_SPEED_MAX - SCROLL_SPEED_BASE) * Math.pow(intensity, 2)
+    scrollY = speed
   }
   
   // Démarrer ou arrêter l'auto-scroll selon si on est dans une zone
