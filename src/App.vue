@@ -79,9 +79,12 @@ onMounted(() => {
 #app {
   width: 100%;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--dark-background);
   color: var(--dark-text-primary);
   font-family: var(--kd-font);
+  overflow: hidden;
 }
 
 /* Interface collaborateur - thème plus clair */
@@ -98,17 +101,17 @@ onMounted(() => {
 
 .app-main {
   box-sizing: border-box;
-  min-height: calc(100vh - 64px);
+  flex: 1;
+  min-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
-  .app-main { min-height: calc(100vh - 56px); padding: 0; }
-  .app-main.no-nav { min-height: 100vh; }
+  .app-main { padding: 0; }
 }
 
 .app-main.no-nav {
-  min-height: 100vh;
   padding: 0;
 }
 

@@ -8028,7 +8028,7 @@ onUnmounted(() => {
 .add-line-btn { justify-self: end; }
 .add-line-btn { grid-column: 1 / -1; width: 100%; }
 .planning-app {
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: #f8f9fa;
