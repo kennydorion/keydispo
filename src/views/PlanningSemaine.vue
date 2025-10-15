@@ -1716,16 +1716,14 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
     classes.push('row-hovered')
   }
   
-  // Ajouter classe pour dimanche (pour supprimer bordure droite)
-  // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
+  // Ajouter classe pour week-end (samedi/dimanche)
+  // Utiliser la propriété dayOfWeek déjà calculée lors de la génération des jours
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
-    const date = new Date(day.date + 'T12:00:00')
-    const dayOfWeek = date.getDay()
     
-    if (dayOfWeek === 0) { // dimanche = 0
+    if (day.dayOfWeek === 0) { // dimanche
       classes.push('sunday')
-    } else if (dayOfWeek === 6) { // samedi = 6
+    } else if (day.dayOfWeek === 6) { // samedi
       classes.push('saturday')
     }
   }
@@ -1746,15 +1744,13 @@ function getDayHeaderClasses(dayIndex: number) {
   }
   
   // Ajouter classe pour dimanche et samedi
-  // Utiliser l'index absolu dans visibleDays pour obtenir la vraie date
+  // Utiliser la propriété dayOfWeek déjà calculée lors de la génération des jours
   if (dayIndex < visibleDays.value.length) {
     const day = visibleDays.value[dayIndex]
-    const date = new Date(day.date + 'T12:00:00')
-    const dayOfWeek = date.getDay()
     
-    if (dayOfWeek === 0) { // dimanche = 0
+    if (day.dayOfWeek === 0) { // dimanche
       classes.push('sunday')
-    } else if (dayOfWeek === 6) { // samedi = 6
+    } else if (day.dayOfWeek === 6) { // samedi
       classes.push('saturday')
     }
   }
@@ -5249,7 +5245,8 @@ function generateInitialDays() {
       name: cursor.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
       dayNumber: cursor.getDate(),
       isToday: dateStr === todayStr,
-      isWeekend: cursor.getDay() === 0 || cursor.getDay() === 6
+      isWeekend: cursor.getDay() === 0 || cursor.getDay() === 6,
+      dayOfWeek: cursor.getDay() // 0=dimanche, 6=samedi
     })
     cursor.setDate(cursor.getDate() + 1)
   }
@@ -5628,7 +5625,8 @@ async function appendDays(count: number) {
       name: date.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
       dayNumber: date.getDate(),
       isToday: dateStr === todayStr,
-      isWeekend: date.getDay() === 0 || date.getDay() === 6
+      isWeekend: date.getDay() === 0 || date.getDay() === 6,
+      dayOfWeek: date.getDay() // 0=dimanche, 6=samedi
     })
   }
   // Recalibrer la hauteur de header (si contenu wrap) et buffer
@@ -5653,7 +5651,8 @@ async function prependDays(count: number) {
       name: date.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
       dayNumber: date.getDate(),
       isToday: dateStr === todayStr,
-      isWeekend: date.getDay() === 0 || date.getDay() === 6
+      isWeekend: date.getDay() === 0 || date.getDay() === 6,
+      dayOfWeek: date.getDay() // 0=dimanche, 6=samedi
     })
   }
   loadedDays.value = [...toPrepend, ...loadedDays.value]
