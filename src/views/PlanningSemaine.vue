@@ -5767,6 +5767,14 @@ function handleCellClickNew(collaborateurId: string, date: string, event: MouseE
     event.preventDefault()
     event.stopPropagation()
     
+    // IMPORTANT: Si on vient de finir un drag, ne pas re-toggler la cellule
+    // (elle a déjà été togglée par handleCellMouseDown)
+    if (isDraggingSelection.value) {
+      isDraggingSelection.value = false
+      dragStartCell.value = null
+      return
+    }
+    
     
     
     // RESTRICTION ULTRA-STRICTE: interdire toute sélection sur un autre collaborateur
