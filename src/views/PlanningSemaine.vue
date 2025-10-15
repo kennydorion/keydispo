@@ -1812,7 +1812,8 @@ function scrollTick() {
 }
 
 function handleAutoScroll(e: MouseEvent) {
-  if (!isDraggingSelection.value || !planningScroll.value) {
+  // Auto-scroll actif dès que le mode sélection est activé (Cmd pressé), même sans drag
+  if (!isSelectionMode.value || !planningScroll.value) {
     stopAutoScroll()
     return
   }
@@ -1869,8 +1870,8 @@ function onGridMouseMove(e: MouseEvent) {
   _lastPointerX = e.clientX
   _lastPointerY = e.clientY
   
-  // Auto-scroll simple pendant la sélection
-  if (isDraggingSelection.value) {
+  // Auto-scroll actif dès que le mode sélection est activé (Cmd pressé)
+  if (isSelectionMode.value) {
     handleAutoScroll(e)
   }
   
