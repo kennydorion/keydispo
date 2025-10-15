@@ -1787,9 +1787,10 @@ let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 const EDGE_ZONE = 100
-// Vitesses inspirées de Handsontable : 50px horizontal, 20px vertical
-const SCROLL_SPEED_X = 50
-const SCROLL_SPEED_Y = 20
+// Vitesses optimisées : intervalle 50ms (20fps) avec incréments plus petits pour fluidité
+const SCROLL_SPEED_X = 25
+const SCROLL_SPEED_Y = 10
+const SCROLL_INTERVAL = 50 // 20 fois par seconde pour plus de fluidité
 
 function scrollTick() {
   if (!planningScroll.value) return
@@ -1810,17 +1811,17 @@ function handleAutoScroll(e: MouseEvent) {
   currentScrollX = 0
   currentScrollY = 0
   
-  // Gauche/Droite - vitesse augmentée à 50px comme Handsontable
+  // Gauche/Droite - 25px toutes les 50ms = 500px/sec
   if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED_X
   else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED_X
   
-  // Haut/Bas - vitesse augmentée à 20px comme Handsontable
+  // Haut/Bas - 10px toutes les 50ms = 200px/sec
   if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED_Y
   else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED_Y
   
-  // Démarrer/arrêter le timer
+  // Démarrer/arrêter le timer avec intervalle plus court pour fluidité
   if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
-    autoScrollTimer = window.setInterval(scrollTick, 100)
+    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
   } else if (currentScrollX === 0 && currentScrollY === 0) {
     stopAutoScroll()
   }
