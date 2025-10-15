@@ -804,6 +804,11 @@ const isSelectionMode = ref(false)
 const isDraggingSelection = ref(false)
 const dragStartCell = ref<string | null>(null)
 
+// Auto-scroll pendant la sélection
+let autoScrollInterval: number | null = null
+const EDGE_SCROLL_ZONE = 80 // pixels depuis le bord pour déclencher l'auto-scroll
+const SCROLL_SPEED_BASE = 10 // pixels par frame
+
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
   // Sur desktop, activer le mode sélection avec Ctrl/Cmd
@@ -1779,12 +1784,100 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
+// Fonction pour gérer l'auto-scroll pendant la sélection
+function handleAutoScroll(e: MouseEvent) {
+  if (!isDraggingSelection.value || !planningScroll.value) {
+    stopAutoScroll()
+    return
+  }
+
+  const scrollContainer = planningScroll.value
+  const rect = scrollContainer.getBoundingClientRect()
+  
+  // Position de la souris relative au conteneur
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+  
+  // Calculer les distances par rapport aux bords
+  const distanceFromLeft = mouseX
+  const distanceFromRight = rect.width - mouseX
+  const distanceFromTop = mouseY
+  const distanceFromBottom = rect.height - mouseY
+  
+  let scrollX = 0
+  let scrollY = 0
+  
+  // Scroll horizontal
+  if (distanceFromLeft < EDGE_SCROLL_ZONE && distanceFromLeft > 0) {
+    // Proche du bord gauche - scroll vers la gauche
+    const intensity = 1 - (distanceFromLeft / EDGE_SCROLL_ZONE)
+    scrollX = -SCROLL_SPEED_BASE * intensity
+  } else if (distanceFromRight < EDGE_SCROLL_ZONE && distanceFromRight > 0) {
+    // Proche du bord droit - scroll vers la droite
+    const intensity = 1 - (distanceFromRight / EDGE_SCROLL_ZONE)
+    scrollX = SCROLL_SPEED_BASE * intensity
+  }
+  
+  // Scroll vertical
+  if (distanceFromTop < EDGE_SCROLL_ZONE && distanceFromTop > 0) {
+    // Proche du bord haut - scroll vers le haut
+    const intensity = 1 - (distanceFromTop / EDGE_SCROLL_ZONE)
+    scrollY = -SCROLL_SPEED_BASE * intensity
+  } else if (distanceFromBottom < EDGE_SCROLL_ZONE && distanceFromBottom > 0) {
+    // Proche du bord bas - scroll vers le bas
+    const intensity = 1 - (distanceFromBottom / EDGE_SCROLL_ZONE)
+    scrollY = SCROLL_SPEED_BASE * intensity
+  }
+  
+  // Démarrer ou arrêter l'auto-scroll selon si on est dans une zone
+  if (scrollX !== 0 || scrollY !== 0) {
+    if (!autoScrollInterval) {
+      autoScrollInterval = window.setInterval(() => {
+        if (planningScroll.value) {
+          planningScroll.value.scrollLeft += scrollX
+          planningScroll.value.scrollTop += scrollY
+          
+          // Déclencher manuellement l'événement mouseenter pour la cellule sous le curseur
+          // Cela permet de continuer la sélection pendant le scroll
+          const elementAtCursor = document.elementFromPoint(e.clientX, e.clientY)
+          if (elementAtCursor) {
+            const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
+            if (cellElement) {
+              const cellId = cellElement.getAttribute('data-cell-id')
+              if (cellId) {
+                const [collaborateurId, date] = cellId.split('_')
+                if (collaborateurId && date) {
+                  handleCellMouseEnter(collaborateurId, date)
+                }
+              }
+            }
+          }
+        }
+      }, 16) // ~60fps
+    }
+  } else {
+    stopAutoScroll()
+  }
+}
+
+function stopAutoScroll() {
+  if (autoScrollInterval !== null) {
+    clearInterval(autoScrollInterval)
+    autoScrollInterval = null
+  }
+}
+
 function onGridMouseMove(e: MouseEvent) {
   const target = e.target as HTMLElement
   
   // Capturer la position actuelle de la souris pour le hover après scroll
   _lastPointerX = e.clientX
   _lastPointerY = e.clientY
+  
+  // Gérer l'auto-scroll pendant la sélection
+  if (isDraggingSelection.value) {
+    handleAutoScroll(e)
+  }
   
   // Pendant le scroll rapide ou en cours de chargement, éviter les modifications DOM
   if (isScrollingFast.value || isBusy.value) {
@@ -2575,6 +2668,9 @@ function clearAllHighlights() {
 
 function onGridMouseLeave() {
   clearAllHighlights()
+  
+  // Arrêter l'auto-scroll si on sort de la grille
+  stopAutoScroll()
   
   // Nettoyer les attributs de column hover ET row hover
   if (planningScroll.value) {
@@ -5814,6 +5910,9 @@ function handleCellMouseUp() {
     isDraggingSelection.value = false
     dragStartCell.value = null
     
+    // Arrêter l'auto-scroll
+    stopAutoScroll()
+    
     // VALIDATION FINALE: S'assurer que la sélection respecte les règles
     if (!validateSingleCollaboratorSelection()) {
       
@@ -5834,6 +5933,9 @@ function handleGlobalMouseUp() {
   if (isDraggingSelection.value) {
     isDraggingSelection.value = false
     dragStartCell.value = null
+    
+    // Arrêter l'auto-scroll
+    stopAutoScroll()
     
     
     // Si on est en mode collaborateur, on vide aussi la sélection par sécurité
