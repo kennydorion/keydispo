@@ -4296,17 +4296,14 @@ function clearAllFilters() {
       recomputeWindow(scroller)
       recomputeRowWindow(scroller)
       
-      // Plus besoin de naviguer vers aujourd'hui - c'est déjà fait au chargement initial
-      // setTimeout(() => {
-      //   goToToday()
-      // }, 200)
+      // Naviguer vers aujourd'hui après réinitialisation
+      setTimeout(() => {
+        goToToday()
+      }, 200)
     } else {
       // Sans scroller, force quand même le recalcul
       recomputeRowWindow(null as any)
     }
-    
-    // Plus besoin de naviguer vers aujourd'hui - c'est déjà fait au chargement initial
-    // goToToday()
     
     // Double vérification après un court délai
     setTimeout(() => {
