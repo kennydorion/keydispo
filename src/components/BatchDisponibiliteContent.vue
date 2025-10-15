@@ -26,7 +26,24 @@
 
     <!-- CORPS SCROLLABLE -->
     <div class="modal-body" ref="modalBodyRef">
-      <!-- Formulaire direct sans liste - toujours visible pour le batch -->
+      <!-- Section info pour le mode batch -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <va-icon name="info" color="primary" />
+            <span>Ajout en lot</span>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-illustration">
+            <va-icon name="event_available" size="48px" color="primary" />
+          </div>
+          <h3 class="empty-title">{{ formattedDate }}</h3>
+          <p class="empty-subtitle">La disponibilité sera créée pour toutes les dates sélectionnées</p>
+        </div>
+      </div>
+
+      <!-- Formulaire direct - toujours visible pour le batch -->
       <Transition name="form-appear" mode="out-in">
         <div key="edit-form" class="section-card edit-card">
           <div class="section-header">
@@ -294,6 +311,31 @@ const localEditingDispo = computed({
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--gray-800);
+}
+
+/* === ÉTAT VIDE === */
+.empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.empty-illustration {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin: 0.5rem 0 0.25rem 0;
+}
+
+.empty-subtitle {
+  color: var(--gray-500);
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .form-content {
