@@ -1789,8 +1789,9 @@ let _debounceTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
-let frameCounter = 0
+let lastCellCheckTime = 0
 let lastDetectedCell = ''
+const CELL_CHECK_INTERVAL = 50 // ms - vérifie la cellule toutes les 50ms max
 
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
@@ -1799,14 +1800,14 @@ function scrollAnimationLoop() {
     return
   }
 
-  // Appliquer le scroll
+  // Appliquer le scroll (ultra rapide, pas de DOM query)
   planningScroll.value.scrollLeft += currentScrollX
   planningScroll.value.scrollTop += currentScrollY
   
-  frameCounter++
-  
-  // Détecter la cellule seulement toutes les 3 frames pour réduire la charge
-  if (frameCounter % 3 === 0 && lastMouseEvent && isDraggingSelection.value) {
+  // Throttle de la détection de cellule avec timestamp
+  const now = performance.now()
+  if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
+    lastCellCheckTime = now
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
     if (elementAtCursor) {
       const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
@@ -1894,7 +1895,7 @@ function stopAutoScroll() {
   currentScrollX = 0
   currentScrollY = 0
   lastMouseEvent = null
-  frameCounter = 0
+  lastCellCheckTime = 0
   lastDetectedCell = ''
 }
 
