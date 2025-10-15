@@ -1327,7 +1327,7 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
 }
 
 const isMobileView = ref(false)
-const dayWidthRef = ref(124)
+const dayWidthRef = ref(100) // Réduit de 124px à 100px pour afficher plus de jours
 // Largeur colonne collaborateurs (desktop) réduite
 const stickyLeftWidthRef = ref(190)
 const rowHeightRef = ref(65) // Réduit à 65px pour une meilleure proportion
@@ -1357,7 +1357,7 @@ function computeResponsive() {
   
   // Calculer les nouvelles dimensions selon la taille d'écran
   let sticky = 240
-  let day = 124
+  let day = 100 // Réduit de 124px à 100px pour afficher plus de jours sur desktop
   let rowH = 65 // Réduit à 65px pour une meilleure proportion
   if (w <= 390) { // iPhone 12 width
   sticky = 100; day = Math.max(54, Math.min(74, Math.floor((w - sticky - 8)/5))); rowH = 60 // Colonne plus large sur très petit écran
