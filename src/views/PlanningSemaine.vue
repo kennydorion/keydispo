@@ -9457,8 +9457,20 @@ onUnmounted(() => {
   background-color: rgba(76, 175, 80, 0.12) !important;
 }
 
+/* FORCE sur weekend - ordre et spécificité max */
+.excel-cell.day-6.dom-column-hovered,
+.excel-cell.day-0.dom-column-hovered {
+  background-color: rgba(76, 175, 80, 0.12) !important;
+}
+
 /* Highlight de ligne via DOM direct (plus rapide que Vue) */
 .dom-row-hovered {
+  background-color: rgba(76, 175, 80, 0.16) !important;
+}
+
+/* FORCE sur weekend - ordre et spécificité max */
+.excel-cell.day-6.dom-row-hovered,
+.excel-cell.day-0.dom-row-hovered {
   background-color: rgba(76, 175, 80, 0.16) !important;
 }
 
