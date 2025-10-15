@@ -1,18 +1,14 @@
 <template>
   <va-modal
+    class="dispo-modal-center"
     v-model="isVisible"
     :hide-default-actions="true"
-    :fullscreen="isMobile"
-    :max-width="isMobile ? '100vw' : '600px'"
-    :max-height="isMobile ? '100vh' : '85vh'"
-    :mobile-fullscreen="true"
-    :size="isMobile ? 'large' : 'medium'"
+    :fullscreen="false"
+    max-width="600px"
     no-padding
-    class="batch-modal"
-    :class="{ 'batch-modal--mobile': isMobile, 'batch-modal--fullscreen': isMobile }"
-  @before-open="modalA11y.onBeforeOpen"
-  @open="modalA11y.onOpen"
-  @close="() => { modalA11y.onClose(); handleClose() }"
+    @before-open="modalA11y.onBeforeOpen"
+    @open="modalA11y.onOpen"
+    @close="() => { modalA11y.onClose(); handleClose() }"
   >
     <DispoEditContent
       :selected-cell="mockSelectedCell"
@@ -84,9 +80,6 @@ import {
   mapUITimeKindToRTDB,
   addOneDay,
 } from '@/services/dispoFormOptions'
-
-// Configuration responsive
-const isMobile = ref(false)
 
 // Interface plus permissive pour le collaborateur
 interface CollaborateurBatch {
@@ -358,21 +351,6 @@ async function fetchLieuxExistants() {
 // Lifecycle
 onMounted(() => {
   fetchLieuxExistants()
-  
-  // Détecter le mode mobile
-  const checkMobile = () => {
-    isMobile.value = window.innerWidth < 768
-  }
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  
-  // Nettoyer l'event listener à la destruction
-  const cleanup = () => {
-    window.removeEventListener('resize', checkMobile)
-  }
-  
-  // Retourner la fonction de nettoyage pour onBeforeUnmount implicite
-  return cleanup
 })
 
 // Watchers
@@ -384,73 +362,5 @@ watch(() => props.selectedCollaborateur, (newCollab) => {
 </script>
 
 <style scoped>
-/* === CSS SIMPLIFIÉ POUR RESPECTER DispoEditContent === */
-
-/* Styles de base pour le modal */
-.batch-modal {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(5px);
-}
-
-/* Mobile : Plein écran comme défini dans DispoEditContent */
-@media (max-width: 768px) {
-  :deep(.batch-modal--mobile .va-modal__container) {
-    padding: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    margin: 0 !important;
-  }
-
-  :deep(.batch-modal--mobile .va-modal__dialog) {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-  }
-
-  :deep(.batch-modal--mobile .va-modal__content) {
-    width: 100% !important;
-    height: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-}
-
-/* Desktop : Taille normale comme défini dans DispoEditContent */
-@media (min-width: 769px) {
-  :deep(.batch-modal:not(.batch-modal--mobile) .va-modal__container) {
-    padding: 10px !important;
-  }
-
-  :deep(.batch-modal:not(.batch-modal--mobile) .va-modal__dialog) {
-    max-width: 600px !important;
-    max-height: 85vh !important;
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-  }
-
-  :deep(.batch-modal:not(.batch-modal--mobile) .va-modal__content) {
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-}
-
-/* Laisser DispoEditContent gérer sa propre responsivité */
-:deep(.dispo-modal-redesigned) {
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  margin: 0 !important;
-}
+/* Styles gérés par dispo-modal-center dans PlanningSemaine.vue */
 </style>
