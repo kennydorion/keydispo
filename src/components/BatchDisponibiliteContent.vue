@@ -1,5 +1,5 @@
 <template>
-  <div class="dispo-modal-redesigned batch-mode" ref="modalRootRef">
+  <div v-if="selectedCollaborateur" class="dispo-modal-redesigned batch-mode" ref="modalRootRef">
     <!-- HEADER -->
     <div class="header-section" :style="{ '--collaborateur-color': collaborateurColor }">
       <div class="header-background"></div>
@@ -23,46 +23,53 @@
 
     <!-- CORPS SCROLLABLE -->
     <div class="modal-body" ref="modalBodyRef">
-      <!-- Formulaire direct sans liste -->
-      <div class="section-card edit-card">
-        <div class="section-header">
-          <div class="section-title">
-            <va-icon name="add_circle" color="success" />
-            <span>Nouvelle disponibilité</span>
+      <!-- Formulaire direct sans liste - toujours visible pour le batch -->
+      <Transition name="form-appear" mode="out-in">
+        <div key="edit-form" class="section-card edit-card">
+          <div class="section-header">
+            <div class="section-title">
+              <va-icon name="add_circle" color="success" />
+              <span>Nouvelle disponibilité</span>
+            </div>
+          </div>
+          <div class="form-content">
+            <DispoForm
+              v-model="localEditingDispo"
+              :type-options="typeOptions"
+              :time-kind-options="timeKindOptionsFiltered"
+              :slot-options="slotOptions"
+              :lieux-options="lieuxOptionsStrings"
+              :get-type-icon="getTypeIcon"
+              :get-time-kind-icon="getTimeKindIcon"
+              @create-lieu="$emit('create-lieu', $event)"
+            />
+            <div class="form-actions">
+              <!-- Bouton principal unique -->
+              <va-button 
+                @click="$emit('save-dispos')" 
+                color="success" 
+                size="large" 
+                :disabled="!isEditFormValid"
+                icon="add"
+              >
+                Créer les disponibilités
+              </va-button>
+            </div>
           </div>
         </div>
-        <div class="form-content">
-          <DispoForm
-            v-model="localEditingDispo"
-            :type-options="typeOptions"
-            :time-kind-options="timeKindOptionsFiltered"
-            :slot-options="slotOptions"
-            :lieux-options="lieuxOptionsStrings"
-            :get-type-icon="getTypeIcon"
-            :get-time-kind-icon="getTimeKindIcon"
-            @create-lieu="$emit('create-lieu', $event)"
-          />
-          <div class="form-actions">
-            <va-button 
-              @click="$emit('cancel-modal')" 
-              color="secondary" 
-              size="large" 
-              preset="secondary"
-            >
-              Annuler
-            </va-button>
-            <va-button 
-              @click="$emit('save-dispos')" 
-              color="success" 
-              size="large" 
-              :disabled="!isEditFormValid"
-              icon="add"
-            >
-              Créer les disponibilités
-            </va-button>
-          </div>
-        </div>
-      </div>
+      </Transition>
+    </div>
+
+    <!-- FOOTER SIMPLIFIÉ (comme DispoEditContent) -->
+    <div class="footer-actions" ref="footerRef">
+      <va-button 
+        color="secondary" 
+        size="large" 
+        @click="$emit('cancel-modal')" 
+        class="cancel-button"
+      >
+        Fermer
+      </va-button>
     </div>
   </div>
 </template>
@@ -107,6 +114,7 @@ const emit = defineEmits<{
 
 const modalRootRef = ref<HTMLElement | null>(null)
 const modalBodyRef = ref<HTMLElement | null>(null)
+const footerRef = ref<HTMLElement | null>(null)
 
 // Créer un ref local pour v-model de DispoForm
 const localEditingDispo = computed({
