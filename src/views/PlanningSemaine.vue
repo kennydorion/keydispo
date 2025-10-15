@@ -1820,16 +1820,14 @@ function scrollAnimationLoop() {
   
   // Appliquer le scroll à chaque frame pour fluidité maximale
   const scrollStart = performance.now()
-  planningScroll.value.scrollBy({
-    left: currentScrollX,
-    top: currentScrollY,
-    behavior: 'instant'
-  })
+  // scrollLeft/scrollTop direct est plus rapide que scrollBy() pour micro-scrolls
+  planningScroll.value.scrollLeft += currentScrollX
+  planningScroll.value.scrollTop += currentScrollY
   const scrollTime = performance.now() - scrollStart
   scrollCallCount++
   
   if (scrollTime > 5) {
-    console.warn(`[Auto-scroll] scrollBy() lent: ${scrollTime.toFixed(2)}ms`)
+    console.warn(`[Auto-scroll] scroll lent: ${scrollTime.toFixed(2)}ms`)
   }
   
   // Throttle de la détection de cellule avec timestamp (c'est ça qui est lourd)
