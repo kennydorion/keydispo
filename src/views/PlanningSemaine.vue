@@ -1789,6 +1789,8 @@ let _debounceTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
+let frameCounter = 0
+let lastDetectedCell = ''
 
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
@@ -1801,14 +1803,17 @@ function scrollAnimationLoop() {
   planningScroll.value.scrollLeft += currentScrollX
   planningScroll.value.scrollTop += currentScrollY
   
-  // Détecter la cellule sous le curseur et continuer la sélection
-  if (lastMouseEvent && isDraggingSelection.value) {
+  frameCounter++
+  
+  // Détecter la cellule seulement toutes les 3 frames pour réduire la charge
+  if (frameCounter % 3 === 0 && lastMouseEvent && isDraggingSelection.value) {
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
     if (elementAtCursor) {
       const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
       if (cellElement) {
         const cellId = cellElement.getAttribute('data-cell-id')
-        if (cellId) {
+        if (cellId && cellId !== lastDetectedCell) {
+          lastDetectedCell = cellId
           const [collaborateurId, date] = cellId.split('_')
           if (collaborateurId && date) {
             handleCellMouseEnter(collaborateurId, date)
@@ -1889,6 +1894,8 @@ function stopAutoScroll() {
   currentScrollX = 0
   currentScrollY = 0
   lastMouseEvent = null
+  frameCounter = 0
+  lastDetectedCell = ''
 }
 
 function onGridMouseMove(e: MouseEvent) {
