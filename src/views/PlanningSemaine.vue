@@ -807,8 +807,8 @@ const dragStartCell = ref<string | null>(null)
 // Auto-scroll pendant la sélection
 let autoScrollAnimationFrame: number | null = null
 const EDGE_SCROLL_ZONE = 100 // pixels depuis le bord pour déclencher l'auto-scroll
-const SCROLL_SPEED_BASE = 1.5 // pixels par frame - ajusté pour requestAnimationFrame
-const SCROLL_SPEED_MAX = 4 // vitesse maximale quand on est tout près du bord
+const SCROLL_SPEED_BASE = 3 // pixels par frame - ajusté pour requestAnimationFrame
+const SCROLL_SPEED_MAX = 8 // vitesse maximale quand on est tout près du bord
 
 // Gestionnaires d'événements clavier pour la sélection par lot
 const handleKeyDown = (e: KeyboardEvent) => {
