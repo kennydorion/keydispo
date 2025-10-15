@@ -11,8 +11,8 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Horizontal window (days)
   const windowStartIndex = ref(0)
   const windowEndIndex = ref(0)
-  const windowPaddingCols = ref(6)
-  const fastScrollBufferCols = ref(12)
+  const windowPaddingCols = ref(2)  // Réduit de 6 → 2
+  const fastScrollBufferCols = ref(4)  // Réduit de 12 → 4
   const isScrollingFast = ref(false)
   const lastScrollTime = ref(0)
   const scrollVelocity = ref(0)
@@ -27,8 +27,8 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Vertical window (rows)
   const rowWindowStartIndex = ref(0)
   const rowWindowEndIndex = ref(0)
-  const windowPaddingRows = ref(6)
-  const fastScrollBufferRows = ref(10)
+  const windowPaddingRows = ref(3)  // Réduit de 6 → 3
+  const fastScrollBufferRows = ref(5)  // Réduit de 10 → 5
   const rowWindowOffsetPx = computed(() => rowWindowStartIndex.value * rowHeight.value)
   const adaptiveRowPadding = computed(() => (isScrollingFast.value ? fastScrollBufferRows.value : windowPaddingRows.value))
   const windowedRows = computed(() => {
