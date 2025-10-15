@@ -9265,9 +9265,9 @@ onUnmounted(() => {
 }
 
 /* Weekend: fond légèrement orangé pour samedi et dimanche */
-/* Ces règles sont appliquées en premier, puis écrasées par les hovers si nécessaire */
-.excel-cell.day-6,
-.excel-cell.day-0 {
+/* Approche inversée: le fond orangé ne s'applique QUE quand il n'y a PAS de hover */
+.excel-cell.day-6:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover),
+.excel-cell.day-0:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover) {
   background-color: #fff4e6 !important;
 }
 
@@ -9462,17 +9462,6 @@ onUnmounted(() => {
   background-color: rgba(76, 175, 80, 0.16) !important;
 }
 
-/* Hovers sur weekend: le vert doit être visible - Spécificité augmentée avec sélecteur parent */
-.excel-scroll .excel-cell.day-6.dom-column-hovered,
-.excel-scroll .excel-cell.day-0.dom-column-hovered {
-  background-color: rgba(76, 175, 80, 0.12) !important;
-}
-
-.excel-scroll .excel-cell.day-6.dom-row-hovered,
-.excel-scroll .excel-cell.day-0.dom-row-hovered {
-  background-color: rgba(76, 175, 80, 0.16) !important;
-}
-
 /* === HIGHLIGHTS TRADITIONNELS (Vue) === */
 
 /* Highlight de colonne survolée - CSS pur avec hover rapide */
@@ -9486,13 +9475,6 @@ onUnmounted(() => {
   border: 1px solid rgba(76, 175, 80, 0.5) !important;
   will-change: background-color; /* Optimisation GPU ciblée */
   transform: translate3d(0, 0, 0); /* Force l'accélération GPU */
-}
-
-/* Hover direct sur weekend: spécificité augmentée pour override le fond orangé */
-.excel-scroll:not(.panning):not(.loading) .excel-cell.day-6:hover,
-.excel-scroll:not(.panning):not(.loading) .excel-cell.day-0:hover {
-  background-color: rgba(76, 175, 80, 0.32) !important;
-  border: 1px solid rgba(76, 175, 80, 0.5) !important;
 }
 
 /* Hover de colonne complète (en-têtes + cellules) */
