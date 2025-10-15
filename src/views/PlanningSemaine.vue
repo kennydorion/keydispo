@@ -1782,16 +1782,15 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - version RAF ultra-rapide
+// Auto-scroll pendant la sélection - version setInterval pour stabilité
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
-let lastScrollUpdate = 0
 const EDGE_ZONE = 100
-// Vitesses augmentées pour compenser les micro-lags du DOM massif
-const SCROLL_SPEED_X = 20  // 20px par frame = ~1200px/sec à 60fps
-const SCROLL_SPEED_Y = 10  // 10px par frame = ~600px/sec à 60fps
-const SCROLL_UPDATE_THRESHOLD = 16 // Throttle à ~60fps max
+// Stratégie : moins de frames mais sauts plus grands = moins de reflows
+const SCROLL_SPEED_X = 40  // 40px par tick
+const SCROLL_SPEED_Y = 20  // 20px par tick
+const SCROLL_INTERVAL = 33 // ~30fps pour réduire les reflows
 
 function scrollTick() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
@@ -1799,16 +1798,13 @@ function scrollTick() {
     return
   }
   
-  // Assignation directe - la plus rapide possible
+  // Sauts directs moins fréquents = moins de reflows
   if (currentScrollX !== 0) {
     planningScroll.value.scrollLeft += currentScrollX
   }
   if (currentScrollY !== 0) {
     planningScroll.value.scrollTop += currentScrollY
   }
-  
-  // Continuer l'animation
-  autoScrollTimer = requestAnimationFrame(scrollTick)
 }
 
 function handleAutoScroll(e: MouseEvent) {
@@ -1816,13 +1812,6 @@ function handleAutoScroll(e: MouseEvent) {
     stopAutoScroll()
     return
   }
-
-  // Throttle : éviter de recalculer trop souvent
-  const now = performance.now()
-  if (now - lastScrollUpdate < SCROLL_UPDATE_THRESHOLD) {
-    return
-  }
-  lastScrollUpdate = now
 
   const rect = planningScroll.value.getBoundingClientRect()
   const mouseX = e.clientX - rect.left
@@ -1834,17 +1823,17 @@ function handleAutoScroll(e: MouseEvent) {
   currentScrollX = 0
   currentScrollY = 0
   
-  // Gauche/Droite - vitesse augmentée
+  // Gauche/Droite - gros sauts
   if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED_X
   else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED_X
   
-  // Haut/Bas - vitesse augmentée
+  // Haut/Bas - gros sauts
   if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED_Y
   else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED_Y
   
-  // Démarrer RAF si nécessaire (une seule fois)
+  // Utiliser setInterval au lieu de RAF pour contrôle précis de la fréquence
   if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
-    autoScrollTimer = requestAnimationFrame(scrollTick)
+    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
   } else if (currentScrollX === 0 && currentScrollY === 0 && (prevScrollX !== 0 || prevScrollY !== 0)) {
     stopAutoScroll()
   }
@@ -1852,7 +1841,7 @@ function handleAutoScroll(e: MouseEvent) {
 
 function stopAutoScroll() {
   if (autoScrollTimer) {
-    cancelAnimationFrame(autoScrollTimer)
+    clearInterval(autoScrollTimer)
     autoScrollTimer = null
   }
   currentScrollX = 0
