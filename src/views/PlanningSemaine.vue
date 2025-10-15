@@ -1791,7 +1791,9 @@ let currentScrollY = 0
 let lastMouseEvent: MouseEvent | null = null
 let lastCellCheckTime = 0
 let lastDetectedCell = ''
-const CELL_CHECK_INTERVAL = 50 // ms - vérifie la cellule toutes les 50ms max
+let lastScrollTime = 0
+const CELL_CHECK_INTERVAL = 100 // ms - vérifie la cellule toutes les 100ms max
+const SCROLL_INTERVAL = 33 // ms - 30fps pour le scroll (plus que suffisant)
 
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
@@ -1800,12 +1802,20 @@ function scrollAnimationLoop() {
     return
   }
 
-  // Appliquer le scroll (ultra rapide, pas de DOM query)
-  planningScroll.value.scrollLeft += currentScrollX
-  planningScroll.value.scrollTop += currentScrollY
+  const now = performance.now()
+  
+  // Appliquer le scroll seulement toutes les 33ms (30fps) au lieu de 60fps
+  if (now - lastScrollTime >= SCROLL_INTERVAL) {
+    lastScrollTime = now
+    // scrollBy() est plus optimisé que modifier scrollLeft/scrollTop
+    planningScroll.value.scrollBy({
+      left: currentScrollX,
+      top: currentScrollY,
+      behavior: 'instant'
+    })
+  }
   
   // Throttle de la détection de cellule avec timestamp
-  const now = performance.now()
   if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
     lastCellCheckTime = now
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
@@ -1896,6 +1906,7 @@ function stopAutoScroll() {
   currentScrollY = 0
   lastMouseEvent = null
   lastCellCheckTime = 0
+  lastScrollTime = 0
   lastDetectedCell = ''
 }
 
