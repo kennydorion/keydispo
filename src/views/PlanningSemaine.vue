@@ -9462,14 +9462,14 @@ onUnmounted(() => {
   background-color: rgba(76, 175, 80, 0.16) !important;
 }
 
-/* Hovers sur weekend: le vert doit être visible - Règles spécifiques après les générales */
-.excel-cell.day-6.dom-column-hovered,
-.excel-cell.day-0.dom-column-hovered {
+/* Hovers sur weekend: le vert doit être visible - Spécificité augmentée avec sélecteur parent */
+.excel-scroll .excel-cell.day-6.dom-column-hovered,
+.excel-scroll .excel-cell.day-0.dom-column-hovered {
   background-color: rgba(76, 175, 80, 0.12) !important;
 }
 
-.excel-cell.day-6.dom-row-hovered,
-.excel-cell.day-0.dom-row-hovered {
+.excel-scroll .excel-cell.day-6.dom-row-hovered,
+.excel-scroll .excel-cell.day-0.dom-row-hovered {
   background-color: rgba(76, 175, 80, 0.16) !important;
 }
 
@@ -9488,10 +9488,11 @@ onUnmounted(() => {
   transform: translate3d(0, 0, 0); /* Force l'accélération GPU */
 }
 
-/* Hover direct sur weekend: doit venir après pour override */
+/* Hover direct sur weekend: spécificité augmentée pour override le fond orangé */
 .excel-scroll:not(.panning):not(.loading) .excel-cell.day-6:hover,
 .excel-scroll:not(.panning):not(.loading) .excel-cell.day-0:hover {
   background-color: rgba(76, 175, 80, 0.32) !important;
+  border: 1px solid rgba(76, 175, 80, 0.5) !important;
 }
 
 /* Hover de colonne complète (en-têtes + cellules) */
