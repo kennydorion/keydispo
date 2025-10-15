@@ -99,61 +99,17 @@
             </div>
           </div>
           <div class="form-content">
-            <div class="form-group">
-              <label class="form-label">Type de disponibilité</label>
-              <div class="button-grid">
-                <button v-for="typeOpt in filteredTypeOptions" :key="typeOpt.value" :class="['type-button', `type-${typeOpt.value}`, { 'active': editingDispo.type === typeOpt.value }]" @click="$emit('set-editing-type', typeOpt.value)">
-                  <va-icon :name="getTypeIcon(typeOpt.value)" size="20px" />
-                  <span>{{ typeOpt.text }}</span>
-                </button>
-              </div>
-            </div>
-            <div v-if="editingDispo.type !== 'indisponible'" class="form-group">
-              <label class="form-label">Format horaire</label>
-              <div class="button-grid">
-                <button v-for="formatOpt in timeKindOptionsFiltered" :key="formatOpt.value" :class="['format-button', { 'active': editingDispo.timeKind === formatOpt.value }]" @click="$emit('set-editing-time-kind', formatOpt.value)">
-                  <va-icon :name="getTimeKindIcon(formatOpt.value)" size="18px" />
-                  <span>{{ formatOpt.text }}</span>
-                </button>
-              </div>
-            </div>
-            <div v-if="editingDispo.type === 'mission'" class="form-group">
-              <label class="form-label">Lieu de mission</label>
-              <template v-if="!isCollaboratorView">
-                <!-- Autocomplétion avec possibilité de saisie libre -->
-                <LieuCombobox :model-value="editingDispo.lieu || ''" @update:model-value="(v: string) => $emit('update-editing-lieu', v)" :options="lieuxOptionsStrings" label="" size="large" theme="light" class="lieu-input" @create="$emit('create-lieu', $event)" />
-              </template>
-              <template v-else>
-                <div class="detail-row">
-                  <va-icon name="place" size="14px" />
-                  <span>{{ editingDispo.lieu || '—' }}</span>
-                </div>
-              </template>
-            </div>
-            <div v-if="editingDispo.timeKind === 'range'" class="form-group">
-              <label class="form-label">Horaires</label>
-              <div class="time-inputs">
-                <div class="time-field">
-                  <label class="time-label">Début</label>
-                  <va-input v-model="editingDispo.heure_debut" type="time" step="900" size="large" class="time-input" />
-                </div>
-                <div class="time-separator"><va-icon name="arrow_forward" size="20px" /></div>
-                <div class="time-field">
-                  <label class="time-label">Fin</label>
-                  <va-input v-model="editingDispo.heure_fin" type="time" step="900" size="large" class="time-input" :disabled="!editingDispo.heure_debut" />
-                </div>
-              </div>
-              <div v-if="isDetectedOvernight" class="form-hint">
-                <va-icon name="nightlight" size="14px" />
-                <span>Mission de nuit détectée ({{ editingDispo.heure_debut }} → {{ editingDispo.heure_fin }})</span>
-              </div>
-            </div>
-            <div v-if="editingDispo.timeKind === 'slot'" class="form-group">
-              <label class="form-label">Créneaux disponibles</label>
-              <div class="slots-grid">
-                <button v-for="slot in slotOptions" :key="slot.value" :class="['slot-button', { 'active': editingDispo.slots?.includes(slot.value) }]" @click="$emit('toggle-editing-slot', slot.value)">{{ slot.text }}</button>
-              </div>
-            </div>
+            <DispoForm
+              :model-value="editingDispo"
+              @update:model-value="updateEditingDispo"
+              :type-options="filteredTypeOptions"
+              :time-kind-options="timeKindOptionsFiltered"
+              :slot-options="slotOptions"
+              :lieux-options="lieuxOptionsStrings"
+              :get-type-icon="getTypeIcon"
+              :get-time-kind-icon="getTimeKindIcon"
+              @create-lieu="$emit('create-lieu', $event)"
+            />
             <div class="form-actions">
               <va-button @click="$emit('cancel-edit-dispo')" color="secondary" size="large" preset="secondary">Annuler</va-button>
               <!-- Bouton de suppression pour les disponibilités existantes -->
@@ -202,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import LieuCombobox from './LieuCombobox.vue'
+import DispoForm from './DispoForm.vue'
 import type { Collaborateur } from '@/types/planning'
 import * as planningDisplayService from '@/services/planningDisplayService'
 
@@ -252,7 +208,7 @@ const props = defineProps<{
   isOvernightTime: (start?: string, end?: string) => boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'cancel-modal'): void
   (e: 'save-dispos'): void
   (e: 'edit-dispo-line', index: number): void
@@ -266,6 +222,21 @@ defineEmits<{
   (e: 'add-new-dispo-line'): void
   (e: 'update-editing-lieu', value: string): void
 }>()
+
+// Fonction pour gérer les changements du formulaire DispoForm
+function updateEditingDispo(newValue: Partial<Disponibilite>) {
+  // Détecter les changements et émettre les événements appropriés
+  if (newValue.type !== props.editingDispo.type) {
+    emit('set-editing-type', newValue.type || 'disponible')
+  }
+  if (newValue.timeKind !== props.editingDispo.timeKind) {
+    emit('set-editing-time-kind', newValue.timeKind || 'full-day')
+  }
+  if (newValue.lieu !== props.editingDispo.lieu) {
+    emit('update-editing-lieu', newValue.lieu || '')
+  }
+  // Les slots et heures sont gérés par mutation directe dans le parent
+}
 
 const filteredTypeOptions = computed(() => {
   if (props.isCollaboratorView) {
