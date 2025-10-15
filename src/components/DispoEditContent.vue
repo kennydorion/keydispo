@@ -56,22 +56,24 @@
             { 'is-readonly': isCollaboratorView && dispo.type === 'mission' }
           ]">
             <div class="card-header">
-              <div class="type-indicator">
-                <va-icon :name="getTypeIcon(dispo.type)" size="18px" />
-                <span class="type-text">{{ getTypeText(dispo.type) }}</span>
+              <div class="header-main">
+                <div class="type-indicator">
+                  <va-icon :name="getTypeIcon(dispo.type)" size="18px" />
+                  <span class="type-text">{{ getTypeText(dispo.type) }}</span>
+                </div>
+                <div v-if="isBatchMode && dispo._batchFormattedDate" class="batch-date-pill">
+                  <va-icon name="event" size="12px" />
+                  <span>{{ dispo._batchFormattedDate }}</span>
+                </div>
+                <div v-if="dispo._cont === 'end'" class="continuation-pill" title="Suite de la veille">⤺ Suite</div>
               </div>
-              <div v-if="isBatchMode && dispo._batchFormattedDate" class="batch-date-pill">
-                <va-icon name="event" size="12px" />
-                <span>{{ dispo._batchFormattedDate }}</span>
-              </div>
-              <div v-if="dispo._cont === 'end'" class="continuation-pill" title="Suite de la veille">⤺ Suite</div>
-              <div v-if="editingDispoIndex === index" class="editing-badge">
-                <va-icon name="edit" size="12px" />
-                <span>En édition</span>
-              </div>
-              <div v-if="isCollaboratorView && dispo.type === 'mission'" class="readonly-badge">
-                <va-icon name="visibility" size="12px" />
-                <span>Lecture seule</span>
+              <div class="header-badges">
+                <div v-if="editingDispoIndex === index" class="editing-badge" title="En édition">
+                  <va-icon name="edit" size="14px" />
+                </div>
+                <div v-if="isCollaboratorView && dispo.type === 'mission'" class="readonly-badge" title="Lecture seule">
+                  <va-icon name="visibility" size="14px" />
+                </div>
               </div>
             </div>
             <div class="card-content">
@@ -608,8 +610,26 @@ onBeforeUnmount(() => {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.header-badges {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .type-indicator {
@@ -632,6 +652,17 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   font-size: 0.65rem;
   font-weight: 600;
+}
+
+.editing-badge,
+.readonly-badge {
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .editing-badge {
