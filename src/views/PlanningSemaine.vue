@@ -9283,9 +9283,24 @@ onUnmounted(() => {
 }
 
 /* Weekend: fond légèrement grisé pour samedi et dimanche */
-.excel-cell.saturday,
-.excel-cell.sunday {
+.excel-cell.saturday:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered),
+.excel-cell.sunday:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered) {
   background-color: #f8f9fa !important;
+}
+
+/* Weekend avec hover: mélange du vert et du gris */
+.excel-cell.saturday.dom-column-hovered,
+.excel-cell.sunday.dom-column-hovered,
+.excel-cell.saturday.dom-row-hovered,
+.excel-cell.sunday.dom-row-hovered {
+  background-color: rgba(76, 175, 80, 0.08) !important;
+  background-image: linear-gradient(rgba(248, 249, 250, 0.5), rgba(248, 249, 250, 0.5));
+}
+
+.excel-cell.saturday:hover,
+.excel-cell.sunday:hover {
+  background-color: rgba(76, 175, 80, 0.24) !important;
+  background-image: linear-gradient(rgba(248, 249, 250, 0.3), rgba(248, 249, 250, 0.3));
 }
 
 .excel-day-cell.saturday,
