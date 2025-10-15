@@ -9268,12 +9268,12 @@ onUnmounted(() => {
 /* Ces règles sont appliquées en premier, puis écrasées par les hovers si nécessaire */
 .excel-cell.day-6,
 .excel-cell.day-0 {
-  background-color: #fff4e6;
+  background-color: #fff4e6 !important;
 }
 
 .excel-day-cell.day-6,
 .excel-day-cell.day-0 {
-  background-color: #fff4e6;
+  background-color: #fff4e6 !important;
 }
 
 /* Les cartes de dispo dans les cellules weekend ont aussi un fond légèrement teinté */
