@@ -298,6 +298,7 @@
                   class="excel-day-cell"
                   :data-day-index="windowStartIndex + dayIndex"
                   :class="[
+                    `day-${day.dayOfWeek}`,
                     {
                       'today': day.isToday,
                       'loading-placeholder': !isDayLoaded(day.date)
@@ -409,6 +410,7 @@
                   :data-today="day.isToday ? 'true' : 'false'"
                   :data-initials="getHoveringUserInitials(collaborateur.id, day.date)"
                   :class="[
+                    `day-${day.dayOfWeek}`,
                     {
                       'today': day.isToday,
                       'has-dispos': getCellDispos(collaborateur.id, day.date).length > 0,
@@ -1716,17 +1718,7 @@ function getCellClasses(dayIndex: number, rowIndex: number) {
     classes.push('row-hovered')
   }
   
-  // Ajouter classe pour week-end (samedi/dimanche)
-  // Utiliser la propriété dayOfWeek déjà calculée lors de la génération des jours
-  if (dayIndex < visibleDays.value.length) {
-    const day = visibleDays.value[dayIndex]
-    
-    if (day.dayOfWeek === 0) { // dimanche
-      classes.push('sunday')
-    } else if (day.dayOfWeek === 6) { // samedi
-      classes.push('saturday')
-    }
-  }
+  // Plus besoin d'ajouter saturday/sunday - géré par la classe day-N dans le template
   
   // Plus besoin de today-column - géré par data-today dans le template
   
@@ -1743,17 +1735,7 @@ function getDayHeaderClasses(dayIndex: number) {
     classes.push('column-hovered')
   }
   
-  // Ajouter classe pour dimanche et samedi
-  // Utiliser la propriété dayOfWeek déjà calculée lors de la génération des jours
-  if (dayIndex < visibleDays.value.length) {
-    const day = visibleDays.value[dayIndex]
-    
-    if (day.dayOfWeek === 0) { // dimanche
-      classes.push('sunday')
-    } else if (day.dayOfWeek === 6) { // samedi
-      classes.push('saturday')
-    }
-  }
+  // Plus besoin d'ajouter saturday/sunday - géré par la classe day-N dans le template
   
   // Plus besoin de today-column - géré par data-today dans le template
   
@@ -9283,28 +9265,28 @@ onUnmounted(() => {
 }
 
 /* Weekend: fond légèrement grisé pour samedi et dimanche */
-.excel-cell.saturday:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered),
-.excel-cell.sunday:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered) {
+.excel-cell.day-6:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered),
+.excel-cell.day-0:not(:hover):not(.dom-column-hovered):not(.dom-row-hovered) {
   background-color: #f8f9fa !important;
 }
 
 /* Weekend avec hover: mélange du vert et du gris */
-.excel-cell.saturday.dom-column-hovered,
-.excel-cell.sunday.dom-column-hovered,
-.excel-cell.saturday.dom-row-hovered,
-.excel-cell.sunday.dom-row-hovered {
+.excel-cell.day-6.dom-column-hovered,
+.excel-cell.day-0.dom-column-hovered,
+.excel-cell.day-6.dom-row-hovered,
+.excel-cell.day-0.dom-row-hovered {
   background-color: rgba(76, 175, 80, 0.08) !important;
   background-image: linear-gradient(rgba(248, 249, 250, 0.5), rgba(248, 249, 250, 0.5));
 }
 
-.excel-cell.saturday:hover,
-.excel-cell.sunday:hover {
+.excel-cell.day-6:hover,
+.excel-cell.day-0:hover {
   background-color: rgba(76, 175, 80, 0.24) !important;
   background-image: linear-gradient(rgba(248, 249, 250, 0.3), rgba(248, 249, 250, 0.3));
 }
 
-.excel-day-cell.saturday,
-.excel-day-cell.sunday {
+.excel-day-cell.day-6,
+.excel-day-cell.day-0 {
   background-color: #f8f9fa;
 }
 
