@@ -2690,7 +2690,38 @@ function onGridMouseLeave() {
 }
 
 // Fonction centralisée pour nettoyer les highlights crosshair
+// Throttle pour cleanHoverHighlights - max 10fps (100ms)
+let cleanHoverThrottleTimer: number | null = null
+let pendingCleanHover = false
+
 function cleanHoverHighlights() {
+  if (!planningScroll.value) return
+  
+  // Si un nettoyage est déjà programmé, ne rien faire
+  if (pendingCleanHover) return
+  
+  // Si le throttle est actif, programmer pour plus tard
+  if (cleanHoverThrottleTimer !== null) {
+    pendingCleanHover = true
+    return
+  }
+  
+  // Exécuter le nettoyage immédiatement
+  executeCleanHover()
+  
+  // Activer le throttle
+  cleanHoverThrottleTimer = window.setTimeout(() => {
+    cleanHoverThrottleTimer = null
+    
+    // Si un nettoyage était en attente, l'exécuter maintenant
+    if (pendingCleanHover) {
+      pendingCleanHover = false
+      executeCleanHover()
+    }
+  }, 100) // Max 10 nettoyages/seconde
+}
+
+function executeCleanHover() {
   if (!planningScroll.value) return
   
   // Nettoyer tous les data attributes de hover
