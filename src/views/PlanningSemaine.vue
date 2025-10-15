@@ -1793,6 +1793,12 @@ let lastCellCheckTime = 0
 let lastDetectedCell = ''
 const CELL_CHECK_INTERVAL = 100 // ms - vérifie la cellule toutes les 100ms max
 
+// Debug performance
+let frameCount = 0
+let lastFpsLog = 0
+let scrollCallCount = 0
+let cellCheckCount = 0
+
 // Boucle d'animation pour le scroll fluide
 function scrollAnimationLoop() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
@@ -1801,18 +1807,37 @@ function scrollAnimationLoop() {
   }
 
   const now = performance.now()
+  frameCount++
+  
+  // Log FPS toutes les secondes
+  if (now - lastFpsLog > 1000) {
+    console.log(`[Auto-scroll] FPS: ${frameCount}, Scrolls: ${scrollCallCount}, Cell checks: ${cellCheckCount}`)
+    frameCount = 0
+    scrollCallCount = 0
+    cellCheckCount = 0
+    lastFpsLog = now
+  }
   
   // Appliquer le scroll à chaque frame pour fluidité maximale
-  // scrollBy() est plus optimisé que modifier scrollLeft/scrollTop
+  const scrollStart = performance.now()
   planningScroll.value.scrollBy({
     left: currentScrollX,
     top: currentScrollY,
     behavior: 'instant'
   })
+  const scrollTime = performance.now() - scrollStart
+  scrollCallCount++
+  
+  if (scrollTime > 5) {
+    console.warn(`[Auto-scroll] scrollBy() lent: ${scrollTime.toFixed(2)}ms`)
+  }
   
   // Throttle de la détection de cellule avec timestamp (c'est ça qui est lourd)
   if (now - lastCellCheckTime > CELL_CHECK_INTERVAL && lastMouseEvent && isDraggingSelection.value) {
     lastCellCheckTime = now
+    cellCheckCount++
+    const checkStart = performance.now()
+    
     const elementAtCursor = document.elementFromPoint(lastMouseEvent.clientX, lastMouseEvent.clientY)
     if (elementAtCursor) {
       const cellElement = elementAtCursor.closest('.excel-cell') as HTMLElement
@@ -1822,10 +1847,20 @@ function scrollAnimationLoop() {
           lastDetectedCell = cellId
           const [collaborateurId, date] = cellId.split('_')
           if (collaborateurId && date) {
+            const enterStart = performance.now()
             handleCellMouseEnter(collaborateurId, date)
+            const enterTime = performance.now() - enterStart
+            if (enterTime > 10) {
+              console.warn(`[Auto-scroll] handleCellMouseEnter() lent: ${enterTime.toFixed(2)}ms`)
+            }
           }
         }
       }
+    }
+    
+    const checkTime = performance.now() - checkStart
+    if (checkTime > 10) {
+      console.warn(`[Auto-scroll] Cell check lent: ${checkTime.toFixed(2)}ms`)
     }
   }
   
@@ -1902,6 +1937,12 @@ function stopAutoScroll() {
   lastMouseEvent = null
   lastCellCheckTime = 0
   lastDetectedCell = ''
+  // Reset debug counters
+  frameCount = 0
+  scrollCallCount = 0
+  cellCheckCount = 0
+  lastFpsLog = 0
+  console.log('[Auto-scroll] Stopped')
 }
 
 function onGridMouseMove(e: MouseEvent) {
