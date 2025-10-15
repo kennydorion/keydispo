@@ -2485,12 +2485,11 @@ watch(planningFilters.filterState, async (newFilters, oldFilters) => {
 
   // Politique de recentrage: rester/aller à aujourd'hui si la plage de dates n'a pas été modifiée,
   // ou si tous les filtres sont vidés.
-  // DÉSACTIVÉ : Navigation déjà faite au chargement initial
-  // if (allFiltersEmpty || !dateChanged) {
-  //   setTimeout(() => {
-  //     goToToday()
-  //   }, 150)
-  // }
+  if (allFiltersEmpty || !dateChanged) {
+    setTimeout(() => {
+      goToToday()
+    }, 150)
+  }
 
   // Force refresh automatique si les résultats ne s'affichent pas
   if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
