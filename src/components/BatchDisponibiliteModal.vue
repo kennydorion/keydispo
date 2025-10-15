@@ -14,24 +14,52 @@
   @open="modalA11y.onOpen"
   @close="() => { modalA11y.onClose(); handleClose() }"
   >
-    <BatchDisponibiliteContent
+    <DispoEditContent
+      :selected-cell="mockSelectedCell"
       :selected-collaborateur="mockSelectedCollaborateur"
       :collaborateur-color="avatarColor"
       :formatted-date="formattedDateRange"
+      :selected-cell-dispos="[]"
+      :editing-dispo-index="null"
+      :is-adding-new-dispo="true"
       :editing-dispo="editingDispo"
       :type-options="typeOptions"
       :slot-options="slotOptions"
       :lieux-options-strings="lieuxExistants"
       :is-edit-form-valid="isFormValid"
       :saving="saving"
+      :time-kind-options="timeKindOptionsFiltered"
       :time-kind-options-filtered="timeKindOptionsFiltered"
+      :is-detected-overnight="false"
+      :is-collaborator-view="false"
       :get-type-icon="getTypeIcon"
+      :get-type-text="(t: any) => t === 'mission' ? 'Mission' : t === 'disponible' ? 'Disponible' : 'Indisponible'"
+      :get-type-color="(t: any) => t === 'mission' ? '#2196f3' : t === 'disponible' ? '#4caf50' : '#f44336'"
+      :get-dispo-type-class="(t: any) => `type-${t}`"
+      :get-slot-text="(slots?: string[]) => (slots || []).join(', ')"
       :get-time-kind-icon="getTimeKindIcon"
       :get-user-initials="getUserInitials"
+      :is-overnight-time="(start?: string, end?: string) => {
+        if (!start || !end) return false
+        const s = parseInt(start.split(':')[0])
+        const e = parseInt(end.split(':')[0])
+        return e < s
+      }"
       @cancel-modal="handleClose"
-      @save-dispos="handleSave"
+      @save-edit-dispo="handleSave"
       @create-lieu="onCreateLieu"
-      @update:editing-dispo="(v) => Object.assign(editingDispo, v)"
+      @update-editing-lieu="(v: string) => { editingDispo.lieu = v }"
+      @set-editing-type="(t: any) => { editingDispo.type = t }"
+      @set-editing-time-kind="(k: any) => { editingDispo.timeKind = k }"
+      @toggle-editing-slot="(s: string) => {
+        const slots = editingDispo.slots || []
+        editingDispo.slots = slots.includes(s) ? slots.filter(x => x !== s) : [...slots, s]
+      }"
+      @cancel-edit-dispo="handleClose"
+      @add-new-dispo-line="() => {}"
+      @edit-dispo-line="() => {}"
+      @remove-dispo="() => {}"
+      @save-dispos="handleSave"
     />
   </va-modal>
 </template>
@@ -43,7 +71,7 @@ import { useToast } from 'vuestic-ui'
 import { getUserInitials, getUserColor } from '../services/avatarUtils'
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
 import { getLastFormPreferences, saveFormPreferences } from '../services/dispoFormPreferences'
-import BatchDisponibiliteContent from './BatchDisponibiliteContent.vue'
+import DispoEditContent from './DispoEditContent.vue'
 import {
   slotOptions,
   typeOptionsFor,
@@ -143,6 +171,15 @@ const mockSelectedCollaborateur = computed(() => {
     color: props.selectedCollaborateur.color || avatarColor.value,
     createdAt: props.selectedCollaborateur.createdAt || new Date(),
     updatedAt: props.selectedCollaborateur.updatedAt || new Date()
+  }
+})
+
+// Mock selectedCell pour DispoEditContent (batch utilise plusieurs dates)
+const mockSelectedCell = computed(() => {
+  if (!props.selectedCollaborateur || props.selectedDates.length === 0) return null
+  return {
+    collaborateurId: props.selectedCollaborateur.id,
+    date: props.selectedDates[0] // Première date comme référence
   }
 })
 
