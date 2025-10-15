@@ -1782,15 +1782,15 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - version setInterval pour stabilité
+// Auto-scroll pendant la sélection - technique Google Sheets : gros sauts espacés
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 const EDGE_ZONE = 100
-// Stratégie : moins de frames mais sauts plus grands = moins de reflows
-const SCROLL_SPEED_X = 40  // 40px par tick
-const SCROLL_SPEED_Y = 20  // 20px par tick
-const SCROLL_INTERVAL = 33 // ~30fps pour réduire les reflows
+// Stratégie Google Sheets : gros sauts très espacés = minimum de reflows
+const SCROLL_JUMP_X = 80   // 80px par saut
+const SCROLL_JUMP_Y = 40   // 40px par saut  
+const SCROLL_INTERVAL = 150 // Seulement 6-7 sauts/sec pour minimiser les reflows
 
 function scrollTick() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
@@ -1798,7 +1798,7 @@ function scrollTick() {
     return
   }
   
-  // Sauts directs moins fréquents = moins de reflows
+  // Gros sauts espacés - technique Google Sheets
   if (currentScrollX !== 0) {
     planningScroll.value.scrollLeft += currentScrollX
   }
@@ -1824,15 +1824,19 @@ function handleAutoScroll(e: MouseEvent) {
   currentScrollY = 0
   
   // Gauche/Droite - gros sauts
-  if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_SPEED_X
-  else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_SPEED_X
+  if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_JUMP_X
+  else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_JUMP_X
   
   // Haut/Bas - gros sauts
-  if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_SPEED_Y
-  else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_SPEED_Y
+  if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_JUMP_Y
+  else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_JUMP_Y
   
-  // Utiliser setInterval au lieu de RAF pour contrôle précis de la fréquence
+  // Démarrer/arrêter avec intervalle espacé
   if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
+    // Activer will-change pour optimisation GPU
+    if (planningScroll.value) {
+      planningScroll.value.style.willChange = 'scroll-position'
+    }
     autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
   } else if (currentScrollX === 0 && currentScrollY === 0 && (prevScrollX !== 0 || prevScrollY !== 0)) {
     stopAutoScroll()
@@ -1843,6 +1847,10 @@ function stopAutoScroll() {
   if (autoScrollTimer) {
     clearInterval(autoScrollTimer)
     autoScrollTimer = null
+  }
+  // Désactiver will-change pour économiser la mémoire
+  if (planningScroll.value) {
+    planningScroll.value.style.willChange = 'auto'
   }
   currentScrollX = 0
   currentScrollY = 0
