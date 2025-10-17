@@ -737,8 +737,7 @@ watch(() => route.params.id, () => {
   font-family: var(--va-font-family, 'Inter', sans-serif);
   background: #f8fafc;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  /* Pas de flex pour permettre le scroll naturel de la page */
 }
 
 /* Header Élégant */
@@ -818,13 +817,12 @@ watch(() => route.params.id, () => {
 
 /* Conteneur Principal */
 .collaborateur-container {
-  flex: 1;
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem 24px;
+  padding: 2rem 24px 4rem 24px;
   width: 100%;
-  min-height: calc(100vh - 80px);
   background: #f8fafc;
+  /* Pas de contrainte de hauteur - le scroll se fait naturellement sur la page */
 }
 
 /* Carte de Formulaire */
@@ -993,6 +991,7 @@ watch(() => route.params.id, () => {
   justify-content: flex-end;
   gap: 16px;
   margin-top: 32px;
+  margin-bottom: 32px;
   padding-top: 24px;
   border-top: 1px solid var(--border-light);
 }

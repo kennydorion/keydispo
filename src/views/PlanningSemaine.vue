@@ -7031,6 +7031,25 @@ watch(() => route.query, (newQuery) => {
   }
 }, { immediate: true })
 
+// CORRECTION BUG 1: Recharger les collaborateurs quand on revient sur le planning
+// (pour prendre en compte les suppressions/modifications faites depuis la liste)
+watch(() => route.path, async (newPath, oldPath) => {
+  // Si on revient sur le planning depuis une autre page
+  if (newPath === '/planning' && oldPath && oldPath !== '/planning') {
+    try {
+      await planningData.loadCollaborateurs()
+      await nextTick()
+      // Forcer la mise à jour de la virtualisation
+      const scroller = planningScroll.value
+      if (scroller) {
+        recomputeRowWindow(scroller)
+      }
+    } catch (error) {
+      console.error('Erreur lors du rechargement des collaborateurs:', error)
+    }
+  }
+}, { immediate: false })
+
 // Watchers pour optimisation des filtres
 watch(allCollaborateurs, () => {
   // Nettoyer le cache lors du changement des collaborateurs (géré par le composable)
