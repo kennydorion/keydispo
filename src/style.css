@@ -1,16 +1,17 @@
 /* === FIXES POUR LES MODALES VUESTIC === */
 
-/* Correction du va-modal__dialog pour éviter les fonds blancs mal dimensionnés */
+/* Correction du va-modal__dialog - FOND BLANC OPAQUE */
 .va-modal__dialog {
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
+  background: white !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
   padding: 0 !important;
-  margin: 0 !important;
-  max-width: none !important;
-  max-height: none !important;
+  margin: 1rem !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
   width: auto !important;
   height: auto !important;
+  overflow: auto !important;
 }
 
 /* Empêcher le double fond blanc */
@@ -25,27 +26,13 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* Mobile : modales plein écran */
+/* Mobile: ne force pas le fullscreen ici; laisser le composant gérer selon mobile-fullscreen */
 @media (max-width: 768px) {
   .va-modal__dialog > * {
     border-radius: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
   }
-  
   .va-modal__container {
     padding: 0 !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-  }
-  
-  .va-modal__dialog {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
   }
 }
 
@@ -209,6 +196,16 @@ input[type="time"]::-webkit-clear-button {
   background: transparent !important;
 }
 
+/* Force le fond blanc sur TOUT le contenu de la modale */
+.va-modal__inner,
+.va-modal__content,
+.va-modal__body,
+.va-modal__header,
+.va-modal__footer {
+  background: white !important;
+  color: #000 !important;
+}
+
 /* Centrage vertical spécifique DispoEditContent (desktop uniquement) */
 @media (min-width: 769px) {
   .dispo-modal-center .va-modal__container {
@@ -247,17 +244,7 @@ input[type="time"]::-webkit-clear-button {
   z-index: 2147483647 !important; /* top absolu */
 }
 
-/* Auto-size du contenu des modales Vuestic (uniquement quand NON fullscreen)
-   Remarque: on scelle la règle au parent .va-modal qui n'a PAS de classe --fullscreen
-   pour éviter d'écraser les modales plein écran sur mobile. */
-:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__dialog,
-:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__container,
-:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__content,
-:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__inner,
-:not(.batch-modal--fullscreen):not(.collab-modal--fullscreen):not(.collab-dispo-modal--fullscreen) .va-modal__body {
-  max-height: 95vh !important;
-  overflow: auto !important;
-}
+/* Auto-size par défaut géré via .va-modal__dialog dessus. Sélecteur global retiré pour éviter des effets de bord. */
 
 /* Suppression des limites de hauteur pour les modales fullscreen */
 .batch-modal--fullscreen .va-modal__dialog,
@@ -308,12 +295,12 @@ input[type="time"]::-webkit-clear-button {
   z-index: initial !important;
 }
 
-/* Assurer que la modale plein écran mobile dépasse le header sticky (z-index 150) */
+/* Assurer que la modale plein écran mobile est au-dessus de l'overlay et du header sticky */
 .va-modal--mobile-fullscreen.va-modal,
 .va-modal--mobile-fullscreen,
 .va-modal--mobile-fullscreen .va-modal__container,
 .va-modal--mobile-fullscreen .va-modal__dialog {
-  z-index: 1001 !important;
+  z-index: 2147483647 !important; /* > overlay (2147483646) */
 }
 
 /* Cas où Vuestic injecte un style inline (z-index: 1) sur les éléments modale */
@@ -322,9 +309,13 @@ input[type="time"]::-webkit-clear-button {
 [class*="va-modal__dialog"][style*="z-index"] {
   z-index: 2147483647 !important;
 }
+/* Ne pas forcer la disparition de l'overlay si Vuestic applique un z-index inline */
 [class*="va-modal__overlay"][style*="z-index"],
 [class*="va-modal-overlay"][style*="z-index"] {
-  display: none !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
 
 /* ===== FIX TOASTS/NOTIFICATIONS Z-INDEX ===== */
 /* Forcer les toasts Vuestic au-dessus de tout */
@@ -490,9 +481,7 @@ body > .va-toasts-container .va-toast .va-toast__content {
 [data-va-toast] {
   z-index: 2147483648 !important;
 }
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
+
 
 /* OVERLAY DES MODALES - Style uniforme avec fond sombre */
 [class*="va-modal__overlay"],

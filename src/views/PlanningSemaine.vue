@@ -13,31 +13,40 @@
     <div v-if="isInitialLoad" class="planning-warmup-overlay" role="status" aria-live="polite">
       <div class="warmup-card">
         <div class="warmup-glow"></div>
-        <div class="warmup-header">
-          <div class="warmup-icon">
-            <va-icon name="calendar_month" size="32px" />
-          </div>
-          <div class="warmup-text">
-            <p class="warmup-title">Préparation du planning</p>
-            <p class="warmup-subtitle">On vous amène sur la date d'aujourd'hui…</p>
-          </div>
+        
+        <!-- Logo SVG animé -->
+        <div class="logo-container">
+          <svg class="animated-logo" viewBox="0 0 608.4 143.4" xmlns="http://www.w3.org/2000/svg">
+            <g class="logo-paths">
+              <path d="M31.9,66.7c0,0,34.8-22.1,38.9-27.9c4.1-5.8,17.5-18.2,22.9-19.3c5.4-1.1,16-0.5,19.2,2c3.3,2.5,20.5,5,22.9,5.2c2.4,0.2,8.4,3.8,8.6,7c0.2,3.2,3.1,5.7,5.2,7.7c2,2,5.1,3.4,4.7,6.6c-0.4,3.3-0.2,8.8-0.9,10.3c-0.7,1.5,1.8,10.5-2.1,11.7c-3.9,1.1-6.5-2.6-6.5-2.6s-3.5-8.3-3.3-9.1c0.2-0.9,3.6,7.1,5.8,7.9c2.2,0.9,3.4,1.6,3.6-1.1c0.2-2.7,0.1-7.6-0.1-9.3c-0.2-1.7,1.6-7.5,1.2-8.3c-0.4-0.8-5.1-4.8-5.8-5.9c-0.7-1.1-5.2-8-5.2-8s-5.4-5.1-8.1-5.6c-2.7-0.5-20.8-2.6-21.5-3.7c-0.7-1.1-12.8-4-17.2-2.2c-4.4,1.8-12.7,9.4-13.9,11C79,34.7,63,51.2,31.9,66.7z"/>
+              <path d="M39.5,118.1c0,0,22.4,1.8,29.3-1.2c6.9-3,32.4-14.2,33.5-14.9c1.1-0.7,7.2-4.8,13.5-3.4c6.3,1.4,12.3,2.6,13.2,2.5c0.9-0.1,18.3-6.7,18-10.7c-0.3-4-2.3-9.9-2.3-9.9s3.3,1,3.7,3.6c0.4,2.6,0.8,9.5-1.6,11.3c-2.4,1.8-13.4,8.3-19.9,7.8c-6.5-0.5-12.6-2.3-16.2-1.5c-3.7,0.8-39.5,17.2-43.2,18C63.7,120.5,44.6,123.5,39.5,118.1z"/>
+              <path d="M161.4,119.4c-1.8-8.5-8.9-14.6-17.2-15.6l0.2-55.3l13.9-1l0.7-4.1l-8.2-1.3l-0.4-1.8l4.5-0.3l0-1.5l-3.4-0.2l0.3-3.1l4.7,0.9l0.1-2.9l-5,0l-0.1-6.5l8.2,1.3l0-3l-8.4-0.3l-0.7-5.1l7.2,0.6l0.1-2.5l-7.1-0.3l0.9-1.7l8.2-0.2l0.4-3.2l-15.7-1.1l0-6.8c0,0,0-4.3-5.2-4.4c0,0-4.1,0-4.6,4.3l0.1,47.9c0,0,6.3,4.2,5.9,8.8c-0.6,6.9-4.3,9.6-4.3,9.6l-0.5,34c-9.8,3-15.8,13-13.7,23.1c2.3,10.7,12.9,17.6,23.7,15.3C156.8,140.7,163.7,130.1,161.4,119.4z M143.7,135.8c-2.7,0.6-5.3-1.1-5.8-3.8c-0.6-2.7,1.1-5.3,3.8-5.8c2.7-0.6,5.3,1.1,5.8,3.8C148,132.7,146.3,135.3,143.7,135.8z"/>
+              <path d="M175,40.2h11.7v23.2h0.2c1.2-2,2.4-3.9,3.6-5.8l11.9-17.4h14.5l-17.3,22.3l18.3,30.1H204l-12.8-22.6l-4.5,5.5v17.1H175V40.2z"/>
+              <path d="M227,77.3c0.4,4.9,5.2,7.2,10.7,7.2c4,0,7.3-0.5,10.5-1.6l1.6,8c-3.9,1.6-8.6,2.4-13.8,2.4c-12.9,0-20.3-7.5-20.3-19.4c0-9.6,6-20.3,19.2-20.3c12.3,0,16.9,9.6,16.9,19c0,2-0.2,3.8-0.4,4.7H227z M240.9,69.2c0-2.9-1.2-7.7-6.7-7.7c-5,0-7,4.5-7.3,7.7H240.9z"/>
+              <path d="M264.2,54.6l5.7,18.7c0.6,2.3,1.4,5.1,1.9,7.1h0.2c0.5-2,1.2-4.9,1.7-7.1l4.7-18.7H291l-8.9,25c-5.4,15.1-9.1,21.1-13.4,24.9c-4.1,3.6-8.5,4.8-11.4,5.2l-2.5-10c1.5-0.2,3.3-0.9,5.1-2c1.8-0.9,3.7-2.8,4.9-4.7c0.4-0.5,0.6-1.2,0.6-1.7c0-0.4-0.1-1-0.5-1.9L251,54.6H264.2z"/>
+              <path d="M298.8,40.8c3.3-0.5,7.5-1,13-1c6.7,0,11.6,1.6,14.7,4.4c2.9,2.5,4.6,6.3,4.6,11c0,4.7-1.4,8.5-4,11.2c-3.6,3.8-9.4,5.8-16,5.8c-2,0-3.9-0.1-5.4-0.5v21h-6.8V40.8z M305.6,66.1c1.5,0.4,3.3,0.5,5.6,0.5c8.2,0,13.1-4,13.1-11.2c0-6.9-4.9-10.3-12.4-10.3c-3,0-5.2,0.2-6.4,0.5V66.1z"/>
+              <path d="M336.4,37.4h6.8v55.2h-6.8V37.4z"/>
+              <path d="M378.1,83.5c0,3.3,0.2,6.5,0.6,9h-6.2l-0.5-4.7h-0.2c-2.1,3-6.1,5.6-11.5,5.6c-7.6,0-11.5-5.4-11.5-10.8c0-9.1,8.1-14.1,22.6-14v-0.8c0-3.1-0.9-8.7-8.6-8.7c-3.5,0-7.2,1.1-9.8,2.8l-1.6-4.5c3.1-2,7.6-3.3,12.4-3.3c11.5,0,14.3,7.9,14.3,15.4V83.5z M371.5,73.4c-7.5-0.2-15.9,1.2-15.9,8.5c0,4.4,3,6.5,6.5,6.5c4.9,0,8-3.1,9.1-6.3c0.2-0.7,0.4-1.5,0.4-2.2V73.4z"/>
+              <path d="M412.8,91.2c-1.8,0.9-5.8,2.3-10.8,2.3c-11.3,0-18.7-7.8-18.7-19.3c0-11.6,7.9-20,20.2-20c4,0,7.6,1,9.5,1.9l-1.6,5.3c-1.6-0.9-4.2-1.8-7.9-1.8c-8.6,0-13.3,6.4-13.3,14.2c0,8.7,5.6,14.1,13.1,14.1c3.9,0,6.5-1,8.4-1.9L412.8,91.2z"/>
+              <path d="M421.1,75c0.2,9.2,6.1,13.1,12.9,13.1c4.9,0,7.8-0.9,10.4-1.9l1.2,4.9c-2.4,1.1-6.5,2.4-12.5,2.4c-11.6,0-18.5-7.7-18.5-19c0-11.3,6.7-20.3,17.6-20.3c12.3,0,15.5,10.8,15.5,17.7c0,1.4-0.2,2.5-0.2,3.2H421.1z M441.1,70.1c0.1-4.4-1.8-11.1-9.5-11.1c-6.9,0-9.9,6.4-10.5,11.1H441.1z"/>
+              <path d="M453.1,65.1c0-3.9-0.1-7.1-0.3-10.2h6l0.3,6.1h0.2c2.1-3.6,5.6-6.9,11.8-6.9c5.1,0,9,3.1,10.6,7.5h0.2c1.2-2.1,2.6-3.7,4.2-4.9c2.3-1.7,4.7-2.6,8.3-2.6c5,0,12.4,3.3,12.4,16.3v22.2h-6.7V71.3c0-7.2-2.6-11.6-8.2-11.6c-3.9,0-6.9,2.9-8.1,6.2c-0.3,0.9-0.5,2.2-0.5,3.4v23.2h-6.7V70c0-6-2.6-10.3-7.9-10.3c-4.3,0-7.4,3.4-8.5,6.8c-0.4,1-0.5,2.2-0.5,3.3v22.7h-6.7V65.1z"/>
+              <path d="M518.6,75c0.2,9.2,6.1,13.1,12.9,13.1c4.9,0,7.8-0.9,10.4-1.9l1.2,4.9c-2.4,1.1-6.5,2.4-12.5,2.4c-11.6,0-18.5-7.7-18.5-19c0-11.3,6.7-20.3,17.6-20.3c12.3,0,15.5,10.8,15.5,17.7c0,1.4-0.2,2.5-0.2,3.2H518.6z M538.7,70.1c0.1-4.4-1.8-11.1-9.5-11.1c-6.9,0-9.9,6.4-10.5,11.1H538.7z"/>
+              <path d="M550.6,65.1c0-3.9-0.1-7.1-0.3-10.2h6.1l0.4,6.2h0.2c1.9-3.6,6.2-7.1,12.4-7.1c5.2,0,13.3,3.1,13.3,16v22.5h-6.8V70.9c0-6.1-2.3-11.1-8.7-11.1c-4.5,0-8,3.2-9.2,7c-0.3,0.9-0.5,2-0.5,3.2v22.6h-6.8V65.1z"/>
+              <path d="M598.6,45.9v9h9.8v5.2h-9.8v20.3c0,4.7,1.3,7.3,5.1,7.3c1.9,0,3-0.2,4-0.5l0.3,5.1c-1.3,0.5-3.4,1-6.1,1c-3.2,0-5.8-1.1-7.4-3c-1.9-2-2.6-5.4-2.6-9.8V60.1h-5.8v-5.2h5.8V48L598.6,45.9z"/>
+            </g>
+          </svg>
         </div>
-        <div class="warmup-progress">
-          <div class="progress-track">
-            <div class="progress-bar" :style="{ width: warmupProgress + '%' }"></div>
-          </div>
-          <div class="progress-legend">{{ warmupLegend }}</div>
+        
+        <!-- Message de bienvenue personnalisé -->
+        <div class="warmup-text">
+          <p class="warmup-title">Bonjour {{ currentUserDisplayName }}</p>
+          <p class="warmup-subtitle">Nous chargeons le planning</p>
         </div>
-        <ul class="warmup-steps">
-          <li v-for="step in warmupSteps" :key="step.id" :class="['warmup-step', step.status]">
-            <span class="step-icon">
-              <va-icon v-if="step.status === 'done'" name="check_circle" size="16px" />
-              <va-icon v-else-if="step.status === 'loading'" name="autorenew" size="16px" spin />
-              <va-icon v-else name="schedule" size="16px" />
-            </span>
-            <span class="step-label">{{ step.label }}</span>
-          </li>
-        </ul>
+        
+        <!-- Spinner simple -->
+        <div class="simple-spinner">
+          <div class="spinner-circle"></div>
+        </div>
       </div>
     </div>
   </transition>
@@ -518,7 +527,9 @@
       v-model="showModal" 
       :hide-default-actions="true"
       :fullscreen="false"
+      :mobile-fullscreen="false"
       max-width="600px"
+      max-height="90vh"
       no-padding
       @before-open="modalA11y.onBeforeOpen"
       @open="modalA11y.onOpen"
@@ -1092,76 +1103,26 @@ watch(isBusy, async (busy, prevBusy) => {
   }
 }, { immediate: false })
 
-const warmupSteps = computed(() => {
-  const steps: Array<{ id: string; label: string; status: 'pending' | 'loading' | 'done' }> = []
-
-  const collaborateursStatus = loadingCollaborateurs.value
-    ? 'loading'
-    : allCollaborateurs.value.length > 0
-      ? 'done'
-      : 'pending'
-
-  const disponibilitesStatus = loadingDisponibilites.value
-    ? 'loading'
-    : disponibilitesCache.value.size > 0
-      ? 'done'
-      : collaborateursStatus === 'done'
-        ? 'pending'
-        : 'pending'
-
-  const realtimeStatus = (planningReady.value || isRealtimeActive.value)
-    ? 'done'
-    : (isBusy.value ? 'loading' : 'pending')
-
-  steps.push({
-    id: 'collaborateurs',
-    label: 'Initialisation des collaborateurs',
-    status: collaborateursStatus,
-  })
-
-  steps.push({
-    id: 'disponibilites',
-    label: 'Préparation des disponibilités',
-    status: disponibilitesStatus,
-  })
-
-  steps.push({
-    id: 'realtime',
-    label: 'Activation du temps réel',
-    status: realtimeStatus,
-  })
-
-  return steps
-})
-
-const warmupProgress = computed(() => {
-  const doneCount = warmupSteps.value.filter(step => step.status === 'done').length
-  const loadingCount = warmupSteps.value.filter(step => step.status === 'loading').length
-  const base = (doneCount / warmupSteps.value.length) * 100
-  const loadingBoost = loadingCount > 0 ? 10 : 0
-  return Math.min(100, Math.max(8, Math.round(base + loadingBoost)))
-})
-
-const warmupLegend = computed(() => {
-  if (warmupProgress.value >= 100 || planningReady.value) {
-    return 'Planning prêt, arrivée sur aujourd\'hui…'
+// Nom d'utilisateur pour l'accueil personnalisé
+const currentUserDisplayName = computed(() => {
+  const user = auth.currentUser
+  if (!user) return 'Invité'
+  
+  // Essayer d'abord le displayName
+  if (user.displayName) {
+    // Prendre uniquement le prénom (premier mot avant espace)
+    const firstName = user.displayName.split(' ')[0]
+    return firstName
   }
-
-  const loadingStep = warmupSteps.value.find(step => step.status === 'loading')
-  if (loadingStep) {
-    switch (loadingStep.id) {
-      case 'collaborateurs':
-        return 'Connexion aux collaborateurs…'
-      case 'disponibilites':
-        return 'Récupération des disponibilités…'
-      case 'realtime':
-        return 'Connexion au temps réel…'
-      default:
-        return 'Initialisation en cours…'
-    }
+  
+  // Sinon, extraire du email
+  if (user.email) {
+    const emailName = user.email.split('@')[0]
+    // Capitaliser la première lettre
+    return emailName.charAt(0).toUpperCase() + emailName.slice(1)
   }
-
-  return 'Préparation du planning…'
+  
+  return 'Invité'
 })
 
 // Options de formulaire
@@ -8209,14 +8170,7 @@ onUnmounted(() => {
   min-width: 120px;
 }
 
-/* Suppression du fond noir/overlay */
-:deep(.va-modal__overlay) {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-}
+/* Overlay de modale: utiliser le style global (fond sombre), aucun masquage local ici */
 
 /* Responsive mobile */
 @media (max-width: 640px) {
@@ -8384,44 +8338,130 @@ onUnmounted(() => {
 }
 
 .warmup-title {
-  font-size: clamp(20px, 3vw, 24px);
-  font-weight: 600;
+  font-size: clamp(22px, 3.5vw, 28px);
+  font-weight: 700;
   margin: 0;
   letter-spacing: 0.01em;
+  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .warmup-subtitle {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: rgba(248, 250, 252, 0.8);
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: rgba(248, 250, 252, 0.9);
+  font-weight: 400;
+}
+
+/* Animation du logo SVG qui se dessine */
+.animated-logo {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto 32px;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(255, 255, 255, 0.2));
+}
+
+.animated-logo .logo-paths path {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  fill: transparent;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-logo 2.5s cubic-bezier(0.47, 0, 0.745, 0.715) forwards;
+}
+
+.animated-logo .logo-paths path:nth-child(1) { animation-delay: 0s; }
+.animated-logo .logo-paths path:nth-child(2) { animation-delay: 0.1s; }
+.animated-logo .logo-paths path:nth-child(3) { animation-delay: 0.2s; }
+.animated-logo .logo-paths path:nth-child(4) { animation-delay: 0.3s; }
+.animated-logo .logo-paths path:nth-child(5) { animation-delay: 0.4s; }
+.animated-logo .logo-paths path:nth-child(6) { animation-delay: 0.5s; }
+.animated-logo .logo-paths path:nth-child(7) { animation-delay: 0.6s; }
+.animated-logo .logo-paths path:nth-child(8) { animation-delay: 0.7s; }
+.animated-logo .logo-paths path:nth-child(9) { animation-delay: 0.8s; }
+.animated-logo .logo-paths path:nth-child(10) { animation-delay: 0.9s; }
+
+@keyframes draw-logo {
+  to {
+    stroke-dashoffset: 0;
+    fill: #ffffff;
+  }
+}
+
+/* Spinner simple et élégant */
+.simple-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.spinner-circle {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spinner-rotate 1s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .warmup-progress {
   position: relative;
   z-index: 1;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .progress-track {
   width: 100%;
-  height: 6px;
+  height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.25);
   overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(135deg, rgba(var(--va-primary-rgb), 0.9), rgba(59, 130, 246, 0.95));
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  background-size: 200% 100%;
   border-radius: inherit;
   transition: width 0.45s ease;
+  animation: shimmer 2s infinite linear;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .progress-legend {
-  margin-top: 12px;
-  font-size: 13px;
-  color: rgba(226, 232, 240, 0.9);
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(226, 232, 240, 1);
   letter-spacing: 0.02em;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-legend::before {
+  content: '⏱️';
+  font-size: 16px;
 }
 
 .warmup-steps {
@@ -8429,46 +8469,78 @@ onUnmounted(() => {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   position: relative;
   z-index: 1;
+  margin-bottom: 20px;
 }
 
 .warmup-step {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(30, 41, 59, 0.55);
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.45);
   border: 1px solid transparent;
-  transition: border-color 0.3s ease, transform 0.3s ease, background 0.3s ease;
+  transition: all 0.3s ease;
   color: rgba(226, 232, 240, 0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .warmup-step.loading {
-  border-color: rgba(var(--va-primary-rgb), 0.25);
-  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(59, 130, 246, 0.2));
   color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
 }
 
 .warmup-step.done {
-  border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(21, 128, 61, 0.22);
-  color: #dcfce7;
+  border-color: rgba(34, 197, 94, 0.4);
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.3), rgba(34, 197, 94, 0.2));
+  color: #d1fae5;
+  opacity: 0.9;
 }
 
 .warmup-step.pending {
-  opacity: 0.8;
+  opacity: 0.6;
 }
 
 .warmup-step .va-icon {
   color: currentColor;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .step-label {
-  font-size: 14px;
+  font-size: 15px;
   flex: 1;
+  font-weight: 500;
+}
+
+.warmup-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.warmup-footer .info-icon {
+  color: rgba(147, 197, 253, 1);
+  flex-shrink: 0;
+}
+
+.warmup-tip {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.95);
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 .planning-warmup-fade-enter-active,

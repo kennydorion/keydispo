@@ -4,7 +4,9 @@
     v-model="isVisible"
     :hide-default-actions="true"
     :fullscreen="false"
+    :mobile-fullscreen="false"
     max-width="600px"
+    max-height="90vh"
     no-padding
     @before-open="modalA11y.onBeforeOpen"
     @open="modalA11y.onOpen"

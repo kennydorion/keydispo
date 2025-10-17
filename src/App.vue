@@ -2,12 +2,13 @@
   <div id="app" :class="{ 
     'collaborateur-light-theme': isCollaborateurInterface,
     'admin-interface': isAdminInterface,
-    'unauthorized': !isAuthorized 
+    'unauthorized': !isAuthorized,
+    'is-planning': isPlanningRoute,
   }">
     
     
-    <NavBar v-if="showNavBar" />
-    <div class="app-main" :class="{ 'no-nav': !showNavBar }">
+  <NavBar v-if="showNavBar" />
+  <div class="app-main" :class="{ 'no-nav': !showNavBar, 'is-planning': isPlanningRoute }">
       <!-- Message d'autorisation si nécessaire -->
       <div v-if="!isAuthorized && route.meta.requiresAuth" class="unauthorized-message">
         <div class="unauthorized-content">
@@ -51,6 +52,14 @@ const showNavBar = computed(() =>
   route.path !== '/collaborateur/login'
 )
 
+// Détermine si on est sur la page planning pour adapter le layout (scroll interne)
+// Admin: "/semaine" est la route du planning. On garde aussi "/planning" en fallback.
+// Collaborateur: "/collaborateur/planning" doit aussi désactiver le scroll global.
+const isPlanningRoute = computed(() => {
+  const p = route.path
+  return p === '/semaine' || p === '/planning' || p.startsWith('/collaborateur/planning')
+})
+
 // Redirection vers l'interface autorisée
 function goToAuthorizedInterface() {
   const role = userRole.value
@@ -88,6 +97,12 @@ onMounted(() => {
   overflow-x: hidden;
 }
 
+/* Pour les pages de type planning : pas de scroll sur #app, tout se passe à l'intérieur */
+#app.is-planning {
+  height: 100vh;
+  overflow: hidden;
+}
+
 /* Interface collaborateur - thème plus clair */
 .collaborateur-light-theme {
   background: var(--va-background-primary, #f8f9fa);
@@ -105,8 +120,25 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   padding: 0;
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: hidden;
+}
+
+/* Pour les pages de type planning : pas de scroll sur .app-main */
+.app-main.is-planning,
+#app.is-planning .app-main {
+  overflow: hidden;
+}
+
+/* En mode planning, contraindre la hauteur de la zone de contenu
+   pour empêcher le scroll de la page et laisser le scroll interne au planning */
+.app-main.is-planning {
+  height: calc(100vh - 64px); /* 64px = hauteur de la NavBar */
+}
+
+/* Cas sans NavBar (si jamais) */
+.app-main.is-planning.no-nav {
+  height: 100vh;
 }
 
 @media (max-width: 768px) {

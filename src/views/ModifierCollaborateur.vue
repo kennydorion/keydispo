@@ -1061,14 +1061,23 @@ watch(() => route.params.id, () => {
 /* Overlay de la modale avec fond sombre */
 :deep(.va-modal__overlay) {
   background-color: rgba(0, 0, 0, 0.6) !important;
-  /* Pas de backdrop-filter pour éviter que le flou affecte la modale */
+  backdrop-filter: none !important;
+  z-index: 2147483646 !important; /* derrière le dialog */
 }
 
 /* Contenu de la modale avec fond blanc */
-:deep(.va-modal__container) {
-  background-color: white !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+:deep(.va-modal__container) { background-color: transparent !important; }
+
+/* S'assurer que le contenu interne est bien opaque */
+:deep(.va-modal__dialog),
+:deep(.va-modal__inner),
+:deep(.va-modal__content),
+:deep(.va-modal__body) {
+  background: #ffffff !important;
+  color: #000 !important;
   border-radius: 12px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  z-index: 2147483647 !important; /* au-dessus de l'overlay */
 }
 
 /* Styles pour l'autocomplétion des métiers */
