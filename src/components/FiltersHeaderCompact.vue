@@ -3,7 +3,7 @@
     <!-- En-tête avec titre -->
     <div class="header-top">
       <div class="header-brand">
-        <span class="material-icons brand-icon">dashboard</span>
+        <span class="material-icons brand-icon">calendar_month</span>
         <div class="brand-content">
           <h1 class="brand-title">Planning Admin</h1>
           <p class="brand-subtitle">Gestion des disponibilités</p>
@@ -89,11 +89,10 @@
             :popover="{ visibility: 'click' }"
             mode="date"
           >
-            <template #default="{ inputValue, inputEvents, togglePopover }">
+            <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
                 <input
-                  :value="formatSingleDate(inputValue)"
-                  v-on="inputEvents"
+                  :value="dateStart ? formatSingleDate(dateStart) : ''"
                   placeholder="Date de début"
                   class="date-input"
                   readonly
@@ -125,11 +124,10 @@
             :popover="{ visibility: 'click' }"
             mode="date"
           >
-            <template #default="{ inputValue, inputEvents, togglePopover }">
+            <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
                 <input
-                  :value="formatSingleDate(inputValue)"
-                  v-on="inputEvents"
+                  :value="dateEnd ? formatSingleDate(dateEnd) : ''"
                   placeholder="Date de fin"
                   class="date-input"
                   readonly
@@ -459,46 +457,36 @@ const activeFilterChips = computed<Chip[]>(() => {
       onClear: () => planningFilters.updateFilter('lieu', '')
     })
   }
-  if (filterState.dateFrom || filterState.dateTo) {
-    const fromDate = filterState.dateFrom ? new Date(filterState.dateFrom) : null
-    const toDate = filterState.dateTo ? new Date(filterState.dateTo) : null
-    
-    // Vérifier la validité des dates
-    const isFromValid = fromDate && !isNaN(fromDate.getTime())
-    const isToValid = toDate && !isNaN(toDate.getTime())
-    
-    const from = isFromValid 
-      ? fromDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) 
-      : '—'
-    const to = isToValid 
-      ? toDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) 
-      : '—'
-    
-    // Si les dates sont identiques, n'afficher qu'une seule date
-    let label = ''
-    if (isFromValid && isToValid && fromDate!.getTime() === toDate!.getTime()) {
-      label = from
-    } else if (isFromValid && isToValid) {
-      label = `${from} → ${to}`
-    } else if (isFromValid) {
-      label = from
-    } else if (isToValid) {
-      label = to
-    } else {
-      label = '—'
+  // Chip pour date de début
+  if (filterState.dateFrom) {
+    const fromDate = new Date(filterState.dateFrom)
+    if (!isNaN(fromDate.getTime())) {
+      chips.push({
+        key: 'dateFrom',
+        icon: 'event',
+        label: `Début: ${fromDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        onClear: () => {
+          dateStart.value = null
+          planningFilters.updateFilter('dateFrom', '')
+        }
+      })
     }
-    
-    chips.push({
-      key: 'dates',
-      icon: 'date_range',
-      label,
-      onClear: () => {
-        dateStart.value = null
-        dateEnd.value = null
-        planningFilters.updateFilter('dateFrom', '')
-        planningFilters.updateFilter('dateTo', '')
-      }
-    })
+  }
+  
+  // Chip pour date de fin
+  if (filterState.dateTo) {
+    const toDate = new Date(filterState.dateTo)
+    if (!isNaN(toDate.getTime())) {
+      chips.push({
+        key: 'dateTo',
+        icon: 'event',
+        label: `Fin: ${toDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        onClear: () => {
+          dateEnd.value = null
+          planningFilters.updateFilter('dateTo', '')
+        }
+      })
+    }
   }
   return chips
 })
@@ -521,7 +509,7 @@ const clearAllFilters = () => {
   top: 0;
   z-index: 5000;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 -8px 16px -8px rgba(0, 0, 0, 0.2);
 }
 
 .header-top {
@@ -588,6 +576,7 @@ const clearAllFilters = () => {
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
+  box-shadow: inset 0 -4px 12px -4px rgba(0, 0, 0, 0.1);
 }
 
 /* Recherche */
@@ -746,8 +735,10 @@ const clearAllFilters = () => {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   padding: 8px 12px;
+  min-height: 38px;
   cursor: pointer;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .date-input-wrapper:hover {

@@ -88,19 +88,6 @@
       <span>Cache DOM: {{ domCacheStatus.elements }} éléments</span>
     </div>
 
-    <!-- Etat vide quand filtres actifs mais aucun résultat -->
-  <div v-if="hasActiveFilters && filteredCollaborateurs.length === 0 && !isBusy" class="empty-state">
-      <div class="empty-card">
-        <span class="material-icons empty-icon">filter_alt_off</span>
-        <div class="empty-title">Aucun collaborateur ne correspond aux filtres</div>
-        <div class="empty-sub">Ajustez vos critères ou réinitialisez les filtres.</div>
-        <button class="btn-secondary" @click="clearAllFilters">
-          <span class="material-icons">clear_all</span>
-          Réinitialiser les filtres
-        </button>
-      </div>
-    </div>
-
     <!-- Stats de virtualisation (dev mode) - DÉSACTIVÉ
     <div v-if="false && isEmulator && virtualizationStats.totalCells > 0" class="virtualization-stats" @click="toggleStatsDetails">
       <div class="stats-summary">
@@ -8852,22 +8839,6 @@ onUnmounted(() => {
   border-radius: 50%;
   transition: all 0.3s ease;
 }
-
-/* Etat vide quand aucun collaborateur ne correspond aux filtres */
-.empty-state { display: flex; justify-content: center; margin-top: 24px; }
-.empty-card {
-  background: var(--dark-card);
-  border: 1px solid var(--dark-border);
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-}
-.empty-icon { color: var(--dark-text-secondary); }
-.empty-title { color: var(--dark-text-primary); font-weight: 700; }
-.empty-sub { color: var(--dark-text-secondary); }
 
 .wasm-stats .performance-indicator.excellent {
   background: #10b981;
