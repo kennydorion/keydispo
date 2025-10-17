@@ -5,6 +5,8 @@ import routes, { setupRouterGuards } from './router/routes'
 import { createVuestic } from 'vuestic-ui'
 import { installMultiUserSystem } from './services/multiUserPlugin'
 import { InterfaceManager } from './services/interfaceManager'
+import VCalendar from 'v-calendar'
+import 'v-calendar/style.css'
 import './style.css'
 
 // Garde globale pour désactiver les logs verbeux (réactivables via VITE_ENABLE_DEBUG_LOGS="true")
@@ -35,6 +37,20 @@ app.use(createVuestic({
     }
   }
 }))
+
+// Installation de V-Calendar avec locale française et lundi en premier
+app.use(VCalendar, {
+  locales: {
+    'fr': {
+      firstDayOfWeek: 2, // 2 = Monday (1 = Sunday)
+      masks: {
+        L: 'DD/MM/YYYY',
+        input: 'DD/MM/YYYY',
+        title: 'MMMM YYYY'
+      }
+    }
+  }
+})
 
 // Installation du système multi-utilisateur unifié
 app.use(installMultiUserSystem)

@@ -98,7 +98,7 @@
                 :close-on-click-outside="true"
                 :format-date="formatDateFrench"
                 :parse-date="parseDateFrench"
-                first-weekday="monday"
+                first-weekday="Monday"
                 :weekday-names="weekdayNamesFr"
                 :month-names="monthNamesFr"
               />
@@ -112,7 +112,7 @@
                 :close-on-click-outside="true"
                 :format-date="formatDateFrench"
                 :parse-date="parseDateFrench"
-                first-weekday="monday"
+                first-weekday="Monday"
                 :weekday-names="weekdayNamesFr"
                 :month-names="monthNamesFr"
               />
@@ -286,14 +286,15 @@ const formatDateFrench = (date: Date): string => {
   return `${day}/${month}/${year}`
 }
 
-const parseDateFrench = (dateStr: string): Date | null => {
-  if (!dateStr) return null
+const parseDateFrench = (dateStr: string): Date => {
+  if (!dateStr) return new Date()
   const parts = dateStr.split('/')
-  if (parts.length !== 3) return null
+  if (parts.length !== 3) return new Date()
   const day = parseInt(parts[0], 10)
   const month = parseInt(parts[1], 10) - 1
   const year = parseInt(parts[2], 10)
-  return new Date(year, month, day)
+  const parsed = new Date(year, month, day)
+  return isNaN(parsed.getTime()) ? new Date() : parsed
 }
 
 // Gestion des dates pour va-date-picker
@@ -984,42 +985,5 @@ const formatDateShort = (dateStr: string): string => {
   }
 }
 
-/* ========================================
-   Inversement des jours du calendrier (lundi en premier)
-   ======================================== */
-
-/* Cibler le calendrier Vuestic */
-:deep(.va-date-picker__calendar) {
-  direction: rtl;
-}
-
-:deep(.va-date-picker__calendar-header-day) {
-  direction: ltr;
-}
-
-:deep(.va-date-picker__calendar-row) {
-  display: flex;
-  flex-direction: row-reverse;
-}
-
-:deep(.va-date-picker__calendar-day) {
-  direction: ltr;
-  text-align: center;
-}
-
-/* Garder la navigation en LTR */
-:deep(.va-date-picker__calendar-navigation) {
-  direction: ltr;
-}
-
-/* Calendrier Vuestic - structure alternative */
-:deep(.va-input-wrapper__field-wrapper) {
-  direction: ltr;
-}
-
-/* Pour la liste des semaines, inverser pour que lundi soit à gauche */
-:deep(.va-date-picker__week) {
-  display: flex;
-  flex-direction: row-reverse;
-}
+/* Ordre des jours géré par la prop first-weekday du composant */
 </style>

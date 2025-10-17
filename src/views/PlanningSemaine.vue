@@ -1,7 +1,7 @@
 <template>
   <div class="planning-app" :class="{ 'collaborateur-light-theme': isCollaborateurInterface }">
     <!-- Header avec filtres compact (seulement pour admin) -->
-    <FiltersHeaderNew
+    <FiltersHeaderCompact
       v-if="!isCollaborateurInterface"
     />
 
@@ -637,7 +637,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vuestic-ui'
-import FiltersHeaderNew from '../components/FiltersHeaderNew.vue'
+import FiltersHeaderCompact from '../components/FiltersHeaderCompact.vue'
 import { defineAsyncComponent } from 'vue'
 // Composant de chargement nécessaire pour l'UX
 import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
