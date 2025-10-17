@@ -778,8 +778,7 @@ const dateTo = computed({
   set: (value) => planningFilters.updateFilter('dateTo', value)
 })
 
-// État de filtrage du système centralisé
-const hasActiveFilters = computed(() => planningFilters.hasActiveFilters.value)
+// État de filtrage du système centralisé – non utilisé ici
 
 // Variables restantes non liées aux filtres
 // (viewMode, mobileFiltersOpen retirés: non utilisés ici)
@@ -948,7 +947,11 @@ function addLoadedRange(start: string, end: string) {
   loadedDateRanges.value = merged
 }
 
-const minPastDate = ref<string>(calcMinPastDate())
+const minPastDate = computed<string>(() => {
+  if (dateFrom.value) return dateFrom.value
+  if (dateTo.value && !dateFrom.value) return '2000-01-01'
+  return calcMinPastDate()
+})
 
 // Environnement
 const isLocalhostEnv = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -1429,9 +1432,11 @@ const visibleDays = computed(() => {
     return days.filter(d => d.date >= a)
   }
   if (to && !from) {
-    const a = addDaysStr(to, -6)
+    // Avec seulement une date de fin, on affiche de "très loin" jusqu'à la date de fin incluse
+    // Borne gauche: minPastDate dynamique (2000-01-01 quand dateTo seule)
+    const a = minPastDate.value
     const b = to
-    return days.filter(d => d.date >= a && d.date <= b)
+    return days.filter(d => d.date <= b && d.date >= a)
   }
   return days
 })
@@ -4597,6 +4602,7 @@ function cancelModal() {
 // Navigation
 // Gestion de recherche avec debouncing intelligent
 // Réinitialiser tous les filtres
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function clearAllFilters() {
   planningFilters.clearAllFilters()
 
@@ -5570,11 +5576,33 @@ function generateInitialDays() {
   const days: any[] = []
   const today = new Date()
   const todayStr = toDateStr(today)
-  const startStr = minPastDate.value
   
-  // Pour les collaborateurs, afficher plus de jours (2 mois au lieu de 2 semaines)
-  const daysAhead = isCollaborateurInterface.value ? 60 : 14
-  const endStr = addDaysStr(todayStr, daysAhead)
+  // CORRECTION : Respecter les filtres de dates
+  let startStr: string
+  let endStr: string
+  
+  // Si on a une date de début définie, partir de là
+  if (dateFrom.value) {
+    startStr = dateFrom.value
+  } else if (dateTo.value) {
+    // Si on a seulement une date de fin, partir de 1 an dans le passé à partir de cette date
+    const endDate = new Date(dateTo.value)
+    const startDate = new Date(endDate)
+    startDate.setFullYear(endDate.getFullYear() - 1)
+    startStr = toDateStr(startDate)
+  } else {
+    // Sinon, partir de 3 mois dans le passé
+    startStr = minPastDate.value
+  }
+  
+  // Si on a une date de fin définie, s'arrêter là
+  if (dateTo.value) {
+    endStr = dateTo.value
+  } else {
+    // Sinon, aller dans le futur
+    const daysAhead = isCollaborateurInterface.value ? 60 : 14
+    endStr = addDaysStr(todayStr, daysAhead)
+  }
   
   // Génère de startStr -> endStr inclus
   let cursor = new Date(startStr)
@@ -5593,16 +5621,26 @@ function generateInitialDays() {
   }
   loadedDays.value = days
   
-  // CORRECTION : Positionner le scroll sur aujourd'hui après que le DOM soit complètement prêt
-  // et que les dimensions soient calculées
+  // CORRECTION : Positionner le scroll intelligemment selon les filtres
   setTimeout(() => {
     const scroller = planningScroll.value
     if (!scroller) return
     
-    const todayIndex = days.findIndex(d => d.isToday)
-    if (todayIndex >= 0) {
-      const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
-      scroller.scrollLeft = centerOffset // Scroll immédiat sans animation
+    // Si on a une date de fin mais pas de date de début, scroller vers la fin
+    if (dateTo.value && !dateFrom.value) {
+      // Positionner vers la fin de la plage visible
+      const endIndex = days.findIndex(d => d.date === dateTo.value)
+      if (endIndex >= 0) {
+        const centerOffset = Math.max(0, endIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
+        scroller.scrollLeft = centerOffset
+      }
+    } else {
+      // Sinon, centrer sur aujourd'hui (comportement par défaut)
+      const todayIndex = days.findIndex(d => d.isToday)
+      if (todayIndex >= 0) {
+        const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
+        scroller.scrollLeft = centerOffset
+      }
     }
   }, 100) // Délai pour s'assurer que le DOM est prêt
 }
@@ -5645,11 +5683,36 @@ async function onScrollExtend(e: Event) {
   recomputeWindow(scroller)
 
   // Extension dynamique conditionnelle:
-  // - Avec une borne de fin (dateTo), on n'étend pas
   // - Avec uniquement une borne de début (dateFrom), on autorise l'extension vers la droite
-  const hasToBound = !!dateTo.value
+  // - Avec uniquement une borne de fin (dateTo), on autorise l'extension vers la gauche et on borne à droite
+  // - Avec les deux bornes, on n'étend pas
   const hasFromOnly = !!dateFrom.value && !dateTo.value
-  if (hasToBound) {
+  const hasToOnly = !!dateTo.value && !dateFrom.value
+  const hasBothBounds = !!dateFrom.value && !!dateTo.value
+  
+  // Bloquer le scroll horizontal quand les deux dates sont définies
+  if (hasBothBounds) {
+    // Calculer les indices de début et fin dans loadedDays qui correspondent aux dates filtrées
+    const firstVisibleDate = visibleDays.value[0]?.date
+    const lastVisibleDate = visibleDays.value[visibleDays.value.length - 1]?.date
+    
+    if (firstVisibleDate && lastVisibleDate) {
+      const firstLoadedIndex = loadedDays.value.findIndex(d => d.date === firstVisibleDate)
+      const lastLoadedIndex = loadedDays.value.findIndex(d => d.date === lastVisibleDate)
+      
+      if (firstLoadedIndex !== -1 && lastLoadedIndex !== -1) {
+        // Calculer les limites de scroll
+        const minScrollLeft = firstLoadedIndex * dayWidth.value
+        const maxScrollLeft = Math.max(minScrollLeft, (lastLoadedIndex + 1) * dayWidth.value - scroller.clientWidth)
+        
+        // Clamper le scroll dans ces limites
+        if (scroller.scrollLeft < minScrollLeft) {
+          scroller.scrollLeft = minScrollLeft
+        } else if (scroller.scrollLeft > maxScrollLeft) {
+          scroller.scrollLeft = maxScrollLeft
+        }
+      }
+    }
     return
   }
 
@@ -5705,27 +5768,34 @@ async function onScrollExtend(e: Event) {
       }
     }
 
-    // DROITE: si la réserve est basse, ajouter un gros bloc
-    const rightReserve = (totalCols - 1) - lastVisibleIdx
-    if (rightReserve < minRightReserve) {
-      const lastDate = loadedDays.value[loadedDays.value.length - 1]?.date
-      const toAdd = targetRightReserve - rightReserve
-      if (toAdd > 0) {
-        appendDays(toAdd)
-        if (lastDate) {
-          const start = addDaysStr(lastDate, 1)
-          const end = addDaysStr(lastDate, toAdd)
-          
-          // Préchargement agressif pour scroll rapide
-          if (isScrollingFast.value) {
-            // Charger immédiatement sans attendre
-            generateDisponibilitesForDateRange(start, end).catch(console.error)
-          } else {
-            generateDisponibilitesForDateRange(start, end)
+      // DROITE: si la réserve est basse, ajouter un gros bloc (borné par dateTo si hasToOnly)
+      const rightReserve = (totalCols - 1) - lastVisibleIdx
+      if (rightReserve < minRightReserve) {
+        const lastDate = loadedDays.value[loadedDays.value.length - 1]?.date
+        let toAdd = targetRightReserve - rightReserve
+        if (toAdd > 0) {
+          // Si seule la borne de fin est définie, ne pas dépasser dateTo
+          if (hasToOnly && dateTo.value && lastDate) {
+            const remaining = Math.max(0, diffDays(lastDate, dateTo.value))
+            toAdd = Math.min(toAdd, remaining)
+          }
+          if (toAdd > 0) {
+            appendDays(toAdd)
+            if (lastDate) {
+              const start = addDaysStr(lastDate, 1)
+              const end = addDaysStr(lastDate, toAdd)
+            
+              // Préchargement agressif pour scroll rapide
+              if (isScrollingFast.value) {
+                // Charger immédiatement sans attendre
+                generateDisponibilitesForDateRange(start, end).catch(console.error)
+              } else {
+                generateDisponibilitesForDateRange(start, end)
+              }
+            }
           }
         }
       }
-    }
 
     // Décharger visuellement (cache conservé)
     prunePastIfFar(scroller)
@@ -7004,18 +7074,26 @@ watch(allCollaborateurs, () => {
   
 }, { deep: true })
 
-// Quand les filtres structurants changent, clamp le scroll vertical et recompute
+// Quand les filtres structurants changent, régénérer les jours et ajuster le scroll
+// Note: Le chargement des données est géré automatiquement par usePlanningData
 watch([filterMetier, filterStatut, filterLieu, dateFrom, dateTo], () => {
+  // Régénérer la liste des jours visibles en fonction des filtres de dates
+  generateInitialDays()
+  
+  // Après la mise à jour du DOM, ajuster le scroll
   nextTick(() => {
     const scroller = planningScroll.value
     if (!scroller) return
-  // Reset vertical pour éviter un startIndex hors bornes après un shrink
-  scroller.scrollTop = 0
+    
+    // Reset vertical pour éviter un startIndex hors bornes après un shrink
+    scroller.scrollTop = 0
     recomputeRowWindow(scroller)
-  // Sync horizontal aussi (dates filtrées)
-  recomputeWindow(scroller)
-  // Protéger contre toute fenêtre vide
-  ensureRowsVisible()
+    
+    // Sync horizontal aussi (dates filtrées)
+    recomputeWindow(scroller)
+    
+    // Protéger contre toute fenêtre vide
+    ensureRowsVisible()
   })
 })
 

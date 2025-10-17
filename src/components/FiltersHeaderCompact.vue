@@ -87,11 +87,13 @@
           </label>
           <VDatePicker
             v-model="dateStart"
+            @update:model-value="onDateStartChange"
             locale="fr"
             :popover="{ visibility: 'click' }"
             mode="date"
-            :min-date="new Date(2020, 0, 1)"
-            :max-date="new Date(2030, 11, 31)"
+            :min-date="minCalendarDate"
+            :max-date="maxCalendarDate"
+            :initial-page="{ month: new Date().getMonth() + 1, year: new Date().getFullYear() }"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -124,11 +126,13 @@
           </label>
           <VDatePicker
             v-model="dateEnd"
+            @update:model-value="onDateEndChange"
             locale="fr"
             :popover="{ visibility: 'click' }"
             mode="date"
-            :min-date="new Date(2020, 0, 1)"
-            :max-date="new Date(2030, 11, 31)"
+            :min-date="minCalendarDate"
+            :max-date="maxCalendarDate"
+            :initial-page="{ month: new Date().getMonth() + 1, year: new Date().getFullYear() }"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -302,17 +306,23 @@ const toggleFilters = () => {
 }
 
 // Gestion des dates séparées avec v-calendar
+// Dates locales pour le v-calendar (Date objects)
 const dateStart = ref<Date | null>(null)
 const dateEnd = ref<Date | null>(null)
 
-// Synchroniser dateStart avec le filtre dateFrom
+// Dates min/max pour v-calendar (2023-2030)
+const minCalendarDate = new Date(2023, 0, 1)
+const maxCalendarDate = new Date(2030, 11, 31)
+
+// Initialisation: sync state → UI (une seule fois au montage)
 watch(
   () => planningFilters.filterState.dateFrom,
   (from) => {
     if (from) {
       try {
         const date = new Date(from)
-        if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+        const year = date.getFullYear()
+        if (!isNaN(date.getTime()) && year >= 2023 && year <= 2030) {
           dateStart.value = date
         } else {
           dateStart.value = null
@@ -328,14 +338,14 @@ watch(
   { immediate: true }
 )
 
-// Synchroniser dateEnd avec le filtre dateTo
 watch(
   () => planningFilters.filterState.dateTo,
   (to) => {
     if (to) {
       try {
         const date = new Date(to)
-        if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+        const year = date.getFullYear()
+        if (!isNaN(date.getTime()) && year >= 2023 && year <= 2030) {
           dateEnd.value = date
         } else {
           dateEnd.value = null
@@ -351,8 +361,9 @@ watch(
   { immediate: true }
 )
 
-// Mettre à jour le filtre quand dateStart change
-watch(dateStart, (newDate) => {
+// Handlers pour les événements du v-calendar
+// Flux unidirectionnel: UI → updateFilter → state global
+function onDateStartChange(newDate: Date | null) {
   if (newDate && !isNaN(newDate.getTime())) {
     try {
       const dateStr = toDateStr(newDate)
@@ -366,10 +377,9 @@ watch(dateStart, (newDate) => {
   } else {
     planningFilters.updateFilter('dateFrom', '')
   }
-})
+}
 
-// Mettre à jour le filtre quand dateEnd change
-watch(dateEnd, (newDate) => {
+function onDateEndChange(newDate: Date | null) {
   if (newDate && !isNaN(newDate.getTime())) {
     try {
       const dateStr = toDateStr(newDate)
@@ -383,7 +393,7 @@ watch(dateEnd, (newDate) => {
   } else {
     planningFilters.updateFilter('dateTo', '')
   }
-})
+}
 
 const formatSingleDate = (inputValue: any): string => {
   if (!inputValue) return ''

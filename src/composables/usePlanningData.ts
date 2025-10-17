@@ -295,18 +295,21 @@ export function usePlanningData() {
   function computeRequestedRange(dateFrom?: string, dateTo?: string) {
     let startDate = dateFrom || ''
     let endDate = dateTo || ''
-    // Si seulement dateFrom: fenêtre +30 jours
+    // Si seulement dateFrom: charger jusqu'à +6 mois (au lieu de 30 jours)
     if (dateFrom && !dateTo) {
       const start = new Date(dateFrom)
       const end = new Date(start)
-      end.setDate(start.getDate() + 30)
+      // Charger 6 mois de données pour éviter de recharger trop souvent
+      end.setMonth(start.getMonth() + 6)
       endDate = end.toISOString().split('T')[0]
     }
-    // Si seulement dateTo: fenêtre -30 jours
+    // Si seulement dateTo: charger depuis 1 an dans le passé (au lieu de 6 mois)
+    // pour permettre à l'utilisateur de voir l'historique complet
     if (dateTo && !dateFrom) {
       const end = new Date(dateTo)
       const start = new Date(end)
-      start.setDate(end.getDate() - 30)
+      // Charger 12 mois dans le passé pour avoir un historique complet
+      start.setFullYear(end.getFullYear() - 1)
       startDate = start.toISOString().split('T')[0]
     }
     return { startDate, endDate }
