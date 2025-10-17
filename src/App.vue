@@ -78,13 +78,14 @@ onMounted(() => {
 <style>
 #app {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--dark-background);
   color: var(--dark-text-primary);
   font-family: var(--kd-font);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Interface collaborateur - thème plus clair */
@@ -104,7 +105,8 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 @media (max-width: 768px) {

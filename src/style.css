@@ -52,7 +52,7 @@
 /* Amélioration de l'overlay */
 .va-modal__overlay {
   background: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: blur(4px);
+  /* Pas de backdrop-filter pour éviter que le flou affecte la modale */
 }
 
 /* === VARIABLES CSS EXISTANTES === */
@@ -174,14 +174,16 @@ input[type="time"]::-webkit-clear-button {
   height: 100vh !important;
 }
 
-/* SUPPRESSION COMPLÈTE DE TOUS LES OVERLAYS DE MODALES */
+/* OVERLAY DES MODALES ACTIVÉ AVEC FOND SOMBRE */
 .va-modal__overlay,
 .va-modal__overlay--lowest,
 .va-modal__overlay--top,
 .va-modal-overlay {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  /* Pas de blur pour éviter qu'il affecte le contenu de la modale */
 }
 
 /* Correction spécifique pour la modale batch */
@@ -191,10 +193,10 @@ input[type="time"]::-webkit-clear-button {
   display: none !important; /* Suppression complète de l'overlay */
 }
 
-/* Suppression globale des fonds noirs/overlays de toutes les modales */
+/* Overlay des modales avec fond sombre visible */
 .va-modal__overlay,
 .va-modal-overlay {
-  background: transparent !important;
+  background: rgba(0, 0, 0, 0.6) !important;
   backdrop-filter: none !important;
 }
 
@@ -492,15 +494,14 @@ body > .va-toasts-container .va-toast .va-toast__content {
   opacity: 0 !important;
 }
 
-/* SUPPRESSION TOTALE DE TOUS LES OVERLAYS - Sélecteurs par attributs */
+/* OVERLAY DES MODALES - Style uniforme avec fond sombre */
 [class*="va-modal__overlay"],
-[class*="modal-overlay"],
-div[class*="overlay"]:not([class*="today"]):not([class*="hover"]):not([class*="grid"]) {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
+[class*="modal-overlay"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  /* Pas de blur pour éviter qu'il affecte le contenu de la modale */
 }
 
 /* Correction pour les dropdowns dans les modales - ils doivent être au-dessus de l'overlay */

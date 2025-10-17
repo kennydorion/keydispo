@@ -298,8 +298,7 @@
       :cancel-text="'Annuler'"
       @ok="supprimerCollaborateur"
       hide-default-actions
-      overlay-opacity="0.5"
-      backdrop-color="rgba(0, 0, 0, 0.5)"
+      :overlay-opacity="0.6"
     >
       <div class="delete-modal-content">
         <va-icon name="warning" color="danger" size="48px" class="mb-4" />
@@ -1061,8 +1060,8 @@ watch(() => route.params.id, () => {
 
 /* Overlay de la modale avec fond sombre */
 :deep(.va-modal__overlay) {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  /* Pas de backdrop-filter pour éviter que le flou affecte la modale */
 }
 
 /* Contenu de la modale avec fond blanc */

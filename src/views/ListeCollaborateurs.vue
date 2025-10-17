@@ -240,8 +240,7 @@
       cancel-text="Annuler"
       @ok="handleDeleteCollaborateur"
       ok-color="danger"
-      overlay-opacity="0.5"
-      backdrop-color="rgba(0, 0, 0, 0.5)"
+      :overlay-opacity="0.6"
       @before-open="modalA11y.onBeforeOpen"
       @open="modalA11y.onOpen"
       @close="modalA11y.onClose"
@@ -1063,8 +1062,8 @@ onMounted(() => {
 
 /* Overlay de la modale avec fond sombre */
 :deep(.va-modal__overlay) {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  /* Pas de backdrop-filter pour éviter que le flou affecte la modale */
 }
 
 /* Contenu de la modale avec fond blanc */
