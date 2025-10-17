@@ -90,6 +90,8 @@
             locale="fr"
             :popover="{ visibility: 'click' }"
             mode="date"
+            :min-date="new Date(2020, 0, 1)"
+            :max-date="new Date(2030, 11, 31)"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -125,6 +127,8 @@
             locale="fr"
             :popover="{ visibility: 'click' }"
             mode="date"
+            :min-date="new Date(2020, 0, 1)"
+            :max-date="new Date(2030, 11, 31)"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -306,9 +310,16 @@ watch(
   () => planningFilters.filterState.dateFrom,
   (from) => {
     if (from) {
-      const date = new Date(from)
-      if (!isNaN(date.getTime())) {
-        dateStart.value = date
+      try {
+        const date = new Date(from)
+        if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+          dateStart.value = date
+        } else {
+          dateStart.value = null
+        }
+      } catch (e) {
+        console.error('Erreur parsing dateFrom:', e)
+        dateStart.value = null
       }
     } else {
       dateStart.value = null
@@ -322,9 +333,16 @@ watch(
   () => planningFilters.filterState.dateTo,
   (to) => {
     if (to) {
-      const date = new Date(to)
-      if (!isNaN(date.getTime())) {
-        dateEnd.value = date
+      try {
+        const date = new Date(to)
+        if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+          dateEnd.value = date
+        } else {
+          dateEnd.value = null
+        }
+      } catch (e) {
+        console.error('Erreur parsing dateTo:', e)
+        dateEnd.value = null
       }
     } else {
       dateEnd.value = null
@@ -336,7 +354,15 @@ watch(
 // Mettre à jour le filtre quand dateStart change
 watch(dateStart, (newDate) => {
   if (newDate && !isNaN(newDate.getTime())) {
-    planningFilters.updateFilter('dateFrom', toDateStr(newDate))
+    try {
+      const dateStr = toDateStr(newDate)
+      if (dateStr) {
+        planningFilters.updateFilter('dateFrom', dateStr)
+      }
+    } catch (e) {
+      console.error('Erreur formatage dateStart:', e)
+      planningFilters.updateFilter('dateFrom', '')
+    }
   } else {
     planningFilters.updateFilter('dateFrom', '')
   }
@@ -345,7 +371,15 @@ watch(dateStart, (newDate) => {
 // Mettre à jour le filtre quand dateEnd change
 watch(dateEnd, (newDate) => {
   if (newDate && !isNaN(newDate.getTime())) {
-    planningFilters.updateFilter('dateTo', toDateStr(newDate))
+    try {
+      const dateStr = toDateStr(newDate)
+      if (dateStr) {
+        planningFilters.updateFilter('dateTo', dateStr)
+      }
+    } catch (e) {
+      console.error('Erreur formatage dateEnd:', e)
+      planningFilters.updateFilter('dateTo', '')
+    }
   } else {
     planningFilters.updateFilter('dateTo', '')
   }
@@ -354,14 +388,22 @@ watch(dateEnd, (newDate) => {
 const formatSingleDate = (inputValue: any): string => {
   if (!inputValue) return ''
   
-  const date = new Date(inputValue)
-  if (isNaN(date.getTime())) return ''
-  
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
+  try {
+    const date = new Date(inputValue)
+    if (isNaN(date.getTime())) return ''
+    
+    // Vérifier que la date est raisonnable
+    if (date.getFullYear() < 1900 || date.getFullYear() > 2100) return ''
+    
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  } catch (e) {
+    console.error('Erreur formatage date:', e)
+    return ''
+  }
 }
 
 const clearDateStart = () => {
