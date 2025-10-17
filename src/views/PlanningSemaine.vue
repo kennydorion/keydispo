@@ -12447,7 +12447,7 @@ body.dragging-selection .excel-cell {
 /* FAB Mode Sélection Mobile */
 .selection-mode-fab {
   position: fixed;
-  bottom: 20px;
+  bottom: 80px; /* Remonté de 20px à 80px pour éviter les zones non-cliquables sur mobile */
   left: 16px;
   z-index: 1000;
   animation: fabSlideIn 0.3s ease-out;
