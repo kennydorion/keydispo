@@ -298,6 +298,8 @@
       :cancel-text="'Annuler'"
       @ok="supprimerCollaborateur"
       hide-default-actions
+      overlay-opacity="0.5"
+      backdrop-color="rgba(0, 0, 0, 0.5)"
     >
       <div class="delete-modal-content">
         <va-icon name="warning" color="danger" size="48px" class="mb-4" />
@@ -819,7 +821,7 @@ watch(() => route.params.id, () => {
 .collaborateur-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem 24px 4rem 24px;
+  padding: 2rem 24px 6rem 24px; /* Augmentation du padding-bottom pour garantir la visibilité du bouton */
   width: 100%;
   background: #f8fafc;
   /* Pas de contrainte de hauteur - le scroll se fait naturellement sur la page */
@@ -991,7 +993,7 @@ watch(() => route.params.id, () => {
   justify-content: flex-end;
   gap: 16px;
   margin-top: 32px;
-  margin-bottom: 32px;
+  margin-bottom: 64px; /* Augmentation pour garantir la visibilité sur mobile et desktop */
   padding-top: 24px;
   border-top: 1px solid var(--border-light);
 }
@@ -1151,7 +1153,7 @@ watch(() => route.params.id, () => {
   }
   
   .collaborateur-container {
-    padding: 1.5rem 1rem;
+    padding: 1.5rem 1rem 4rem 1rem; /* Augmentation du padding-bottom sur mobile pour voir le bouton */
   }
   
   .form-card {
@@ -1304,7 +1306,7 @@ watch(() => route.params.id, () => {
   }
   
   .collaborateur-container {
-    padding: 0.8rem;
+    padding: 0.8rem 0.8rem 4rem 0.8rem; /* Augmentation du padding-bottom sur très petit écran */
   }
   
   .form-card {

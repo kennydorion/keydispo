@@ -196,17 +196,23 @@ export function usePlanningData() {
       // 1) Tentative via structure d'import (essaie RTDB puis RTDB import)
       let loadedCollaborateurs = await CollaborateursServiceV2.loadCollaborateursFromImport(AuthService.currentTenantId)
 
-      // 2) Fallback: si vide, tenter la méthode RTDB standard (actif == true)
+      // 2) Fallback: si vide, tenter la méthode RTDB standard (actif == true UNIQUEMENT)
       if (!loadedCollaborateurs || loadedCollaborateurs.length === 0) {
         console.warn('⚠️ Aucun collaborateur via Import/RTDB. Fallback vers RTDB standard (actif==true)')
         try {
-          const rtdbActive = await CollaborateursServiceV2.loadCollaborateurs(AuthService.currentTenantId)
+          // CORRECTION: passer includeInactifs=false pour ne PAS charger les collaborateurs supprimés
+          const rtdbActive = await CollaborateursServiceV2.loadCollaborateurs(AuthService.currentTenantId, false)
           if (rtdbActive && rtdbActive.length > 0) {
             loadedCollaborateurs = rtdbActive
           }
         } catch (e) {
           console.warn('⚠️ Fallback RTDB standard a échoué:', e)
         }
+      }
+      
+      // CORRECTION: Filtrer côté client pour s'assurer qu'on n'affiche JAMAIS les inactifs
+      if (loadedCollaborateurs && loadedCollaborateurs.length > 0) {
+        loadedCollaborateurs = loadedCollaborateurs.filter((c: any) => c.actif !== false)
       }
 
       // 3) Tri de sécurité côté client (nom, prénom) si nécessaire

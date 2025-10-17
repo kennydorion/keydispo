@@ -240,6 +240,8 @@
       cancel-text="Annuler"
       @ok="handleDeleteCollaborateur"
       ok-color="danger"
+      overlay-opacity="0.5"
+      backdrop-color="rgba(0, 0, 0, 0.5)"
       @before-open="modalA11y.onBeforeOpen"
       @open="modalA11y.onOpen"
       @close="modalA11y.onClose"
