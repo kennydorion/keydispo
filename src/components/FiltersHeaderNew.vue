@@ -79,10 +79,10 @@
           </div>
         </div>
 
-        <!-- Ligne de filtres en 2 lignes -->
+        <!-- Ligne de filtres - Tous visibles en permanence -->
         <div class="compact-filters-row">
           <!-- Ligne 1: Période et Métier -->
-          <!-- Période compacte -->
+          <!-- Période compacte avec calendrier français -->
           <div class="compact-filter-item date-compact">
             <label class="compact-label">
               <span class="material-icons">date_range</span>
@@ -96,6 +96,11 @@
                 clearable
                 class="compact-date-input"
                 :close-on-click-outside="true"
+                :format-date="formatDateFrench"
+                :parse-date="parseDateFrench"
+                first-weekday="monday"
+                :weekday-names="weekdayNamesFr"
+                :month-names="monthNamesFr"
               />
               <span class="date-separator">→</span>
               <va-date-input
@@ -105,11 +110,16 @@
                 clearable
                 class="compact-date-input"
                 :close-on-click-outside="true"
+                :format-date="formatDateFrench"
+                :parse-date="parseDateFrench"
+                first-weekday="monday"
+                :weekday-names="weekdayNamesFr"
+                :month-names="monthNamesFr"
               />
             </div>
           </div>
 
-          <!-- Métier compact -->
+          <!-- Métier compact - Toujours visible -->
           <div class="compact-filter-item metier-item">
             <label class="compact-label">
               <span class="material-icons">work_outline</span>
@@ -126,12 +136,9 @@
             />
           </div>
 
-          <!-- Ligne 2: Statut et Lieu -->
-          <!-- Statut compact -->
-          <div 
-            v-if="planningFilters.canFilterByLieuStatut.value" 
-            class="compact-filter-item statut-item"
-          >
+          <!-- Ligne 2: Statut et Lieu - Toujours visibles -->
+          <!-- Statut compact - Toujours visible -->
+          <div class="compact-filter-item statut-item">
             <label class="compact-label">
               <span class="material-icons">info_outline</span>
               Statut
@@ -147,11 +154,8 @@
             />
           </div>
 
-          <!-- Lieu compact (conditionnel) -->
-          <div 
-            v-if="planningFilters.canFilterByLieuStatut.value && showLieuFilter" 
-            class="compact-filter-item lieu-compact"
-          >
+          <!-- Lieu compact - Toujours visible -->
+          <div class="compact-filter-item lieu-compact">
             <label class="compact-label">
               <span class="material-icons">place</span>
               Lieu
@@ -197,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePlanningFilters } from '../composables/usePlanningFilters'
 import { toDateStr } from '@/utils/dateHelpers'
 
@@ -266,6 +270,32 @@ const toggleFilters = () => {
 // Composables
 const planningFilters = usePlanningFilters()
 
+// Configuration du calendrier en français
+const weekdayNamesFr = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const monthNamesFr = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+]
+
+// Fonctions de formatage des dates en français
+const formatDateFrench = (date: Date): string => {
+  if (!date) return ''
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const parseDateFrench = (dateStr: string): Date | null => {
+  if (!dateStr) return null
+  const parts = dateStr.split('/')
+  if (parts.length !== 3) return null
+  const day = parseInt(parts[0], 10)
+  const month = parseInt(parts[1], 10) - 1
+  const year = parseInt(parts[2], 10)
+  return new Date(year, month, day)
+}
+
 // Gestion des dates pour va-date-picker
 const dateFromValue = computed(() => {
   const dateStr = planningFilters.filterState.dateFrom
@@ -286,21 +316,6 @@ const updateDateTo = (date: Date | null) => {
   const dateStr = date ? toDateStr(date) : ''
   planningFilters.updateFilter('dateTo', dateStr)
 }
-
-// Afficher le filtre lieu seulement si statut = "En mission"
-const showLieuFilter = computed(() => {
-  const statut = planningFilters.filterState.statut
-  
-  // Extraire la valeur du statut (peut être un objet ou une string)
-  const statutValue = typeof statut === 'object' && statut
-    ? (statut as any)?.value || (statut as any)?.text || ''
-    : statut || ''
-  
-  // Normaliser la valeur
-  const normalizedStatut = statutValue.toString().toLowerCase()
-  
-  return normalizedStatut === 'mission' || normalizedStatut === 'en mission'
-})
 
 // Méthodes de gestion de la recherche
 const onSearchInput = () => {
@@ -434,24 +449,6 @@ const formatDateShort = (dateStr: string): string => {
     return dateStr
   }
 }
-
-// Nettoyer le filtre lieu quand le statut change et n'est plus "En mission"
-watch(
-  () => planningFilters.filterState.statut,
-  (newStatut) => {
-    const statutValue = typeof newStatut === 'object' && newStatut
-      ? (newStatut as any)?.value || (newStatut as any)?.text || ''
-      : newStatut || ''
-    
-    const normalizedStatut = statutValue.toString().toLowerCase()
-    const isMission = normalizedStatut === 'mission' || normalizedStatut === 'en mission'
-    
-    // Si le statut n'est plus "En mission", nettoyer le filtre lieu
-    if (!isMission && planningFilters.filterState.lieu) {
-      planningFilters.updateFilter('lieu', '')
-    }
-  }
-)
 </script>
 
 <style scoped>
