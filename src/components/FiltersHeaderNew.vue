@@ -239,6 +239,11 @@ const checkMobile = () => {
 }
 
 onMounted(() => {
+  // Forcer la langue du navigateur en français pour les calendriers
+  if (document.documentElement.lang !== 'fr') {
+    document.documentElement.lang = 'fr'
+  }
+  
   checkMobile()
   window.addEventListener('resize', checkMobile)
 })
@@ -980,5 +985,44 @@ watch(
   .compact-label .material-icons {
     font-size: 10px !important;
   }
+}
+
+/* ========================================
+   Inversement des jours du calendrier (lundi en premier)
+   ======================================== */
+
+/* Cibler le calendrier Vuestic */
+:deep(.va-date-picker__calendar) {
+  direction: rtl;
+}
+
+:deep(.va-date-picker__calendar-header-day) {
+  direction: ltr;
+}
+
+:deep(.va-date-picker__calendar-row) {
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+:deep(.va-date-picker__calendar-day) {
+  direction: ltr;
+  text-align: center;
+}
+
+/* Garder la navigation en LTR */
+:deep(.va-date-picker__calendar-navigation) {
+  direction: ltr;
+}
+
+/* Calendrier Vuestic - structure alternative */
+:deep(.va-input-wrapper__field-wrapper) {
+  direction: ltr;
+}
+
+/* Pour la liste des semaines, inverser pour que lundi soit à gauche */
+:deep(.va-date-picker__week) {
+  display: flex;
+  flex-direction: row-reverse;
 }
 </style>

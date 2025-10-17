@@ -168,7 +168,8 @@ function updateField(field: keyof DispoFormData, value: any) {
     updated.timeKind = 'full-day'
   }
   
-  if (field === 'timeKind') {
+  // NE réinitialiser les champs que si on CHANGE de timeKind
+  if (field === 'timeKind' && value !== props.modelValue.timeKind) {
     if (value === 'full-day') {
       updated.heure_debut = ''
       updated.heure_fin = ''
@@ -179,8 +180,16 @@ function updateField(field: keyof DispoFormData, value: any) {
       updated.heure_fin = ''
       updated.slots = []
     } else if (value === 'range') {
-      updated.heure_debut = updated.heure_debut || '09:00'
-      updated.heure_fin = updated.heure_fin || '17:00'
+      // Ne réinitialiser que si les horaires sont vides OU si on vient d'un mode full-day/overnight
+      const previousMode = props.modelValue.timeKind
+      const wasFullDayLike = previousMode === 'full-day' || previousMode === 'overnight'
+      
+      if (!updated.heure_debut || wasFullDayLike) {
+        updated.heure_debut = '09:00'
+      }
+      if (!updated.heure_fin || wasFullDayLike) {
+        updated.heure_fin = '17:00'
+      }
       updated.slots = []
     } else if (value === 'slot') {
       updated.slots = updated.slots || []

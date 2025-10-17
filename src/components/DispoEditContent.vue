@@ -249,6 +249,9 @@ const emit = defineEmits<{
   (e: 'delete-batch-dispos'): void
   (e: 'add-new-dispo-line'): void
   (e: 'update-editing-lieu', value: string): void
+  (e: 'update-editing-heure-debut', value: string): void
+  (e: 'update-editing-heure-fin', value: string): void
+  (e: 'update-editing-slots', value: string[]): void
 }>()
 
 // Fonction pour gérer les changements du formulaire DispoForm
@@ -263,7 +266,17 @@ function updateEditingDispo(newValue: Partial<Disponibilite>) {
   if (newValue.lieu !== props.editingDispo.lieu) {
     emit('update-editing-lieu', newValue.lieu || '')
   }
-  // Les slots et heures sont gérés par mutation directe dans le parent
+  
+  // CORRECTION: Gérer les changements d'heures et de slots
+  if (newValue.heure_debut !== props.editingDispo.heure_debut) {
+    emit('update-editing-heure-debut', newValue.heure_debut || '')
+  }
+  if (newValue.heure_fin !== props.editingDispo.heure_fin) {
+    emit('update-editing-heure-fin', newValue.heure_fin || '')
+  }
+  if (JSON.stringify(newValue.slots) !== JSON.stringify(props.editingDispo.slots)) {
+    emit('update-editing-slots', newValue.slots || [])
+  }
 }
 
 const filteredTypeOptions = computed(() => {

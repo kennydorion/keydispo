@@ -26,9 +26,15 @@ const router = createRouter({
 // Création de l'application
 const app = createApp(App)
 
-// Installation des plugins
+// Installation des plugins avec configuration Vuestic pour locale française
 app.use(router)
-app.use(createVuestic())
+app.use(createVuestic({
+  config: {
+    i18n: {
+      locale: 'fr',
+    }
+  }
+}))
 
 // Installation du système multi-utilisateur unifié
 app.use(installMultiUserSystem)

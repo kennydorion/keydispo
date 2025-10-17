@@ -565,6 +565,9 @@
         @delete-batch-dispos="deleteBatchDispos"
         @add-new-dispo-line="addNewDispoLine"
         @update-editing-lieu="(v) => { editingDispo.lieu = v }"
+        @update-editing-heure-debut="(v) => { editingDispo.heure_debut = v }"
+        @update-editing-heure-fin="(v) => { editingDispo.heure_fin = v }"
+        @update-editing-slots="(v) => { editingDispo.slots = v }"
       />
       
       <CollabEditContent
@@ -4042,17 +4045,22 @@ function setEditingType(type: string) {
 
 function setEditingTimeKind(timeKind: string) {
   editingDispo.value.timeKind = timeKind as Disponibilite['timeKind']
-  // Reset aux valeurs par défaut
+  // Reset aux valeurs par défaut UNIQUEMENT si les champs sont vides
   if (timeKind === 'full-day') {
     editingDispo.value.heure_debut = '00:00'
     editingDispo.value.heure_fin = '23:59'
     editingDispo.value.slots = []
   } else if (timeKind === 'range') {
-    editingDispo.value.heure_debut = '09:00'
-    editingDispo.value.heure_fin = '17:00'
+    // Ne réinitialiser que si les horaires sont vides ou invalides
+    if (!editingDispo.value.heure_debut || editingDispo.value.heure_debut === '00:00') {
+      editingDispo.value.heure_debut = '09:00'
+    }
+    if (!editingDispo.value.heure_fin || editingDispo.value.heure_fin === '23:59') {
+      editingDispo.value.heure_fin = '17:00'
+    }
     editingDispo.value.slots = []
   } else if (timeKind === 'slot') {
-    editingDispo.value.slots = []
+    editingDispo.value.slots = editingDispo.value.slots || []
     editingDispo.value.heure_debut = ''
     editingDispo.value.heure_fin = ''
   } else if (timeKind === 'overnight') {
