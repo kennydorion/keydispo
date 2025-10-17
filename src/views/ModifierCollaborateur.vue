@@ -1057,6 +1057,19 @@ watch(() => route.params.id, () => {
   gap: 1rem;
 }
 
+/* Overlay de la modale avec fond sombre */
+:deep(.va-modal__overlay) {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Contenu de la modale avec fond blanc */
+:deep(.va-modal__container) {
+  background-color: white !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+}
+
 /* Styles pour l'autocomplétion des métiers */
 .form-field {
   position: relative;
