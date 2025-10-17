@@ -39,6 +39,7 @@
             @input="onSearchInput"
             @focus="onSearchFocus"
             @blur="onSearchBlur"
+            @keydown="handleSearchKeydown"
           />
           <button 
             v-if="planningFilters.filterState.search"
@@ -59,15 +60,16 @@
           aria-label="Suggestions de recherche"
         >
           <div 
-            v-for="suggestion in planningFilters.searchSuggestions.value"
+            v-for="(suggestion, index) in planningFilters.searchSuggestions.value"
             :key="`${suggestion.type}-${suggestion.value}`"
             @click="selectSuggestion(suggestion)"
             @keydown.enter="selectSuggestion(suggestion)"
             @keydown.space.prevent="selectSuggestion(suggestion)"
             class="suggestion-item"
+            :class="{ 'suggestion-selected': index === selectedSuggestionIndex }"
             role="option"
             tabindex="0"
-            :aria-selected="false"
+            :aria-selected="index === selectedSuggestionIndex"
           >
             <span class="material-icons">{{ suggestion.icon }}</span>
             <span>{{ suggestion.text }}</span>
@@ -271,6 +273,9 @@ const planningFilters = usePlanningFilters()
 const isMobile = ref(false)
 const filtersCollapsed = ref(false)
 
+// État pour la navigation au clavier dans les suggestions
+const selectedSuggestionIndex = ref(-1)
+
 const checkMobile = () => {
   const w = window.innerWidth
   isMobile.value = w <= 768
@@ -370,18 +375,64 @@ const clearDateEnd = () => {
 // Gestion de la recherche
 const onSearchInput = () => {
   // Logique gérée par le composable
+  selectedSuggestionIndex.value = -1 // Réinitialiser la sélection lors de la saisie
 }
 
 const onSearchFocus = () => {
   planningFilters.handleSearchFocus()
+  selectedSuggestionIndex.value = -1
 }
 
 const onSearchBlur = () => {
-  planningFilters.handleSearchBlur()
+  // Délai pour permettre le clic sur une suggestion
+  setTimeout(() => {
+    planningFilters.handleSearchBlur()
+    selectedSuggestionIndex.value = -1
+  }, 200)
+}
+
+// Navigation au clavier dans les suggestions
+const handleSearchKeydown = (e: KeyboardEvent) => {
+  const suggestions = planningFilters.searchSuggestions.value
+  if (!planningFilters.showSuggestions.value || suggestions.length === 0) {
+    return
+  }
+
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault()
+      selectedSuggestionIndex.value = Math.min(
+        selectedSuggestionIndex.value + 1,
+        suggestions.length - 1
+      )
+      break
+
+    case 'ArrowUp':
+      e.preventDefault()
+      selectedSuggestionIndex.value = Math.max(
+        selectedSuggestionIndex.value - 1,
+        -1
+      )
+      break
+
+    case 'Enter':
+      e.preventDefault()
+      if (selectedSuggestionIndex.value >= 0 && selectedSuggestionIndex.value < suggestions.length) {
+        selectSuggestion(suggestions[selectedSuggestionIndex.value])
+      }
+      break
+
+    case 'Escape':
+      e.preventDefault()
+      planningFilters.handleSearchBlur()
+      selectedSuggestionIndex.value = -1
+      break
+  }
 }
 
 const clearSearch = () => {
   planningFilters.updateFilter('search', '')
+  selectedSuggestionIndex.value = -1
 }
 
 const selectSuggestion = (suggestion: any) => {
@@ -677,9 +728,15 @@ const clearAllFilters = () => {
 }
 
 .suggestion-item:hover,
-.suggestion-item:focus {
+.suggestion-item:focus,
+.suggestion-item.suggestion-selected {
   background: #f8fafc;
   outline: none;
+}
+
+.suggestion-item.suggestion-selected {
+  background: #eef2ff;
+  border-left: 3px solid #667eea;
 }
 
 .suggestion-item:focus-visible {
