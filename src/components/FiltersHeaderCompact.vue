@@ -44,6 +44,8 @@
             v-if="planningFilters.filterState.search"
             @click="clearSearch"
             class="search-clear"
+            type="button"
+            aria-label="Effacer la recherche"
           >
             <span class="material-icons">close</span>
           </button>
@@ -53,12 +55,19 @@
         <div 
           v-if="planningFilters.showSuggestions.value && planningFilters.searchSuggestions.value.length > 0"
           class="suggestions-dropdown"
+          role="listbox"
+          aria-label="Suggestions de recherche"
         >
           <div 
             v-for="suggestion in planningFilters.searchSuggestions.value"
             :key="`${suggestion.type}-${suggestion.value}`"
             @click="selectSuggestion(suggestion)"
+            @keydown.enter="selectSuggestion(suggestion)"
+            @keydown.space.prevent="selectSuggestion(suggestion)"
             class="suggestion-item"
+            role="option"
+            tabindex="0"
+            :aria-selected="false"
           >
             <span class="material-icons">{{ suggestion.icon }}</span>
             <span>{{ suggestion.text }}</span>
@@ -68,14 +77,14 @@
 
       <!-- Filtres en ligne -->
       <div class="filters-row">
-        <!-- Plage de dates avec v-calendar -->
-        <div class="filter-group date-group">
+        <!-- Date de début -->
+        <div class="filter-group">
           <label class="filter-label">
-            <span class="material-icons">date_range</span>
-            Période
+            <span class="material-icons">event</span>
+            Date début
           </label>
           <VDatePicker
-            v-model.range="dateRange"
+            v-model="dateStart"
             locale="fr"
             :popover="{ visibility: 'click' }"
             mode="date"
@@ -83,17 +92,55 @@
             <template #default="{ inputValue, inputEvents, togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
                 <input
-                  :value="formatDateRange(inputValue)"
-                  v-on="inputEvents.start"
-                  placeholder="Sélectionner une période"
+                  :value="formatSingleDate(inputValue)"
+                  v-on="inputEvents"
+                  placeholder="Date de début"
                   class="date-input"
                   readonly
                 />
                 <span class="material-icons date-icon">calendar_today</span>
                 <button
-                  v-if="dateRange.start || dateRange.end"
-                  @click.stop="clearDateRange"
+                  v-if="dateStart"
+                  @click.stop="clearDateStart"
                   class="date-clear"
+                  type="button"
+                  aria-label="Effacer la date de début"
+                >
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+            </template>
+          </VDatePicker>
+        </div>
+
+        <!-- Date de fin -->
+        <div class="filter-group">
+          <label class="filter-label">
+            <span class="material-icons">event</span>
+            Date fin
+          </label>
+          <VDatePicker
+            v-model="dateEnd"
+            locale="fr"
+            :popover="{ visibility: 'click' }"
+            mode="date"
+          >
+            <template #default="{ inputValue, inputEvents, togglePopover }">
+              <div class="date-input-wrapper" @click="togglePopover">
+                <input
+                  :value="formatSingleDate(inputValue)"
+                  v-on="inputEvents"
+                  placeholder="Date de fin"
+                  class="date-input"
+                  readonly
+                />
+                <span class="material-icons date-icon">calendar_today</span>
+                <button
+                  v-if="dateEnd"
+                  @click.stop="clearDateEnd"
+                  class="date-clear"
+                  type="button"
+                  aria-label="Effacer la date de fin"
                 >
                   <span class="material-icons">close</span>
                 </button>
@@ -104,53 +151,71 @@
 
         <!-- Métier -->
         <div class="filter-group">
-          <label class="filter-label">
+          <label class="filter-label" for="filter-metier">
             <span class="material-icons">work_outline</span>
             Métier
           </label>
-          <va-select 
+          <select 
+            id="filter-metier"
             v-model="planningFilters.filterState.metier"
-            :options="planningFilters.metiersOptions.value"
-            text-by="text"
-            value-by="value"
-            placeholder="Tous"
-            clearable
-            class="filter-select"
-          />
+            class="filter-select-native"
+            aria-label="Filtrer par métier"
+          >
+            <option value="">Tous</option>
+            <option 
+              v-for="option in planningFilters.metiersOptions.value"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.text }}
+            </option>
+          </select>
         </div>
 
         <!-- Statut -->
         <div class="filter-group">
-          <label class="filter-label">
+          <label class="filter-label" for="filter-statut">
             <span class="material-icons">info_outline</span>
             Statut
           </label>
-          <va-select 
+          <select 
+            id="filter-statut"
             v-model="planningFilters.filterState.statut"
-            :options="planningFilters.statutsOptions.value"
-            text-by="text"
-            value-by="value"
-            placeholder="Tous"
-            clearable
-            class="filter-select"
-          />
+            class="filter-select-native"
+            aria-label="Filtrer par statut"
+          >
+            <option value="">Tous</option>
+            <option 
+              v-for="option in planningFilters.statutsOptions.value"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.text }}
+            </option>
+          </select>
         </div>
 
         <!-- Lieu -->
         <div class="filter-group">
-          <label class="filter-label">
+          <label class="filter-label" for="filter-lieu">
             <span class="material-icons">place</span>
             Lieu
           </label>
-          <va-select 
+          <select 
+            id="filter-lieu"
             v-model="planningFilters.filterState.lieu"
-            :options="planningFilters.lieuxOptions.value"
-            text-by="text"
-            value-by="value"
-            placeholder="Tous"
-            clearable
-            class="filter-select"
-          />
+            class="filter-select-native"
+            aria-label="Filtrer par lieu"
+          >
+            <option value="">Tous</option>
+            <option 
+              v-for="option in planningFilters.lieuxOptions.value"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.text }}
+            </option>
+          </select>
         </div>
       </div>
 
@@ -163,7 +228,12 @@
         >
           <span class="material-icons">{{ chip.icon }}</span>
           <span>{{ chip.label }}</span>
-          <button @click="chip.onClear()" class="chip-remove">
+          <button 
+            @click="chip.onClear()" 
+            class="chip-remove"
+            type="button"
+            :aria-label="`Retirer le filtre ${chip.label}`"
+          >
             <span class="material-icons">close</span>
           </button>
         </div>
@@ -171,6 +241,8 @@
           v-if="activeFilterChips.length > 1"
           @click="clearAllFilters"
           class="clear-all-btn"
+          type="button"
+          aria-label="Effacer tous les filtres"
         >
           Tout effacer
         </button>
@@ -222,64 +294,79 @@ const toggleFilters = () => {
   filtersCollapsed.value = !filtersCollapsed.value
 }
 
-// Gestion des dates avec v-calendar
-const dateRange = ref<{ start: Date | null; end: Date | null }>({
-  start: null,
-  end: null
-})
+// Gestion des dates séparées avec v-calendar
+const dateStart = ref<Date | null>(null)
+const dateEnd = ref<Date | null>(null)
 
-// Synchroniser dateRange avec les filtres
+// Synchroniser dateStart avec le filtre dateFrom
 watch(
-  () => [planningFilters.filterState.dateFrom, planningFilters.filterState.dateTo],
-  ([from, to]) => {
-    dateRange.value = {
-      start: from ? new Date(from) : null,
-      end: to ? new Date(to) : null
+  () => planningFilters.filterState.dateFrom,
+  (from) => {
+    if (from) {
+      const date = new Date(from)
+      if (!isNaN(date.getTime())) {
+        dateStart.value = date
+      }
+    } else {
+      dateStart.value = null
     }
   },
   { immediate: true }
 )
 
+// Synchroniser dateEnd avec le filtre dateTo
 watch(
-  dateRange,
-  (newRange) => {
-    if (newRange.start) {
-      planningFilters.updateFilter('dateFrom', toDateStr(newRange.start))
+  () => planningFilters.filterState.dateTo,
+  (to) => {
+    if (to) {
+      const date = new Date(to)
+      if (!isNaN(date.getTime())) {
+        dateEnd.value = date
+      }
     } else {
-      planningFilters.updateFilter('dateFrom', '')
-    }
-    
-    if (newRange.end) {
-      planningFilters.updateFilter('dateTo', toDateStr(newRange.end))
-    } else {
-      planningFilters.updateFilter('dateTo', '')
+      dateEnd.value = null
     }
   },
-  { deep: true }
+  { immediate: true }
 )
 
-const formatDateRange = (inputValue: any): string => {
-  if (!inputValue || !inputValue.start) return ''
+// Mettre à jour le filtre quand dateStart change
+watch(dateStart, (newDate) => {
+  if (newDate && !isNaN(newDate.getTime())) {
+    planningFilters.updateFilter('dateFrom', toDateStr(newDate))
+  } else {
+    planningFilters.updateFilter('dateFrom', '')
+  }
+})
+
+// Mettre à jour le filtre quand dateEnd change
+watch(dateEnd, (newDate) => {
+  if (newDate && !isNaN(newDate.getTime())) {
+    planningFilters.updateFilter('dateTo', toDateStr(newDate))
+  } else {
+    planningFilters.updateFilter('dateTo', '')
+  }
+})
+
+const formatSingleDate = (inputValue: any): string => {
+  if (!inputValue) return ''
   
-  const start = new Date(inputValue.start).toLocaleDateString('fr-FR', {
+  const date = new Date(inputValue)
+  if (isNaN(date.getTime())) return ''
+  
+  return date.toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
   })
-  
-  if (!inputValue.end) return start
-  
-  const end = new Date(inputValue.end).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-  
-  return `${start} → ${end}`
 }
 
-const clearDateRange = () => {
-  dateRange.value = { start: null, end: null }
+const clearDateStart = () => {
+  dateStart.value = null
+}
+
+const clearDateEnd = () => {
+  dateEnd.value = null
 }
 
 // Gestion de la recherche
@@ -373,13 +460,41 @@ const activeFilterChips = computed<Chip[]>(() => {
     })
   }
   if (filterState.dateFrom || filterState.dateTo) {
-    const from = filterState.dateFrom ? new Date(filterState.dateFrom).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '—'
-    const to = filterState.dateTo ? new Date(filterState.dateTo).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '—'
+    const fromDate = filterState.dateFrom ? new Date(filterState.dateFrom) : null
+    const toDate = filterState.dateTo ? new Date(filterState.dateTo) : null
+    
+    // Vérifier la validité des dates
+    const isFromValid = fromDate && !isNaN(fromDate.getTime())
+    const isToValid = toDate && !isNaN(toDate.getTime())
+    
+    const from = isFromValid 
+      ? fromDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) 
+      : '—'
+    const to = isToValid 
+      ? toDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) 
+      : '—'
+    
+    // Si les dates sont identiques, n'afficher qu'une seule date
+    let label = ''
+    if (isFromValid && isToValid && fromDate!.getTime() === toDate!.getTime()) {
+      label = from
+    } else if (isFromValid && isToValid) {
+      label = `${from} → ${to}`
+    } else if (isFromValid) {
+      label = from
+    } else if (isToValid) {
+      label = to
+    } else {
+      label = '—'
+    }
+    
     chips.push({
       key: 'dates',
       icon: 'date_range',
-      label: `${from} → ${to}`,
+      label,
       onClear: () => {
+        dateStart.value = null
+        dateEnd.value = null
         planningFilters.updateFilter('dateFrom', '')
         planningFilters.updateFilter('dateTo', '')
       }
@@ -389,6 +504,8 @@ const activeFilterChips = computed<Chip[]>(() => {
 })
 
 const clearAllFilters = () => {
+  dateStart.value = null
+  dateEnd.value = null
   planningFilters.updateFilter('search', '')
   planningFilters.updateFilter('metier', '')
   planningFilters.updateFilter('statut', '')
@@ -402,9 +519,9 @@ const clearAllFilters = () => {
 .planning-header-compact {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 5000;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .header-top {
@@ -468,6 +585,9 @@ const clearAllFilters = () => {
   background: white;
   padding: 20px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
 }
 
 /* Recherche */
@@ -528,6 +648,11 @@ const clearAllFilters = () => {
   color: #6b7280;
 }
 
+.search-clear:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
 .search-clear .material-icons {
   font-size: 18px;
 }
@@ -555,14 +680,22 @@ const clearAllFilters = () => {
   cursor: pointer;
   transition: background 0.2s;
   border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
 }
 
 .suggestion-item:last-child {
   border-bottom: none;
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover,
+.suggestion-item:focus {
   background: #f8fafc;
+  outline: none;
+}
+
+.suggestion-item:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
 }
 
 .suggestion-item .material-icons {
@@ -570,10 +703,14 @@ const clearAllFilters = () => {
   color: #667eea;
 }
 
+.suggestion-item span:not(.material-icons) {
+  color: #1e293b;
+}
+
 /* Filtres en ligne */
 .filters-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
   gap: 12px;
   align-items: end;
 }
@@ -617,6 +754,11 @@ const clearAllFilters = () => {
   border-color: #cbd5e1;
 }
 
+.date-input-wrapper:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .date-input {
   flex: 1;
   border: none;
@@ -655,34 +797,49 @@ const clearAllFilters = () => {
   color: #334155;
 }
 
+.date-clear:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
 .date-clear .material-icons {
   font-size: 16px;
 }
 
-/* Selects Vuestic */
-.filter-select :deep(.va-input-wrapper) {
+/* Selects natifs */
+.filter-select-native {
+  width: 100%;
   min-height: 38px;
+  padding: 8px 32px 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background: white;
+  font-size: 14px;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
 }
 
-.filter-select :deep(.va-input-wrapper):hover {
+.filter-select-native:hover {
   border-color: #cbd5e1;
 }
 
-.filter-select :deep(.va-input-wrapper):focus-within {
+.filter-select-native:focus,
+.filter-select-native:focus-visible {
+  outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.filter-select :deep(.va-input-wrapper__field) {
-  font-size: 14px;
+.filter-select-native option {
   color: #1e293b;
-}
-
-.filter-select :deep(.va-input__placeholder) {
-  color: #94a3b8;
+  background: white;
+  padding: 8px;
 }
 
 /* Chips */
@@ -728,6 +885,12 @@ const clearAllFilters = () => {
   color: #4338ca;
 }
 
+.chip-remove:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .chip-remove .material-icons {
   font-size: 16px;
 }
@@ -749,15 +912,16 @@ const clearAllFilters = () => {
   border-color: #fca5a5;
 }
 
+.clear-all-btn:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .filters-row {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-  }
-  
-  .date-group {
-    grid-column: 1 / -1;
   }
 }
 
@@ -782,9 +946,24 @@ const clearAllFilters = () => {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
-  .date-group {
-    grid-column: 1;
-  }
+}
+
+/* Z-index très élevé pour le calendrier v-calendar - au-dessus de tous les éléments du planning */
+:deep(.vc-popover-content-wrapper) {
+  z-index: 99999 !important;
+}
+
+:deep(.vc-container) {
+  z-index: 99999 !important;
+}
+
+:deep(.vc-popover-content) {
+  z-index: 99999 !important;
+}
+
+/* S'assurer que le popover parent a aussi un z-index élevé */
+.date-picker :deep(.vc-container),
+.date-picker :deep([role="dialog"]) {
+  z-index: 99999 !important;
 }
 </style>
