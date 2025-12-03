@@ -16,9 +16,4 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
-  ,
-  "exclude": [
-    // Exclure les composants legacy non maintenus du strict typecheck
-    "src/components/planning/CollaborateurCalendar_old.vue"
-  ]
 }

@@ -31,7 +31,6 @@ export default defineConfig(() => {
       include: [
         'vue', 
         'vue-router', 
-        'pinia',
         'firebase/app',
         'firebase/auth', 
         'firebase/firestore',
@@ -42,14 +41,29 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks: {
+            // Firebase en chunk séparé (gros)
             firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/database'],
-            vue: ['vue', 'vue-router', 'pinia']
+            // Core Vue séparé
+            'vue-core': ['vue', 'vue-router'],
+            // UI Frameworks séparés
+            'vuestic': ['vuestic-ui'],
+            'v-calendar': ['v-calendar'],
+            // Excel parser (xlsx) séparé - gros ~350KB
+            'xlsx': ['xlsx'],
+            // FullCalendar séparé
+            'fullcalendar': [
+              '@fullcalendar/core',
+              '@fullcalendar/daygrid', 
+              '@fullcalendar/interaction',
+              '@fullcalendar/vue3'
+            ]
           }
         }
       },
       // Options pour la production
       emptyOutDir: true,
-      reportCompressedSize: false
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 600
     }
   }
 })

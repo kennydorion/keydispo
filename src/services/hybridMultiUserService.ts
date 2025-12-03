@@ -107,12 +107,24 @@ class HybridMultiUserService {
   
   // Configuration (les écritures de présence sont gérées via emergencyOptimization)
   
-  // Callbacks pour les changements
-  private lockChangeCallbacks: ((locks: Map<string, CellLock>) => void)[] = []
-  private presenceChangeCallbacks: ((presence: Map<string, UserPresence>) => void)[] = []
-  private userChangeCallbacks: ((users: Map<string, UserSession>) => void)[] = []
-  private activityChangeCallbacks: ((activities: Map<string, CellActivity>) => void)[] = []
-  private selectionChangeCallbacks: ((selections: Map<string, any>) => void)[] = []
+  // Callbacks centralisés avec helper générique
+  private callbacks = {
+    locks: [] as ((data: Map<string, CellLock>) => void)[],
+    presence: [] as ((data: Map<string, UserPresence>) => void)[],
+    users: [] as ((data: Map<string, UserSession>) => void)[],
+    activities: [] as ((data: Map<string, CellActivity>) => void)[],
+    selections: [] as ((data: Map<string, any>) => void)[]
+  }
+  
+  // Helper générique pour enregistrer/désenregistrer des callbacks
+  private registerCallback<T>(key: keyof typeof this.callbacks, callback: (data: Map<string, T>) => void): () => void {
+    (this.callbacks[key] as ((data: Map<string, T>) => void)[]).push(callback)
+    return () => {
+      const arr = this.callbacks[key] as ((data: Map<string, T>) => void)[]
+      const idx = arr.indexOf(callback)
+      if (idx > -1) arr.splice(idx, 1)
+    }
+  }
   
   // État local réactif
   private _isActive = false
@@ -146,115 +158,55 @@ class HybridMultiUserService {
   getSessionId() { return this.currentSessionId }
 
   // ==========================================
-  // CALLBACKS REGISTRATION
+  // CALLBACKS REGISTRATION (factorisés)
   // ==========================================
 
-  onLockChange(callback: (locks: Map<string, CellLock>) => void): () => void {
-    this.lockChangeCallbacks.push(callback)
-    return () => {
-      const index = this.lockChangeCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.lockChangeCallbacks.splice(index, 1)
-      }
-    }
+  onLockChange(callback: (locks: Map<string, CellLock>) => void) {
+    return this.registerCallback('locks', callback)
   }
 
-  onPresenceChange(callback: (presence: Map<string, UserPresence>) => void): () => void {
-    this.presenceChangeCallbacks.push(callback)
-    return () => {
-      const index = this.presenceChangeCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.presenceChangeCallbacks.splice(index, 1)
-      }
-    }
+  onPresenceChange(callback: (presence: Map<string, UserPresence>) => void) {
+    return this.registerCallback('presence', callback)
   }
 
-  onUserChange(callback: (users: Map<string, UserSession>) => void): () => void {
-    this.userChangeCallbacks.push(callback)
-    return () => {
-      const index = this.userChangeCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.userChangeCallbacks.splice(index, 1)
-      }
-    }
+  onUserChange(callback: (users: Map<string, UserSession>) => void) {
+    return this.registerCallback('users', callback)
   }
 
-  onActivityChange(callback: (activities: Map<string, CellActivity>) => void): () => void {
-    this.activityChangeCallbacks.push(callback)
-    return () => {
-      const index = this.activityChangeCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.activityChangeCallbacks.splice(index, 1)
-      }
-    }
+  onActivityChange(callback: (activities: Map<string, CellActivity>) => void) {
+    return this.registerCallback('activities', callback)
   }
 
-  onSelectionChange(callback: (selections: Map<string, any>) => void): () => void {
-    this.selectionChangeCallbacks.push(callback)
-    return () => {
-      const index = this.selectionChangeCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.selectionChangeCallbacks.splice(index, 1)
-      }
-    }
+  onSelectionChange(callback: (selections: Map<string, any>) => void) {
+    return this.registerCallback('selections', callback)
   }
 
   // ==========================================
-  // MÉTHODES PRIVÉES DE NOTIFICATION
+  // MÉTHODES PRIVÉES DE NOTIFICATION (factorisées)
   // ==========================================
 
-  private notifyLockChanges() {
-    this.debounceNotify('locks', () => {
-      this.lockChangeCallbacks.forEach(callback => callback(new Map(this._locks)))
+  private notifyCallbacks<T>(key: keyof typeof this.callbacks, data: Map<string, T>) {
+    this.debounceNotify(key, () => {
+      (this.callbacks[key] as ((d: Map<string, T>) => void)[]).forEach(cb => cb(new Map(data)))
     })
   }
 
-  private notifyPresenceChanges() {
-    this.debounceNotify('presence', () => {
-      this.presenceChangeCallbacks.forEach(callback => callback(new Map(this._presence)))
-    })
-  }
+  private notifyLockChanges() { this.notifyCallbacks('locks', this._locks) }
+  private notifyPresenceChanges() { this.notifyCallbacks('presence', this._presence) }
+  private notifyUserChanges() { this.notifyCallbacks('users', this._users) }
+  private notifyActivityChanges() { this.notifyCallbacks('activities', this._activities) }
+  private notifySelectionChanges() { this.notifyCallbacks('selections', this._remoteSelections) }
 
-  private notifyUserChanges() {
-    this.debounceNotify('users', () => {
-      this.userChangeCallbacks.forEach(callback => callback(new Map(this._users)))
-    })
-  }
-
-  private notifyActivityChanges() {
-    this.debounceNotify('activities', () => {
-      this.activityChangeCallbacks.forEach(callback => callback(new Map(this._activities)))
-    })
-  }
-
-  private notifySelectionChanges() {
-    this.debounceNotify('selections', () => {
-      this.selectionChangeCallbacks.forEach(callback => callback(new Map(this._remoteSelections)))
-    })
-  }
-
-  /**
-   * Méthode de débounce pour éviter les appels excessifs
-   */
+  /** Débounce pour éviter les appels excessifs */
   private debounceNotify(key: string, callback: () => void, delay = 150) {
-    // Annuler le timer précédent s'il existe
-    const existingTimer = this.notifyDebounceTimers.get(key)
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
+    const existing = this.notifyDebounceTimers.get(key)
+    if (existing) clearTimeout(existing)
     
-    // Programmer le nouveau callback
-    const timer = setTimeout(() => {
-      try {
-        callback()
-      } catch (error) {
-        console.warn(`⚠️ Erreur dans callback ${key}:`, error)
-      } finally {
-        this.notifyDebounceTimers.delete(key)
-      }
-    }, delay)
-    
-    this.notifyDebounceTimers.set(key, timer)
+    this.notifyDebounceTimers.set(key, setTimeout(() => {
+      try { callback() } 
+      catch (e) { console.warn(`⚠️ Erreur callback ${key}:`, e) }
+      finally { this.notifyDebounceTimers.delete(key) }
+    }, delay))
   }
 
   // ==========================================

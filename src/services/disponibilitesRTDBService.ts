@@ -10,18 +10,34 @@ import {
 import { rtdb, auth } from './firebase'
 import { AuthService } from './auth'
 
-// Cache intelligent pour réduire les téléchargements
+// Cache LRU intelligent pour réduire les téléchargements
 interface CacheEntry {
   data: DisponibiliteRTDB[]
   timestamp: number
+  lastAccess: number // Pour LRU
+  accessCount: number // Fréquence d'accès
   listeners: Set<string>
 }
 
+/**
+ * Cache LRU (Least Recently Used) optimisé pour les disponibilités
+ * - Durée de vie: 5 minutes (les données de planning changent peu)
+ * - Éviction LRU quand le cache est plein
+ * - Invalidation automatique via listeners RTDB
+ */
 class RTDBCache {
   private static instance: RTDBCache
   private cache = new Map<string, CacheEntry>()
-  private readonly CACHE_DURATION = 30000 // 30 secondes
-  private readonly MAX_CACHE_SIZE = 50
+  private readonly CACHE_DURATION = 300000 // 5 minutes (au lieu de 30s)
+  private readonly MAX_CACHE_SIZE = 200 // Augmenté de 50 à 200
+  private readonly STALE_WHILE_REVALIDATE = 60000 // 1 minute de grâce
+  
+  // Stats pour monitoring
+  private stats = {
+    hits: 0,
+    misses: 0,
+    evictions: 0
+  }
 
   static getInstance(): RTDBCache {
     if (!this.instance) {
@@ -30,24 +46,54 @@ class RTDBCache {
     return this.instance
   }
 
-  get(key: string): DisponibiliteRTDB[] | null {
+  /**
+   * Récupère une entrée du cache avec mise à jour LRU
+   * Retourne les données même si légèrement périmées (stale-while-revalidate)
+   */
+  get(key: string): { data: DisponibiliteRTDB[] | null; isStale: boolean } {
     const entry = this.cache.get(key)
-    if (entry && Date.now() - entry.timestamp < this.CACHE_DURATION) {
-      return entry.data
+    const now = Date.now()
+    
+    if (!entry) {
+      this.stats.misses++
+      return { data: null, isStale: false }
     }
-    if (entry) {
-      this.cache.delete(key) // Nettoyer le cache expiré
+    
+    const age = now - entry.timestamp
+    const isExpired = age > this.CACHE_DURATION
+    const isStale = age > (this.CACHE_DURATION - this.STALE_WHILE_REVALIDATE)
+    
+    if (isExpired) {
+      // Vraiment expiré - supprimer
+      this.cache.delete(key)
+      this.stats.misses++
+      return { data: null, isStale: false }
     }
-    return null
+    
+    // Mettre à jour les stats LRU
+    entry.lastAccess = now
+    entry.accessCount++
+    this.stats.hits++
+    
+    return { data: entry.data, isStale }
+  }
+  
+  /**
+   * Récupère simplement les données (pour compatibilité)
+   */
+  getData(key: string): DisponibiliteRTDB[] | null {
+    return this.get(key).data
   }
 
+  /**
+   * Stocke une entrée avec éviction LRU si nécessaire
+   */
   set(key: string, data: DisponibiliteRTDB[], listenerId?: string): void {
-    // Limiter la taille du cache
-    if (this.cache.size >= this.MAX_CACHE_SIZE) {
-      const oldestKey = Array.from(this.cache.keys())[0]
-      if (oldestKey) {
-        this.cache.delete(oldestKey)
-      }
+    const now = Date.now()
+    
+    // Éviction LRU si le cache est plein
+    if (this.cache.size >= this.MAX_CACHE_SIZE && !this.cache.has(key)) {
+      this.evictLRU()
     }
 
     const existing = this.cache.get(key)
@@ -58,11 +104,40 @@ class RTDBCache {
 
     this.cache.set(key, {
       data: [...data], // Clone pour éviter les mutations
-      timestamp: Date.now(),
+      timestamp: now,
+      lastAccess: now,
+      accessCount: existing?.accessCount || 0,
       listeners
     })
   }
+  
+  /**
+   * Éviction LRU - supprime l'entrée la moins récemment utilisée
+   */
+  private evictLRU(): void {
+    let oldestKey: string | null = null
+    let oldestAccess = Infinity
+    
+    // Trouver l'entrée la moins récemment utilisée
+    for (const [key, entry] of this.cache.entries()) {
+      // Ne pas évincer les entrées avec des listeners actifs
+      if (entry.listeners.size > 0) continue
+      
+      if (entry.lastAccess < oldestAccess) {
+        oldestAccess = entry.lastAccess
+        oldestKey = key
+      }
+    }
+    
+    if (oldestKey) {
+      this.cache.delete(oldestKey)
+      this.stats.evictions++
+    }
+  }
 
+  /**
+   * Invalide les entrées correspondant au pattern
+   */
   invalidate(pattern?: string): void {
     if (pattern) {
       // Invalider les clés qui matchent le pattern
@@ -75,13 +150,34 @@ class RTDBCache {
       this.cache.clear()
     }
   }
+  
+  /**
+   * Rafraîchit le timestamp d'une entrée (après revalidation)
+   */
+  refresh(key: string): void {
+    const entry = this.cache.get(key)
+    if (entry) {
+      entry.timestamp = Date.now()
+    }
+  }
 
   removeListener(listenerId: string): void {
     for (const [key, entry] of this.cache.entries()) {
       entry.listeners.delete(listenerId)
-      if (entry.listeners.size === 0) {
-        this.cache.delete(key) // Supprimer si plus d'listeners
-      }
+      // Ne plus supprimer automatiquement - laisser le LRU gérer
+    }
+  }
+  
+  /**
+   * Retourne les statistiques du cache
+   */
+  getStats(): { hits: number; misses: number; evictions: number; size: number; hitRate: string } {
+    const total = this.stats.hits + this.stats.misses
+    const hitRate = total > 0 ? ((this.stats.hits / total) * 100).toFixed(1) + '%' : 'N/A'
+    return {
+      ...this.stats,
+      size: this.cache.size,
+      hitRate
     }
   }
 }
@@ -548,17 +644,51 @@ export class DisponibilitesRTDBService {
   // =============================================
 
   /**
-   * Récupérer les disponibilités pour une plage de dates (OPTIMISÉ avec cache)
+   * Récupérer les disponibilités pour une plage de dates (OPTIMISÉ avec cache LRU)
    */
   async getDisponibilitesByDateRange(startDate: string, endDate: string): Promise<DisponibiliteRTDB[]> {
     try {
-      // Vérifier le cache d'abord
+      // Vérifier le cache d'abord (avec support stale-while-revalidate)
       const cacheKey = this.getCacheKey(startDate, endDate)
-      const cached = this.cache.get(cacheKey)
-      if (cached) {
+      const { data: cached, isStale } = this.cache.get(cacheKey)
+      
+      if (cached && !isStale) {
+        // Cache frais - retourner directement
+        return cached.filter(d => d.date >= startDate && d.date <= endDate)
+      }
+      
+      // Si données stale, les retourner et revalider en arrière-plan
+      if (cached && isStale) {
+        // Lancer la revalidation en arrière-plan
+        this.revalidateInBackground(cacheKey, startDate, endDate)
         return cached.filter(d => d.date >= startDate && d.date <= endDate)
       }
 
+      // Pas de cache - charger les données
+      return await this.fetchAndCacheRange(cacheKey, startDate, endDate)
+    } catch (error) {
+      console.error('Erreur getDisponibilitesByDateRange:', error)
+      throw error
+    }
+  }
+  
+  /**
+   * Revalide le cache en arrière-plan (stale-while-revalidate)
+   */
+  private async revalidateInBackground(cacheKey: string, startDate: string, endDate: string): Promise<void> {
+    try {
+      await this.fetchAndCacheRange(cacheKey, startDate, endDate)
+      this.cache.refresh(cacheKey)
+    } catch (error) {
+      // Silencieux - la revalidation en arrière-plan ne doit pas échouer bruyamment
+      console.debug('[Cache] Revalidation échouée:', error)
+    }
+  }
+  
+  /**
+   * Charge les données depuis RTDB et les met en cache
+   */
+  private async fetchAndCacheRange(cacheKey: string, startDate: string, endDate: string): Promise<DisponibiliteRTDB[]> {
       // Obtenir les mois concernés pour des requêtes ciblées
       const months = this.getMonthsInRange(startDate, endDate)
 
@@ -632,11 +762,6 @@ export class DisponibilitesRTDBService {
       this.cache.set(cacheKey, allDisponibilites)
 
       return allDisponibilites
-      
-    } catch (error) {
-      console.error('❌ Erreur récupération RTDB optimisée:', error)
-      return this.getDisponibilitesByDateRangeFallback(startDate, endDate)
-    }
   }
 
   /**

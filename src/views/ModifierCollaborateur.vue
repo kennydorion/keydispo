@@ -824,6 +824,8 @@ watch(() => route.params.id, () => {
   width: 100%;
   background: #f8fafc;
   /* Pas de contrainte de hauteur - le scroll se fait naturellement sur la page */
+  position: relative;
+  z-index: 1; /* S'assurer que le conteneur est cliquable et au-dessus de tout overlay potentiel */
 }
 
 /* Carte de Formulaire */

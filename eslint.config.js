@@ -52,7 +52,6 @@ export default [
       // Fichiers legacy/archives non utilisés dans le build
       'src/components/**/*-old.vue',
       'src/components/**/*_old.vue',
-      'src/components/planning/CollaborateurCalendar_old.vue',
       // Composant avec faux positifs parsing côté linter (ok au build)
       'src/components/planning/PlanningCell.vue'
     ]

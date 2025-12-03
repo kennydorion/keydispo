@@ -238,11 +238,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useToast } from 'vuestic-ui'
 import { CollaborateurSelfService } from '@/services/collaborateurSelf'
 import type { CollaborateurDisponibilite, CollaborateurProfilLight } from '@/services/collaborateurSelf'
-import CollaborateurCalendar from './CollaborateurCalendar.vue'
 import { hybridMultiUserService as collaborationService } from '@/services/hybridMultiUserService'
 import { useCollabPresence } from '@/composables/useCollabPresence'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
@@ -251,12 +250,14 @@ import { disponibilitesRTDBService } from '@/services/disponibilitesRTDBService'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/services/firebase'
 import { AuthService } from '@/services/auth'
-// import type { CollaborateurV2 } from '@/types/optimized-v2'
-import DispoEditContent from '@/components/DispoEditContent.vue'
 import * as planningDisplayService from '@/services/planningDisplayService'
 import { getUserInitials } from '@/services/avatarUtils'
 import { useModalA11y } from '@/composables/useModalA11y'
-import BatchDisponibiliteModal from '@/components/BatchDisponibiliteModal.vue'
+
+// Composants lazy-loadés pour réduire le bundle initial
+const CollaborateurCalendar = defineAsyncComponent(() => import('./CollaborateurCalendar.vue'))
+const DispoEditContent = defineAsyncComponent(() => import('@/components/DispoEditContent.vue'))
+const BatchDisponibiliteModal = defineAsyncComponent(() => import('@/components/BatchDisponibiliteModal.vue'))
 
 // Configuration responsive
 const isMobile = ref(false)

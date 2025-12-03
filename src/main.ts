@@ -9,14 +9,16 @@ import VCalendar from 'v-calendar'
 import 'v-calendar/style.css'
 import './style.css'
 
-// Garde globale pour désactiver les logs verbeux (réactivables via VITE_ENABLE_DEBUG_LOGS="true")
-const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+// Garde globale pour désactiver les logs verbeux en production
+// (réactivables via VITE_ENABLE_DEBUG_LOGS="true")
+const enableDebugLogs = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
 if (!enableDebugLogs) {
   const noop = () => {}
   console.log = noop
   console.debug = noop
   console.info = noop
   console.trace = noop
+  console.warn = noop // Désactiver aussi les warnings en production
 }
 
 // Création du routeur

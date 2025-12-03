@@ -93,7 +93,8 @@
             mode="date"
             :min-date="minCalendarDate"
             :max-date="maxCalendarDate"
-            :initial-page="{ month: new Date().getMonth() + 1, year: new Date().getFullYear() }"
+            :initial-page="todayInitialPage"
+            :attributes="todayHighlightAttributes"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -132,7 +133,8 @@
             mode="date"
             :min-date="minCalendarDate"
             :max-date="maxCalendarDate"
-            :initial-page="{ month: new Date().getMonth() + 1, year: new Date().getFullYear() }"
+            :initial-page="todayInitialPage"
+            :attributes="todayHighlightAttributes"
           >
             <template #default="{ togglePopover }">
               <div class="date-input-wrapper" @click="togglePopover">
@@ -314,6 +316,24 @@ const dateEnd = ref<Date | null>(null)
 const minCalendarDate = new Date(2023, 0, 1)
 const maxCalendarDate = new Date(2030, 11, 31)
 
+// Page initiale dynamique: toujours centrée sur aujourd'hui
+const todayInitialPage = computed(() => {
+  const now = new Date()
+  return { month: now.getMonth() + 1, year: now.getFullYear() }
+})
+
+// Attribut pour mettre en surbrillance la date du jour
+const todayHighlightAttributes = computed(() => [
+  {
+    key: 'today',
+    highlight: {
+      color: 'blue',
+      fillMode: 'light'
+    },
+    dates: new Date()
+  }
+])
+
 // Initialisation: sync state → UI (une seule fois au montage)
 watch(
   () => planningFilters.filterState.dateFrom,
@@ -418,10 +438,14 @@ const formatSingleDate = (inputValue: any): string => {
 
 const clearDateStart = () => {
   dateStart.value = null
+  // Propager le changement vers l'état global des filtres
+  planningFilters.updateFilter('dateFrom', '')
 }
 
 const clearDateEnd = () => {
   dateEnd.value = null
+  // Propager le changement vers l'état global des filtres
+  planningFilters.updateFilter('dateTo', '')
 }
 
 // Gestion de la recherche

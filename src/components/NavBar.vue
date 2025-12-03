@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
   height: 64px;
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 6000;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
@@ -590,7 +590,7 @@ onBeforeUnmount(() => {
   padding: 16px 0;
   min-width: 260px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  z-index: 1100;
+  z-index: 10000;
   backdrop-filter: blur(10px);
 }
 

@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useToast } from 'vuestic-ui'
 import { useRouter } from 'vue-router'
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
@@ -521,6 +521,11 @@ watch(totalPages, (newTotalPages) => {
 
 // Lifecycle
 onMounted(() => {
+  loadCollaborateurs()
+})
+
+// Recharger quand le composant est réactivé (si dans keep-alive)
+onActivated(() => {
   loadCollaborateurs()
 })
 </script>

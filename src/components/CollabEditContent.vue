@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Collaborateur } from '@/types/planning'
 
@@ -199,10 +199,17 @@ const saveNotes = async () => {
   }
 }
 
-const editCollaborateur = () => {
+const editCollaborateur = async () => {
   if (props.selectedCollaborateur?.id) {
+    const collaborateurId = props.selectedCollaborateur.id
+    // Fermer le modal d'abord
     emit('cancel-modal')
-    router.push(`/collaborateurs/${props.selectedCollaborateur.id}`)
+    // Attendre que Vue ait traité la fermeture du modal
+    await nextTick()
+    // Petit délai supplémentaire pour laisser l'animation du modal se terminer
+    await new Promise(resolve => setTimeout(resolve, 50))
+    // Naviguer vers la page de modification
+    router.push(`/collaborateurs/${collaborateurId}`)
   }
 }
 

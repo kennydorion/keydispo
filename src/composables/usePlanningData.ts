@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import { usePlanningFilters } from './usePlanningFilters'
 import { CollaborateursServiceV2 } from '@/services/collaborateursV2'
 import { DisponibilitesRTDBService } from '@/services/disponibilitesRTDBService'
@@ -33,9 +33,9 @@ export function usePlanningData() {
   // Plages déjà chargées (fusionnées)
   const loadedRanges = ref<Array<{ start: string; end: string }>>([])
   
-  // Données brutes
-  const collaborateurs = ref<any[]>([])
-  const disponibilites = ref<any[]>([])
+  // Données brutes - shallowRef pour éviter le deep tracking sur les grands tableaux
+  const collaborateurs = shallowRef<any[]>([])
+  const disponibilites = shallowRef<any[]>([])
   
   // Données filtrées calculées automatiquement
   // 1) Filtrage de base côté collaborateurs (recherche, métier, etc.)
@@ -348,6 +348,112 @@ export function usePlanningData() {
     d.setDate(d.getDate() + 1)
     return d.toISOString().split('T')[0]
   }
+
+  // =============================================
+  // PREFETCH INTELLIGENT
+  // =============================================
+  
+  // État du prefetch
+  const prefetchingRanges = ref<Set<string>>(new Set())
+  let prefetchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  const PREFETCH_DAYS = 14 // Prefetch 2 semaines de chaque côté
+  const PREFETCH_DEBOUNCE = 500 // Délai avant de lancer le prefetch (ms)
+  
+  /**
+   * Calcule les plages à prefetcher basées sur la position de scroll actuelle
+   * @param currentStartDate - Date de début de la fenêtre visible
+   * @param currentEndDate - Date de fin de la fenêtre visible
+   */
+  function computePrefetchRanges(currentStartDate: string, currentEndDate: string): Array<{ start: string; end: string }> {
+    const ranges: Array<{ start: string; end: string }> = []
+    
+    // Plage précédente (avant la fenêtre actuelle)
+    const prevEnd = new Date(currentStartDate + 'T00:00:00')
+    prevEnd.setDate(prevEnd.getDate() - 1)
+    const prevStart = new Date(prevEnd)
+    prevStart.setDate(prevStart.getDate() - PREFETCH_DAYS)
+    
+    const prevStartStr = prevStart.toISOString().split('T')[0]
+    const prevEndStr = prevEnd.toISOString().split('T')[0]
+    
+    if (!isRangeCoveredByLoadedRanges(prevStartStr, prevEndStr)) {
+      ranges.push({ start: prevStartStr, end: prevEndStr })
+    }
+    
+    // Plage suivante (après la fenêtre actuelle)
+    const nextStart = new Date(currentEndDate + 'T00:00:00')
+    nextStart.setDate(nextStart.getDate() + 1)
+    const nextEnd = new Date(nextStart)
+    nextEnd.setDate(nextEnd.getDate() + PREFETCH_DAYS)
+    
+    const nextStartStr = nextStart.toISOString().split('T')[0]
+    const nextEndStr = nextEnd.toISOString().split('T')[0]
+    
+    if (!isRangeCoveredByLoadedRanges(nextStartStr, nextEndStr)) {
+      ranges.push({ start: nextStartStr, end: nextEndStr })
+    }
+    
+    return ranges
+  }
+  
+  /**
+   * Prefetch les données pour une plage donnée (silencieux, sans bloquer l'UI)
+   */
+  async function prefetchRange(startDate: string, endDate: string): Promise<void> {
+    const rangeKey = `${startDate}-${endDate}`
+    
+    // Éviter les prefetch en double
+    if (prefetchingRanges.value.has(rangeKey)) return
+    if (isRangeCoveredByLoadedRanges(startDate, endDate)) return
+    
+    prefetchingRanges.value.add(rangeKey)
+    
+    try {
+      const service = DisponibilitesRTDBService.getInstance()
+      const loadedDisponibilites = await service.getDisponibilitesByDateRange(startDate, endDate)
+      
+      // Fusionner avec les données existantes (sans doublon)
+      const existingIds = new Set(disponibilites.value.map(d => d.id))
+      const newDispos = loadedDisponibilites.filter(d => !existingIds.has(d.id))
+      
+      if (newDispos.length > 0) {
+        disponibilites.value = [...disponibilites.value, ...newDispos]
+      }
+      
+      addLoadedRange(startDate, endDate)
+    } catch (error) {
+      // Silencieux - le prefetch ne doit pas faire échouer l'app
+      console.debug('[Prefetch] Erreur silencieuse:', error)
+    } finally {
+      prefetchingRanges.value.delete(rangeKey)
+    }
+  }
+  
+  /**
+   * Déclenche le prefetch intelligent basé sur la fenêtre visible actuelle
+   * Appelé lors du scroll ou changement de vue
+   */
+  function triggerPrefetch(visibleStartDate: string, visibleEndDate: string): void {
+    // Annuler le prefetch précédent en attente
+    if (prefetchDebounceTimer) {
+      clearTimeout(prefetchDebounceTimer)
+    }
+    
+    // Debounce pour éviter de prefetcher pendant un scroll rapide
+    prefetchDebounceTimer = setTimeout(() => {
+      const ranges = computePrefetchRanges(visibleStartDate, visibleEndDate)
+      
+      // Lancer les prefetch en parallèle avec une priorité basse
+      // Utiliser requestIdleCallback si disponible, sinon setTimeout
+      const scheduleTask = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 100))
+      
+      ranges.forEach(range => {
+        scheduleTask(() => {
+          prefetchRange(range.start, range.end)
+        })
+      })
+    }, PREFETCH_DEBOUNCE)
+  }
   
   return {
     // Données filtrées
@@ -367,6 +473,10 @@ export function usePlanningData() {
     
     // Fonctions de chargement
     loadCollaborateurs,
-    getDisponibilitiesByDateRange
+    getDisponibilitiesByDateRange,
+    
+    // Prefetch intelligent
+    triggerPrefetch,
+    prefetchingRanges: computed(() => prefetchingRanges.value.size > 0)
   }
 }

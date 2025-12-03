@@ -9,47 +9,10 @@
 
   <!-- Contenu principal -->
   <div class="main-content">
-  <transition name="planning-warmup-fade">
-    <div v-if="isInitialLoad" class="planning-warmup-overlay" role="status" aria-live="polite">
-      <div class="warmup-card">
-        <div class="warmup-glow"></div>
-        
-        <!-- Logo SVG animé -->
-        <div class="logo-container">
-          <svg class="animated-logo" viewBox="0 0 608.4 143.4" xmlns="http://www.w3.org/2000/svg">
-            <g class="logo-paths">
-              <path d="M31.9,66.7c0,0,34.8-22.1,38.9-27.9c4.1-5.8,17.5-18.2,22.9-19.3c5.4-1.1,16-0.5,19.2,2c3.3,2.5,20.5,5,22.9,5.2c2.4,0.2,8.4,3.8,8.6,7c0.2,3.2,3.1,5.7,5.2,7.7c2,2,5.1,3.4,4.7,6.6c-0.4,3.3-0.2,8.8-0.9,10.3c-0.7,1.5,1.8,10.5-2.1,11.7c-3.9,1.1-6.5-2.6-6.5-2.6s-3.5-8.3-3.3-9.1c0.2-0.9,3.6,7.1,5.8,7.9c2.2,0.9,3.4,1.6,3.6-1.1c0.2-2.7,0.1-7.6-0.1-9.3c-0.2-1.7,1.6-7.5,1.2-8.3c-0.4-0.8-5.1-4.8-5.8-5.9c-0.7-1.1-5.2-8-5.2-8s-5.4-5.1-8.1-5.6c-2.7-0.5-20.8-2.6-21.5-3.7c-0.7-1.1-12.8-4-17.2-2.2c-4.4,1.8-12.7,9.4-13.9,11C79,34.7,63,51.2,31.9,66.7z"/>
-              <path d="M39.5,118.1c0,0,22.4,1.8,29.3-1.2c6.9-3,32.4-14.2,33.5-14.9c1.1-0.7,7.2-4.8,13.5-3.4c6.3,1.4,12.3,2.6,13.2,2.5c0.9-0.1,18.3-6.7,18-10.7c-0.3-4-2.3-9.9-2.3-9.9s3.3,1,3.7,3.6c0.4,2.6,0.8,9.5-1.6,11.3c-2.4,1.8-13.4,8.3-19.9,7.8c-6.5-0.5-12.6-2.3-16.2-1.5c-3.7,0.8-39.5,17.2-43.2,18C63.7,120.5,44.6,123.5,39.5,118.1z"/>
-              <path d="M161.4,119.4c-1.8-8.5-8.9-14.6-17.2-15.6l0.2-55.3l13.9-1l0.7-4.1l-8.2-1.3l-0.4-1.8l4.5-0.3l0-1.5l-3.4-0.2l0.3-3.1l4.7,0.9l0.1-2.9l-5,0l-0.1-6.5l8.2,1.3l0-3l-8.4-0.3l-0.7-5.1l7.2,0.6l0.1-2.5l-7.1-0.3l0.9-1.7l8.2-0.2l0.4-3.2l-15.7-1.1l0-6.8c0,0,0-4.3-5.2-4.4c0,0-4.1,0-4.6,4.3l0.1,47.9c0,0,6.3,4.2,5.9,8.8c-0.6,6.9-4.3,9.6-4.3,9.6l-0.5,34c-9.8,3-15.8,13-13.7,23.1c2.3,10.7,12.9,17.6,23.7,15.3C156.8,140.7,163.7,130.1,161.4,119.4z M143.7,135.8c-2.7,0.6-5.3-1.1-5.8-3.8c-0.6-2.7,1.1-5.3,3.8-5.8c2.7-0.6,5.3,1.1,5.8,3.8C148,132.7,146.3,135.3,143.7,135.8z"/>
-              <path d="M175,40.2h11.7v23.2h0.2c1.2-2,2.4-3.9,3.6-5.8l11.9-17.4h14.5l-17.3,22.3l18.3,30.1H204l-12.8-22.6l-4.5,5.5v17.1H175V40.2z"/>
-              <path d="M227,77.3c0.4,4.9,5.2,7.2,10.7,7.2c4,0,7.3-0.5,10.5-1.6l1.6,8c-3.9,1.6-8.6,2.4-13.8,2.4c-12.9,0-20.3-7.5-20.3-19.4c0-9.6,6-20.3,19.2-20.3c12.3,0,16.9,9.6,16.9,19c0,2-0.2,3.8-0.4,4.7H227z M240.9,69.2c0-2.9-1.2-7.7-6.7-7.7c-5,0-7,4.5-7.3,7.7H240.9z"/>
-              <path d="M264.2,54.6l5.7,18.7c0.6,2.3,1.4,5.1,1.9,7.1h0.2c0.5-2,1.2-4.9,1.7-7.1l4.7-18.7H291l-8.9,25c-5.4,15.1-9.1,21.1-13.4,24.9c-4.1,3.6-8.5,4.8-11.4,5.2l-2.5-10c1.5-0.2,3.3-0.9,5.1-2c1.8-0.9,3.7-2.8,4.9-4.7c0.4-0.5,0.6-1.2,0.6-1.7c0-0.4-0.1-1-0.5-1.9L251,54.6H264.2z"/>
-              <path d="M298.8,40.8c3.3-0.5,7.5-1,13-1c6.7,0,11.6,1.6,14.7,4.4c2.9,2.5,4.6,6.3,4.6,11c0,4.7-1.4,8.5-4,11.2c-3.6,3.8-9.4,5.8-16,5.8c-2,0-3.9-0.1-5.4-0.5v21h-6.8V40.8z M305.6,66.1c1.5,0.4,3.3,0.5,5.6,0.5c8.2,0,13.1-4,13.1-11.2c0-6.9-4.9-10.3-12.4-10.3c-3,0-5.2,0.2-6.4,0.5V66.1z"/>
-              <path d="M336.4,37.4h6.8v55.2h-6.8V37.4z"/>
-              <path d="M378.1,83.5c0,3.3,0.2,6.5,0.6,9h-6.2l-0.5-4.7h-0.2c-2.1,3-6.1,5.6-11.5,5.6c-7.6,0-11.5-5.4-11.5-10.8c0-9.1,8.1-14.1,22.6-14v-0.8c0-3.1-0.9-8.7-8.6-8.7c-3.5,0-7.2,1.1-9.8,2.8l-1.6-4.5c3.1-2,7.6-3.3,12.4-3.3c11.5,0,14.3,7.9,14.3,15.4V83.5z M371.5,73.4c-7.5-0.2-15.9,1.2-15.9,8.5c0,4.4,3,6.5,6.5,6.5c4.9,0,8-3.1,9.1-6.3c0.2-0.7,0.4-1.5,0.4-2.2V73.4z"/>
-              <path d="M412.8,91.2c-1.8,0.9-5.8,2.3-10.8,2.3c-11.3,0-18.7-7.8-18.7-19.3c0-11.6,7.9-20,20.2-20c4,0,7.6,1,9.5,1.9l-1.6,5.3c-1.6-0.9-4.2-1.8-7.9-1.8c-8.6,0-13.3,6.4-13.3,14.2c0,8.7,5.6,14.1,13.1,14.1c3.9,0,6.5-1,8.4-1.9L412.8,91.2z"/>
-              <path d="M421.1,75c0.2,9.2,6.1,13.1,12.9,13.1c4.9,0,7.8-0.9,10.4-1.9l1.2,4.9c-2.4,1.1-6.5,2.4-12.5,2.4c-11.6,0-18.5-7.7-18.5-19c0-11.3,6.7-20.3,17.6-20.3c12.3,0,15.5,10.8,15.5,17.7c0,1.4-0.2,2.5-0.2,3.2H421.1z M441.1,70.1c0.1-4.4-1.8-11.1-9.5-11.1c-6.9,0-9.9,6.4-10.5,11.1H441.1z"/>
-              <path d="M453.1,65.1c0-3.9-0.1-7.1-0.3-10.2h6l0.3,6.1h0.2c2.1-3.6,5.6-6.9,11.8-6.9c5.1,0,9,3.1,10.6,7.5h0.2c1.2-2.1,2.6-3.7,4.2-4.9c2.3-1.7,4.7-2.6,8.3-2.6c5,0,12.4,3.3,12.4,16.3v22.2h-6.7V71.3c0-7.2-2.6-11.6-8.2-11.6c-3.9,0-6.9,2.9-8.1,6.2c-0.3,0.9-0.5,2.2-0.5,3.4v23.2h-6.7V70c0-6-2.6-10.3-7.9-10.3c-4.3,0-7.4,3.4-8.5,6.8c-0.4,1-0.5,2.2-0.5,3.3v22.7h-6.7V65.1z"/>
-              <path d="M518.6,75c0.2,9.2,6.1,13.1,12.9,13.1c4.9,0,7.8-0.9,10.4-1.9l1.2,4.9c-2.4,1.1-6.5,2.4-12.5,2.4c-11.6,0-18.5-7.7-18.5-19c0-11.3,6.7-20.3,17.6-20.3c12.3,0,15.5,10.8,15.5,17.7c0,1.4-0.2,2.5-0.2,3.2H518.6z M538.7,70.1c0.1-4.4-1.8-11.1-9.5-11.1c-6.9,0-9.9,6.4-10.5,11.1H538.7z"/>
-              <path d="M550.6,65.1c0-3.9-0.1-7.1-0.3-10.2h6.1l0.4,6.2h0.2c1.9-3.6,6.2-7.1,12.4-7.1c5.2,0,13.3,3.1,13.3,16v22.5h-6.8V70.9c0-6.1-2.3-11.1-8.7-11.1c-4.5,0-8,3.2-9.2,7c-0.3,0.9-0.5,2-0.5,3.2v22.6h-6.8V65.1z"/>
-              <path d="M598.6,45.9v9h9.8v5.2h-9.8v20.3c0,4.7,1.3,7.3,5.1,7.3c1.9,0,3-0.2,4-0.5l0.3,5.1c-1.3,0.5-3.4,1-6.1,1c-3.2,0-5.8-1.1-7.4-3c-1.9-2-2.6-5.4-2.6-9.8V60.1h-5.8v-5.2h5.8V48L598.6,45.9z"/>
-            </g>
-          </svg>
-        </div>
-        
-        <!-- Message de bienvenue personnalisé -->
-        <div class="warmup-text">
-          <p class="warmup-title">Bonjour {{ currentUserDisplayName }}</p>
-          <p class="warmup-subtitle">Nous chargeons le planning</p>
-        </div>
-        
-        <!-- Spinner simple -->
-        <div class="simple-spinner">
-          <div class="spinner-circle"></div>
-        </div>
-      </div>
-    </div>
-  </transition>
+  <PlanningWarmupOverlay
+    :show="isInitialLoad"
+    :user-name="currentUserDisplayName"
+  />
   <PlanningLoadingModal
     :show-modal="showLoadingModal"
     :loading-collaborateurs="loadingCollaborateurs"
@@ -83,54 +46,13 @@
     </div> -->
 
     <!-- Indicateur de performance DOM Cache (dev mode) -->
-  <div v-if="isDev && domCacheStatus.isValid" class="dom-cache-indicator">
+    <div v-if="isDev && domCacheStatus.isValid" class="dom-cache-indicator">
       <va-icon name="memory" size="12px" />
       <span>Cache DOM: {{ domCacheStatus.elements }} éléments</span>
     </div>
 
-    <!-- Stats de virtualisation (dev mode) - DÉSACTIVÉ
-    <div v-if="false && isEmulator && virtualizationStats.totalCells > 0" class="virtualization-stats" @click="toggleStatsDetails">
-      <div class="stats-summary">
-        <va-icon name="dashboard" size="12px" />
-        <span>{{ virtualizationStats.visibleCells }}/{{ virtualizationStats.totalCells }}</span>
-      </div>
-      <div v-if="showStatsDetails" class="stats-details">
-        <div>Cellules visibles: {{ virtualizationStats.visibleCells }}</div>
-        <div>Total cellules: {{ virtualizationStats.totalCells }}</div>
-        <div>Cellules chargées: {{ virtualizationStats.loadedCells }}</div>
-        <div>Scroll rapide: {{ virtualizationStats.fastScrollEvents }}</div>
-        <div>Ratio: {{ Math.round((virtualizationStats.visibleCells / virtualizationStats.totalCells) * 100) }}%</div>
-      </div>
-    </div>
-    -->
-
-    <!-- Stats moteur WASM ultra-performant temporairement désactivé -->
-    <!--
-    <div v-if="isEmulator && _wasmReady" class="wasm-stats" @click="toggleWasmStats">
-      <div class="stats-summary">
-        <va-icon name="flash_on" size="12px" />
-        <span v-if="wasmStats.totalCalculations > 0">WASM: {{ wasmStats.averageTime.toFixed(4) }}ms</span>
-        <span v-else>WASM: Prêt</span>
-        <div class="performance-indicator" :class="wasmPerformanceClass"></div>
-      </div>
-      <div v-if="showWasmStats" class="stats-details">
-        <div>Moteur: {{ _wasmReady ? 'JavaScript ultra-optimisé' : 'Standard' }}</div>
-        <div>Calculs totaux: {{ wasmStats.totalCalculations.toLocaleString() }}</div>
-        <div v-if="wasmStats.totalCalculations > 0">Temps moyen: {{ wasmStats.averageTime.toFixed(6) }}ms</div>
-        <div v-if="wasmStats.totalCalculations > 0">FPS théorique: {{ wasmStats.averageTime > 0 ? Math.round(1000 / wasmStats.averageTime) : '∞' }}</div>
-        <div v-if="wasmStats.totalCalculations > 0">Temps total: {{ wasmStats.totalTime.toFixed(2) }}ms</div>
-        <div v-else>Survolez le planning pour voir les stats</div>
-        <div class="shortcuts">
-          <small>⌘+B: Benchmark | ⌘+W: Stats</small>
-        </div>
-        <button @click.stop="runWasmBenchmark" class="benchmark-btn">🏁 Benchmark</button>
-      </div>
-    </div>
-    -->
-
-    <!-- Badge d’environnement: émulateur local -->
     <!-- Badge d'environnement: émulateur local -->
-  <div v-if="isEmulator" class="env-badge">
+    <div v-if="isEmulator" class="env-badge">
       Émulateur Firebase actif
     </div>
 
@@ -211,7 +133,6 @@
       <kbd>Ctrl</kbd>+glisser pour sélectionner
     </div>
 
-    <!-- Planning Excel synchronisé - Scroll unique, sticky header + colonne -->
     <!-- Planning Excel synchronisé - Scroll unique, sticky header + colonne -->
     <div class="excel-planning-container">
   
@@ -409,22 +330,12 @@
                     `day-${day.dayOfWeek}`,
                     {
                       'today': day.isToday,
-                      'has-dispos': getCellDispos(collaborateur.id, day.date).length > 0,
+                      'has-dispos': getCellDisposSorted(collaborateur.id, day.date).length > 0,
                       'loading-placeholder': !isDayLoaded(day.date),
                       'selected': selectedCells.has(`${collaborateur.id}-${day.date}`),
                       'locked': isCellLockedByOther(collaborateur.id, day.date),
-                      'has-indicator': (() => {
-                        const isLocked = isLockedByOthers(collaborateur.id, day.date)
-                        const hasHover = isHoveredByOthers(collaborateur.id, day.date)
-                        const firstCollab = paginatedCollaborateurs[0]
-                        const firstDay = visibleDays[0]
-                        const isTestCell = firstCollab && firstDay && collaborateur.id === firstCollab.id && day.date === firstDay.date
-                        const result = isLocked || hasHover || isTestCell
-                        return result
-                      })(),
-                      'has-presence': (() => {
-                        return isHoveredByOthers(collaborateur.id, day.date)
-                      })()
+                      'has-indicator': hasCellIndicator(collaborateur.id, day.date),
+                      'has-presence': hasCellPresence(collaborateur.id, day.date)
                     },
                     getCellKindClass(collaborateur.id, day.date),
                     getCellLockClasses(collaborateur.id, day.date),
@@ -621,15 +532,19 @@
   </div> <!-- Fin planning-app -->
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vuestic-ui'
-import FiltersHeaderCompact from '../components/FiltersHeaderCompact.vue'
-import { defineAsyncComponent } from 'vue'
-// Composant de chargement nécessaire pour l'UX
-import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
+
+// Composants lazy-loadés pour réduire le bundle initial
+const FiltersHeaderCompact = defineAsyncComponent(() => import('../components/FiltersHeaderCompact.vue'))
+const PlanningWarmupOverlay = defineAsyncComponent(() => import('../components/planning/PlanningWarmupOverlay.vue'))
 const DispoEditContent = defineAsyncComponent(() => import('@/components/DispoEditContent.vue'))
 const CollabEditContent = defineAsyncComponent(() => import('@/components/CollabEditContent.vue'))
+
+// Composant de chargement nécessaire pour l'UX (sync car visible immédiatement)
+import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
+
 // Nouveaux composants modulaires supprimés car non utilisés
 // EmergencyFirestoreDashboard supprimé: migration RTDB terminée
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
@@ -834,18 +749,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
   if ((e.ctrlKey || e.metaKey) && !isMobileView.value) {
     isSelectionMode.value = true
   }
-  
-  // Raccourci pour le benchmark WASM : Ctrl/Cmd + B
-  if ((e.ctrlKey || e.metaKey) && e.key === 'b' && isEmulator && _wasmReady) {
-    e.preventDefault()
-    runWasmBenchmark()
-  }
-  
-  // Raccourci pour afficher/masquer les stats WASM : Ctrl/Cmd + W
-  if ((e.ctrlKey || e.metaKey) && e.key === 'w' && isEmulator && _wasmReady) {
-    e.preventDefault()
-    showWasmStats.value = !showWasmStats.value
-  }
 }
 
 const handleKeyUp = (e: KeyboardEvent) => {
@@ -857,32 +760,40 @@ const handleKeyUp = (e: KeyboardEvent) => {
 }
 
 // Watcher pour appliquer la classe CSS au body
-watch(isSelectionMode, (newValue) => {
-  if (newValue) {
-    document.body.classList.add('selection-mode')
+// Watcher unique pour les classes CSS du mode sélection et glissement
+watch([isSelectionMode, isDraggingSelection], ([selMode, dragMode]) => {
+  document.body.classList.toggle('selection-mode', selMode)
+  document.body.classList.toggle('dragging-selection', dragMode)
+  
+  // Attacher/détacher le listener global pour le mousemove pendant le drag
+  // Cela permet d'arrêter le scroll si la souris sort de la zone du planning
+  if (dragMode) {
+    document.addEventListener('mousemove', handleGlobalMouseMoveDuringDrag)
   } else {
-    document.body.classList.remove('selection-mode')
+    document.removeEventListener('mousemove', handleGlobalMouseMoveDuringDrag)
+    // S'assurer que l'auto-scroll est arrêté quand le drag s'arrête
+    stopAutoScroll()
   }
 })
 
-// Watcher pour le mode glissement
-watch(isDraggingSelection, (newValue) => {
-  if (newValue) {
-    document.body.classList.add('dragging-selection')
-  } else {
-    document.body.classList.remove('dragging-selection')
-  }
-})
+// Debounce timer pour la synchronisation des cellules sélectionnées
+let syncSelectedCellsTimer: number | null = null
 
 // Watcher pour la sélection de cellules (mettre à jour les initiales + transmettre aux autres)
 watch(selectedCells, () => {
   // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
   // Plus besoin de updatePresenceInitials()
   
+  // Debounce la synchronisation pour éviter le spam réseau pendant le drag
+  if (syncSelectedCellsTimer) {
+    clearTimeout(syncSelectedCellsTimer)
+  }
+  syncSelectedCellsTimer = window.setTimeout(() => {
     // Transmettre les sélections aux autres utilisateurs via RTDB
     if (collaborationService.isActive) {
       collaborationService.updateSelectedCells(selectedCells.value)
     }
+  }, 100) // 100ms de debounce
 }, { deep: true })
 
 // Watcher pour le modal batch - lock des cellules sélectionnées côté admin
@@ -999,6 +910,28 @@ const loadingCollaborateurs = ref(false)
 const loadingDisponibilites = ref(false)
 const disponibilitesCache = ref<Map<string, Disponibilite[]>>(new Map())
 
+// Type pour les disponibilités enrichies avec info de continuation
+type CellDispo = Disponibilite & { _cont?: 'start'|'end' }
+
+// Cache memoizé pour getCellDisposSorted (optimisation performance)
+const cellDisposSortedCache = new Map<string, CellDispo[]>()
+let cellDisposCacheVersion = 0
+
+// Fonction pour invalider le cache des cellules triées
+function invalidateCellDisposCache(specificKey?: string) {
+  if (specificKey) {
+    cellDisposSortedCache.delete(specificKey)
+  } else {
+    cellDisposSortedCache.clear()
+    cellDisposCacheVersion++
+  }
+}
+
+// Watcher pour invalider le cache quand les disponibilités changent
+watch(disponibilitesCache, () => {
+  invalidateCellDisposCache()
+}, { deep: true })
+
 // État de chargement initial
 const isInitialLoad = ref(true)
 const planningReady = ref(false)
@@ -1022,7 +955,6 @@ const connectedUsers = computed(() => {
   
   return users
 })
-const totalUsers = computed(() => sessionStats.value.uniqueUsers)
 let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let hoverEndGraceTimer: ReturnType<typeof setTimeout> | null = null
 // Cache local pour indicateurs de cellules (reconstruit toutes les 200ms)
@@ -1057,6 +989,16 @@ function getHoveringUserColor(collaborateurId: string, date: string): string {
   return _getHoveringUserColor(collaborateurId, date)
 }
 
+// Fonctions helper optimisées pour éviter les IIFE dans le template
+// Ces fonctions remplacent les calculs inline coûteux
+function hasCellIndicator(collaborateurId: string, date: string): boolean {
+  return isLockedByOthers(collaborateurId, date) || isHoveredByOthers(collaborateurId, date)
+}
+
+function hasCellPresence(collaborateurId: string, date: string): boolean {
+  return isHoveredByOthers(collaborateurId, date)
+}
+
 // Détection mode émulateur
 const isEmulatorMode = computed(() => {
   return window.location.hostname === 'localhost' || 
@@ -1076,8 +1018,15 @@ const isBusy = computed(() => {
 })
 
 // Garder les états locaux synchronisés avec le composable centralisé
-watch(() => planningData.isLoading.value, (v) => { loadingCollaborateurs.value = v }, { immediate: true })
-watch(() => (planningData.loadingDisponibilites.value || (planningData.fetchingRanges.value?.length > 0)), (v) => { loadingDisponibilites.value = v }, { immediate: true })
+// Watcher unique pour synchroniser les états de chargement
+watch(
+  () => [planningData.isLoading.value, planningData.loadingDisponibilites.value, planningData.fetchingRanges.value?.length > 0] as const,
+  ([isLoading, loadingDispos, hasFetchingRanges]) => {
+    loadingCollaborateurs.value = isLoading
+    loadingDisponibilites.value = loadingDispos || hasFetchingRanges
+  },
+  { immediate: true }
+)
 
 // CORRECTION: Watcher pour forcer le recalcul du filtrage quand le chargement est terminé
 watch(isBusy, async (busy, prevBusy) => {
@@ -1198,30 +1147,22 @@ function timeKindOptionsFor(type: Disponibilite['type'] | undefined) {
 
 // Version filtrée sans le bouton overnight (détection automatique)
 function timeKindOptionsFilteredFor(type: Disponibilite['type'] | undefined) {
-  return timeKindOptionsFor(type) // Même chose, mais overnight est géré automatiquement
+  return timeKindOptionsFor(type)
 }
-
-// Détection automatique des horaires overnight
-const isDetectedOvernight = computed(() => {
-  if (editingDispo.value.timeKind !== 'range') return false
-  if (!editingDispo.value.heure_debut || !editingDispo.value.heure_fin) return false
-  
-  const startTime = parseInt(editingDispo.value.heure_debut.split(':')[0])
-  const endTime = parseInt(editingDispo.value.heure_fin.split(':')[0])
-  
-  // Si l'heure de fin est plus petite que l'heure de début, c'est une mission de nuit
-  return endTime < startTime || (endTime === startTime && editingDispo.value.heure_fin < editingDispo.value.heure_debut)
-})
 
 // Fonction utilitaire pour détecter les horaires overnight  
 function isOvernightTime(start?: string, end?: string): boolean {
   if (!start || !end) return false
-  
-  const startTime = parseInt(start.split(':')[0])
-  const endTime = parseInt(end.split(':')[0])
-  
-  return endTime < startTime || (endTime === startTime && end < start)
+  const [startH] = start.split(':').map(Number)
+  const [endH] = end.split(':').map(Number)
+  return endH < startH || (endH === startH && end < start)
 }
+
+// Détection automatique des horaires overnight (utilise isOvernightTime)
+const isDetectedOvernight = computed(() => {
+  if (editingDispo.value.timeKind !== 'range') return false
+  return isOvernightTime(editingDispo.value.heure_debut, editingDispo.value.heure_fin)
+})
 
 function onCreateLieu(raw: string) {
   const canon = canonicalizeLieu(raw)
@@ -1760,16 +1701,16 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - technique Google Sheets : gros sauts espacés
+// Auto-scroll pendant la sélection - optimisé pour fluidité
 let autoScrollTimer: number | null = null
 let currentScrollX = 0
 let currentScrollY = 0
 const isAutoScrolling = ref(false) // Flag pour bloquer la sélection pendant l'auto-scroll
-const EDGE_ZONE = 100
-// Stratégie Google Sheets : gros sauts très espacés = minimum de reflows
-const SCROLL_JUMP_X = 80   // 80px par saut
-const SCROLL_JUMP_Y = 40   // 40px par saut  
-const SCROLL_INTERVAL = 150 // Seulement 6-7 sauts/sec pour minimiser les reflows
+const EDGE_ZONE = 80 // Zone en bord d'écran qui déclenche le scroll
+// Paramètres optimisés: scroll plus fluide
+const SCROLL_JUMP_X = 120   // 120px par saut (augmenté pour rapidité)
+const SCROLL_JUMP_Y = 60    // 60px par saut (augmenté pour rapidité)
+const SCROLL_INTERVAL = 80  // 12-13 sauts/sec (plus fluide)
 
 function scrollTick() {
   if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
@@ -1790,8 +1731,9 @@ function scrollTick() {
 }
 
 function handleAutoScroll(e: MouseEvent) {
-  // Auto-scroll actif dès que le mode sélection est activé (Cmd pressé), même sans drag
-  if (!isSelectionMode.value || !planningScroll.value) {
+  // Auto-scroll seulement pendant un drag actif avec mode sélection
+  // Ne pas activer juste parce que Cmd est pressé (évite scroll infini)
+  if (!isSelectionMode.value || !isDraggingSelection.value || !planningScroll.value) {
     stopAutoScroll()
     return
   }
@@ -1799,6 +1741,12 @@ function handleAutoScroll(e: MouseEvent) {
   const rect = planningScroll.value.getBoundingClientRect()
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
+  
+  // Si la souris est complètement hors de la zone du planning, arrêter le scroll
+  if (mouseX < -50 || mouseX > rect.width + 50 || mouseY < -50 || mouseY > rect.height + 50) {
+    stopAutoScroll()
+    return
+  }
   
   const prevScrollX = currentScrollX
   const prevScrollY = currentScrollY
@@ -1839,6 +1787,15 @@ function stopAutoScroll() {
   isAutoScrolling.value = false
   currentScrollX = 0
   currentScrollY = 0
+}
+
+// Gestionnaire global pour le mousemove pendant le drag
+// Permet d'arrêter le scroll si la souris sort de la zone du planning
+function handleGlobalMouseMoveDuringDrag(e: MouseEvent) {
+  if (!isDraggingSelection.value || !planningScroll.value) {
+    return
+  }
+  handleAutoScroll(e)
 }
 
 function onGridMouseMove(e: MouseEvent) {
@@ -1923,8 +1880,6 @@ function onGridMouseMove(e: MouseEvent) {
   }
 }
 
-// Système CSS simple - plus besoin de fonctions complexes ou de variables
-
 // Cache des éléments DOM pour performance maximale
 let _domCache = {
   columnElements: new Map<number, HTMLElement[]>(),
@@ -1933,89 +1888,11 @@ let _domCache = {
   lastBuilt: 0
 }
 
-// Moteur WASM ultra-performant pour calculs de highlights
+// Moteur WASM pour calculs de highlights
 const wasmEngine = new WASMHighlightEngine()
 let _wasmReady = false
 
-// Variables pour les statistiques WASM
-const wasmStats = ref({
-  totalCalculations: 0,
-  totalTime: 0,
-  averageTime: 0,
-  lastCalculationTime: 0
-})
-
-const showWasmStats = ref(false)
-let wasmDemoRun = false
-
-// (wasmPerformanceClass retiré: UI masquée)
-
-function updateWasmStats() {
-  if (wasmEngine) {
-    const stats = wasmEngine.getPerformanceStats()
-    if (stats) {
-      wasmStats.value = {
-        totalCalculations: stats.totalCalculations || 0,
-        totalTime: stats.totalTime || 0,
-        averageTime: stats.averageTime || 0,
-        lastCalculationTime: performance.now()
-      }
-    }
-  }
-}
-
-// (toggleWasmStats retiré: UI masquée)
-
-async function runWasmBenchmark() {
-  // console.log('🏁 Démarrage du benchmark WASM...')
-  
-  // Afficher les stats pendant le benchmark
-  showWasmStats.value = true
-  
-  const iterations = 5000
-  
-  // Notification de début SUPPRIMÉE
-  // notify({
-  //   message: `🔥 Benchmark ${iterations} calculs en cours...`,
-  //   color: 'info',
-  //   duration: 2000,
-  //   position: 'bottom-right'
-  // })
-  
-  for (let i = 0; i < iterations; i++) {
-    // Simule des positions de souris aléatoires
-    const mouseX = Math.random() * 800 + 100
-    const mouseY = Math.random() * 600 + 100
-    wasmEngine.calculateHighlight(mouseX, mouseY)
-  }
-  
-  // const _endTime = performance.now() // inutilisé
-  // (totalTime supprimé – uniquement pour logs précédemment)
-  // const avgTime = totalTime / iterations
-  
-  // console.log(`📊 Benchmark terminé:`)
-  // console.log(`   • ${iterations} calculs en ${totalTime.toFixed(2)}ms`)
-  // console.log(`   • Moyenne: ${avgTime.toFixed(6)}ms par calcul`)
-  // console.log(`   • Débit: ${Math.round(iterations / (totalTime / 1000))} calculs/sec`)
-  
-  updateWasmStats()
-  
-  // Notification de fin avec résultat SUPPRIMÉE
-  // const performance_level = avgTime <= 0.01 ? 'EXCELLENTE 🚀' : 
-  //                          avgTime <= 0.05 ? 'TRÈS BONNE ⚡' : 'ACCEPTABLE ⚠️'
-  
-  // notify({
-  //   message: `✅ Performance ${performance_level} - ${avgTime.toFixed(4)}ms/calcul`,
-  //   color: avgTime <= 0.01 ? 'success' : avgTime <= 0.05 ? 'warning' : 'info',
-  //   duration: 4000,
-  //   position: 'bottom-right'
-  // })
-}
-
-function invalidateDOMCache(reason?: string) {
-  if (reason) {
-    // console.log('🗑️ Cache DOM invalidé:', reason)
-  }
+function invalidateDOMCache(_reason?: string) {
   _domCache.cacheValid = false
   _domCache.columnElements.clear()
   _domCache.rowElements.clear()
@@ -2027,33 +1904,7 @@ async function initializeWASMEngine() {
     const ready = await wasmEngine.waitForReady()
     if (ready) {
       _wasmReady = true
-      // console.log('🦀 Moteur WASM initialisé et prêt')
-      
-      // Configuration initiale
       updateWASMConfiguration()
-      
-      // Notification utilisateur en mode émulateur SUPPRIMÉE
-      if (isEmulator) {
-        setTimeout(() => {
-          // notify({
-          //   message: '🚀 Moteur ultra-performant activé',
-          //   color: 'success',
-          //   duration: 3000,
-          //   position: 'bottom-right'
-          // })
-          
-          // Demo automatique une seule fois
-          if (!wasmDemoRun) {
-            wasmDemoRun = true
-            setTimeout(() => {
-              // console.log('🔥 Lancement du benchmark initial WASM...')
-              runWasmBenchmark()
-            }, 2000)
-          }
-        }, 1000)
-      }
-    } else {
-      console.warn('⚠️ Moteur WASM non disponible, fallback actif')
     }
   } catch (error) {
     console.error('❌ Erreur initialisation WASM:', error)
@@ -2073,7 +1924,6 @@ function updateWASMConfiguration() {
     rowsCount: paginatedCollaborateurs.value.length
   })
   
-  // Mettre à jour le scroll
   const container = planningScroll.value
   if (container) {
     wasmEngine.updateScroll(container.scrollLeft, container.scrollTop)
@@ -2366,73 +2216,60 @@ const isDev = computed(() => {
 // Utiliser le système centralisé 
 // (déclaration déplacée plus haut)
 
-// Synchroniser les lignes de présence une fois filteredCollaborateurs déclaré
-watch(filteredCollaborateurs, (list) => {
-  presenceRowsRef.value = list.map(c => ({ id: c.id }))
-}, { immediate: true, deep: false })
+// Compteur pour détecter le shrink de la liste
+const _prevFilteredCount = ref(0)
 
-// CORRECTION: Watcher agressif pour forcer la mise à jour de la virtualisation
-watch(filteredCollaborateurs, async (newList) => {
+// Watcher unique et optimisé pour filteredCollaborateurs
+// Fusionne: présence, virtualisation, reclampage scroll
+watch(filteredCollaborateurs, async (list) => {
+  // 1. Synchroniser les lignes de présence
+  presenceRowsRef.value = list.map(c => ({ id: c.id }))
   
-  // Toujours forcer le recalcul quand les données filtrées changent
-  await nextTick()
+  // 2. Détecter shrink pour reset scroll
   const scroller = planningScroll.value
+  if (list.length < _prevFilteredCount.value && scroller) {
+    scroller.scrollTop = 0
+  }
+  _prevFilteredCount.value = list.length
   
-  // CRITICAL: Toujours recalculer la fenêtre, pas seulement si elle est vide
+  // 3. Recalculer la virtualisation
+  await nextTick()
   if (scroller) {
-    // Recalcule complet (horizontal + vertical)
     recomputeWindow(scroller)
     recomputeRowWindow(scroller)
     ensureRowsVisible()
   } else {
-    // Sans scroller, recalcul minimal mais complet
     recomputeWindow(null as any)
     recomputeRowWindow(null as any)
   }
   
-  // Double-check: Attendre un autre tick et vérifier si windowedRows a été mis à jour
+  // 4. Fallback si windowedRows vide malgré des données
   await nextTick()
-  
-  // Si malgré le recalcul, windowedRows est toujours vide, forcer un reset complet
-  if (newList.length > 0 && windowedRows.value.length === 0) {
-    // Reset complet de la virtualisation
-  rowWindowStartIndex.value = 0
-  rowWindowEndIndex.value = Math.min(9, newList.length - 1) // Afficher au moins 10 éléments
-  await nextTick()
-  // Frame suivante pour laisser le DOM se stabiliser
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  if (list.length > 0 && windowedRows.value.length === 0) {
+    rowWindowStartIndex.value = 0
+    rowWindowEndIndex.value = Math.min(9, list.length - 1)
+    await nextTick()
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     if (windowedRows.value.length === 0) {
-      // Forcer un re-render de la fenêtre des lignes
       forceRender()
     }
-    
-    // NOUVEAU: Si même après reset forcé ça ne marche pas, simuler un click
+    // Dernier recours: simuler interaction
     if (windowedRows.value.length === 0) {
       setTimeout(async () => {
         const container = planningScroll.value || (document.querySelector('.excel-scroll') as HTMLElement | null)
         if (container) {
-          container.dispatchEvent(new Event('focus'))
-          // Déclenche un léger scroll programmatique pour imiter l'action utilisateur
           container.scrollTop = container.scrollTop + 1
           container.scrollTop = container.scrollTop - 1
-          container.click()
           await nextTick()
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
         }
       }, 50)
     }
   }
-}, { immediate: false, deep: false })
+}, { immediate: true, deep: false })
 
-// DEBUG: Watcher pour surveiller les changements de windowedRows
-watch(windowedRows, (_newRows, _oldRows) => {
-  // Invalider le cache DOM quand la fenêtre virtuelle change
-  invalidateDOMCache('windowedRows changé')
-}, { immediate: false, deep: false })
-
-// Invalider le cache quand la fenêtre horizontale change (scroll)
-watch(windowedDays, (_newDays, _oldDays) => {
-  invalidateDOMCache('windowedDays changé')
+// Watcher unique pour invalider le cache DOM quand la fenêtre virtuelle change
+watch([windowedRows, windowedDays], () => {
+  invalidateDOMCache('Fenêtre virtuelle changée')
 }, { immediate: false, deep: false })
 
 // CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
@@ -2495,25 +2332,6 @@ watch(planningFilters.filterState, async (newFilters, oldFilters) => {
     }, 120)
   }
 }, { immediate: false, deep: true })
-
-// Re-clamper la fenêtre virtualisée à chaque changement de la liste filtrée
-const _prevFilteredCount = ref(0)
-watch(filteredCollaborateurs, async (list) => {
-  const scroller = planningScroll.value
-  if (list.length < _prevFilteredCount.value && scroller) {
-    scroller.scrollTop = 0
-  }
-  _prevFilteredCount.value = list.length
-  await nextTick()
-  try {
-    if (scroller) {
-      recomputeRowWindow(scroller)
-    } else {
-      recomputeRowWindow(null as any)
-    }
-  } catch {}
-  ensureRowsVisible()
-}, { immediate: true })
 
 // (isDevelopment déjà défini plus haut)
 
@@ -2833,8 +2651,6 @@ function partForDay(d: Disponibilite, day: string): 'start'|'middle'|'end'|null 
 
 // (fullTimeLabel supprimée – remplacée par getTemporalDisplay unifié)
 
-
-type CellDispo = Disponibilite & { _cont?: 'start'|'end' }
 function getCellDispos(collaborateurId: string, date: string): CellDispo[] {
   const list = getDisponibilites(collaborateurId, date)
   const out: CellDispo[] = []
@@ -2851,7 +2667,32 @@ function getCellDispos(collaborateurId: string, date: string): CellDispo[] {
   return out
 }
 
+// Cache memoizé pour éviter de recalculer le tri à chaque render
 function getCellDisposSorted(collaborateurId: string, date: string): CellDispo[] {
+  // Clé de cache unique
+  const cacheKey = `${collaborateurId}-${date}-${cellDisposCacheVersion}`
+  
+  // Vérifier le cache
+  const cached = cellDisposSortedCache.get(cacheKey)
+  if (cached !== undefined) {
+    return cached
+  }
+  
+  // Calculer et mettre en cache
+  const result = computeCellDisposSorted(collaborateurId, date)
+  cellDisposSortedCache.set(cacheKey, result)
+  
+  // Limiter la taille du cache (garder les 1000 dernières entrées)
+  if (cellDisposSortedCache.size > 1000) {
+    const firstKey = cellDisposSortedCache.keys().next().value
+    if (firstKey) cellDisposSortedCache.delete(firstKey)
+  }
+  
+  return result
+}
+
+// Fonction de calcul effectif (appelée seulement si pas en cache)
+function computeCellDisposSorted(collaborateurId: string, date: string): CellDispo[] {
   const toMin = (t?: string) => {
     if (!t) return 10_000
     const [h, m] = (t || '').split(':').map(Number)
@@ -3121,9 +2962,9 @@ function getDispoTypeClass(dispo: Partial<Disponibilite>) {
 }
 
 // Classe dominante d'une cellule selon les dispos présentes (priorité: indisponible > mission > disponible)
+// Utilise getCellDisposSorted (memoizé) pour éviter les recalculs
 function getCellKindClass(collaborateurId: string, date: string) {
-  // Utiliser les dispos enrichies de la cellule (inclut continuations de la veille)
-  const list = getCellDispos(collaborateurId, date)
+  const list = getCellDisposSorted(collaborateurId, date)
   if (!list.length) return 'cell-empty'
   const hasInd = list.some(d => resolveDispoKind(d).type === 'indisponible')
   if (hasInd) return 'cell-indispo'
@@ -4000,15 +3841,16 @@ function setEditingTimeKind(timeKind: string) {
   editingDispo.value.timeKind = timeKind as Disponibilite['timeKind']
   // Reset aux valeurs par défaut UNIQUEMENT si les champs sont vides
   if (timeKind === 'full-day') {
-    editingDispo.value.heure_debut = '00:00'
-    editingDispo.value.heure_fin = '23:59'
+    // Journée entière: pas d'heures spécifiques (représente minuit à minuit implicitement)
+    editingDispo.value.heure_debut = ''
+    editingDispo.value.heure_fin = ''
     editingDispo.value.slots = []
   } else if (timeKind === 'range') {
-    // Ne réinitialiser que si les horaires sont vides ou invalides
-    if (!editingDispo.value.heure_debut || editingDispo.value.heure_debut === '00:00') {
+    // Réinitialiser si les horaires sont vides (venant de full-day ou overnight)
+    if (!editingDispo.value.heure_debut) {
       editingDispo.value.heure_debut = '09:00'
     }
-    if (!editingDispo.value.heure_fin || editingDispo.value.heure_fin === '23:59') {
+    if (!editingDispo.value.heure_fin) {
       editingDispo.value.heure_fin = '17:00'
     }
     editingDispo.value.slots = []
@@ -4597,53 +4439,7 @@ function cancelModal() {
   handleEditClose()
 }
 
-// (supprimé) Anciennes actions de formulaire séparé
-
 // Navigation
-// Gestion de recherche avec debouncing intelligent
-// Réinitialiser tous les filtres
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function clearAllFilters() {
-  planningFilters.clearAllFilters()
-
-  // Après réinitialisation, s'assurer que la fenêtre est recalculée
-  nextTick(() => {
-    const scroller = planningScroll.value
-    if (scroller) {
-      // Reset scroll position
-      scroller.scrollTop = 0
-      scroller.scrollLeft = 0
-      
-      // Force recalcul agressif
-      recomputeWindow(scroller)
-      recomputeRowWindow(scroller)
-      
-      // Naviguer vers aujourd'hui après réinitialisation
-      setTimeout(() => {
-        goToToday()
-      }, 200)
-    } else {
-      // Sans scroller, force quand même le recalcul
-      recomputeRowWindow(null as any)
-    }
-    
-    // Double vérification après un court délai
-    setTimeout(() => {
-      if (windowedRows.value.length === 0 && filteredCollaborateurs.value.length > 0) {
-        if (scroller) {
-          recomputeRowWindow(scroller)
-        }
-      }
-    }, 100)
-  })
-}
-
-// Navigation avec gestion des filtres
-// (updateFilters supprimée – inutilisée ici, gérée par composable)
-
-// (scrollToDate supprimée – non utilisée)
-
-// (goToPreviousWeek supprimée – inutilisée)
 
 function goToToday() {
   const scroller = planningScroll.value
@@ -5082,20 +4878,6 @@ function showRealtimeStats() {
 // ==========================================
 
 /**
- * Obtenir le nombre d'utilisateurs uniques connectés
- */
-function getUniqueUsersCount(): number {
-  return totalUsers.value
-}
-
-/**
- * Obtenir le nombre total de sessions connectées
- */
-function getTotalSessionsCount(): number {
-  return connectedUsers.value.reduce((total: number, user: DisplayUser) => total + user.sessionCount, 0)
-}
-
-/**
  * Obtenir les utilisateurs actifs sur le planning (présence, locks, sélections)
  */
 function getActiveUsers() {
@@ -5139,6 +4921,29 @@ function getActiveUsers() {
   })
   
   return Array.from(activeUsers.values())
+}
+
+/**
+ * Obtenir le nombre d'utilisateurs uniques connectés
+ */
+function getUniqueUsersCount(): number {
+  const uniqueIds = new Set(connectedUsers.value.map(u => u.uid))
+  return uniqueIds.size
+}
+
+/**
+ * Obtenir le nombre total de sessions
+ */
+function getTotalSessionsCount(): number {
+  return connectedUsers.value.reduce((sum, u) => sum + (u.sessions?.length || 1), 0)
+}
+
+/**
+ * Obtenir le tooltip de statut utilisateur
+ */
+function getUserStatusTooltip(user: DisplayUser): string {
+  const sessions = user.sessions?.length || 1
+  return `${user.displayName || user.email} - ${sessions} session${sessions > 1 ? 's' : ''}`
 }
 
 /**
@@ -5290,37 +5095,15 @@ function updateUserColorVariables() {
 }
 
 /**
- * Obtenir le nombre de sessions pour un utilisateur
- */
-function getUserSessionCount(uid: string): number {
-  return connectedUsers.value.filter((u: DisplayUser) => u.uid === uid).length
-}
-
-/**
- * Obtenir le tooltip pour un utilisateur dans le système
- */
-function getUserStatusTooltip(user: DisplayUser): string {
-  const sessionCount = getUserSessionCount(user.uid)
-  const sessionInfo = sessionCount > 1 ? ` (${sessionCount} onglets)` : ''
-  return `${user.displayName} - ${user.status}${sessionInfo}`
-}
-
-/**
  * Nettoyer les sessions expirées
  */
 async function cleanupSessions() {
   try {
-    // await collaborationService.cleanupExpiredSessions() // Géré automatiquement dans le nouveau système
-    // console.log('🧹 Nettoyage des sessions terminé')
+    // Géré automatiquement dans le nouveau système
   } catch (error) {
     console.error('❌ Erreur nettoyage sessions:', error)
   }
 }
-
-/**
- * Obtenir le tooltip pour un utilisateur (alias)
- */
-// (getUserTooltip supprimée – alias inutile)
 
 /**
  * Initialiser la présence utilisateur
@@ -5800,6 +5583,16 @@ async function onScrollExtend(e: Event) {
     // Décharger visuellement (cache conservé)
     prunePastIfFar(scroller)
     pruneFutureIfFar(scroller)
+    
+    // PREFETCH INTELLIGENT: Charger les données des semaines adjacentes en arrière-plan
+    // Ne pas prefetcher pendant le scroll rapide ou si les deux bornes sont définies
+    if (!isScrollingFast.value && !hasBothBounds) {
+      const firstVisibleDate = loadedDays.value[firstVisibleIdx]?.date
+      const lastVisibleDate = loadedDays.value[lastVisibleIdx]?.date
+      if (firstVisibleDate && lastVisibleDate) {
+        planningData.triggerPrefetch(firstVisibleDate, lastVisibleDate)
+      }
+    }
   }, debounceDelay)
   
   // Détecter la fin de scroll pour déclencher le hover sous le curseur
@@ -6370,20 +6163,13 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
   // Éviter de propager les survols pendant le scroll rapide
   if (isScrollingFast.value) return
   
-  // BLOQUAGE: Ne pas ajouter de cellules pendant l'auto-scroll
-  if (isAutoScrolling.value) return
-  
-  // Debounce minimal au niveau composant pour éviter du spam si la souris frôle
+  // Debounce pour le hover collaboratif (pas pour la sélection)
   if (hoverDebounceTimer) {
     clearTimeout(hoverDebounceTimer)
     hoverDebounceTimer = null
   }
-  hoverDebounceTimer = setTimeout(() => {
-    // Gérer le survol collaboratif
-    handleCellHover(collaborateurId, date)
-  }, 100)
-
   
+  // Gérer la sélection SANS debounce pour réactivité immédiate
   if (isDraggingSelection.value) {
     // Marquer qu'on a bougé la souris pendant le drag
     hasMouseMoved.value = true
@@ -6400,7 +6186,7 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
       return
     }
     
-    // Ajouter à la sélection pendant le glissement
+    // Ajouter à la sélection pendant le glissement (même pendant l'auto-scroll)
     if (!selectedCells.value.has(cellId)) {
       selectedCells.value.add(cellId)
       // Validation post-ajout (sécurité)
@@ -6408,12 +6194,16 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
         
         cleanSelectionToSingleCollaborator()
       }
+      // Forcer la réactivité
       selectedCells.value = new Set(selectedCells.value)
-      
-    } else {
-      
     }
+    return // Ne pas faire de hover collaboratif pendant la sélection
   }
+  
+  // Hover collaboratif avec debounce (seulement si pas en mode sélection)
+  hoverDebounceTimer = setTimeout(() => {
+    handleCellHover(collaborateurId, date)
+  }, 100)
 }
 
 function handleCellMouseUp() {
@@ -6875,25 +6665,22 @@ onMounted(async () => {
   }
 })
 
-// Watchers pour invalidation du cache DOM
+// Watcher unique pour invalidation du cache DOM et mise à jour WASM
 watch([visibleDays, paginatedCollaborateurs], () => {
-  clearAllHighlights() // Nettoyer d'abord
+  clearAllHighlights()
   invalidateDOMCache('Structure du planning modifiée')
-  // Reconstruire le cache après un court délai
   setTimeout(buildDOMCache, 50)
-  // Mettre à jour la configuration WASM
   updateWASMConfiguration()
-}, { immediate: false })
-
-// Watcher spécifique pour mettre à jour le moteur WASM
-watch([visibleDays, paginatedCollaborateurs], () => {
-  if (_wasmReady) {
-    updateWASMConfiguration()
-  }
 }, { immediate: false })
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  
+  // Nettoyer le listener global pour le drag
+  document.removeEventListener('mousemove', handleGlobalMouseMoveDuringDrag)
+  
+  // Arrêter l'auto-scroll si actif
+  stopAutoScroll()
   
   // Nettoyer l'intervalle de présence
   if (presenceUpdateInterval) {
@@ -6956,27 +6743,6 @@ const updateSetsDebounced = (() => {
 })()
 
 watch([visibleDays, paginatedCollaborateurs], updateSetsDebounced, { immediate: true })
-
-// Quand la liste des collaborateurs filtrés change (ex: passe de 0 à 1),
-// forcer le recalcul de la fenêtre de lignes avec l'élément scroller.
-watch(() => filteredCollaborateurs.value.length, (_newLength, _oldLength) => {
-  nextTick(() => {
-    const scroller = planningScroll.value
-    if (scroller) {
-  // const maxScrollTop = Math.max(0, contentHeight - scroller.clientHeight) // non utilisé
-      
-      // Reset agressif pour garantir une fenêtre valide
-      scroller.scrollTop = 0
-
-      // Recalculer la fenêtre de lignes et jours
-      recomputeRowWindow(scroller)
-      recomputeWindow(scroller)
-    } else {
-      // Même sans scroller, affiche au moins la première ligne
-      recomputeRowWindow(null as any)
-    }
-  })
-}, { immediate: false })
 
 // Garde-fou: si la fenêtre de lignes devient vide alors qu'il y a des résultats,
 // reclamper automatiquement pour réafficher des lignes
@@ -7052,8 +6818,11 @@ watch(() => route.query, (newQuery) => {
 // CORRECTION BUG 1: Recharger les collaborateurs quand on revient sur le planning
 // (pour prendre en compte les suppressions/modifications faites depuis la liste)
 watch(() => route.path, async (newPath, oldPath) => {
-  // Si on revient sur le planning depuis une autre page
-  if (newPath === '/planning' && oldPath && oldPath !== '/planning') {
+  // Si on revient sur le planning depuis une autre page (incluant les pages collaborateurs)
+  const isPlanning = newPath === '/semaine' || newPath === '/'
+  const wasElsewhere = oldPath && !oldPath.startsWith('/semaine') && oldPath !== '/'
+  
+  if (isPlanning && wasElsewhere) {
     try {
       await planningData.loadCollaborateurs()
       await nextTick()
@@ -7061,6 +6830,7 @@ watch(() => route.path, async (newPath, oldPath) => {
       const scroller = planningScroll.value
       if (scroller) {
         recomputeRowWindow(scroller)
+        recomputeWindow(scroller)
       }
     } catch (error) {
       console.error('Erreur lors du rechargement des collaborateurs:', error)
@@ -7122,24 +6892,6 @@ watch(() => planningFilters.hasActiveFilters.value, (active, prev) => {
   }
 })
 
-// Quand le tableau filtré change (même si la longueur est identique),
-// re-clamper le scroll vertical et recalculer la fenêtre de lignes.
-watch(filteredCollaborateurs, () => {
-  nextTick(() => {
-    const scroller = planningScroll.value
-    if (scroller) {
-  // Réinitialisation simple et fiable
-  scroller.scrollTop = 0
-      recomputeRowWindow(scroller)
-      // Un petit recalcul horizontal pour synchroniser les conteneurs
-      recomputeWindow(scroller)
-    } else {
-      recomputeRowWindow(null as any)
-    }
-  ensureRowsVisible()
-  })
-}, { deep: false })
-
 watch(() => searchTerm.value, () => {
   // Le cache de recherche est maintenant géré par le composable usePlanningFilters
   // (log supprimé)
@@ -7156,11 +6908,6 @@ watch(() => searchTerm.value, () => {
     ensureRowsVisible()
   })
 })
-
-// Quand l'état busy se termine, vérifier que des lignes s'affichent
-watch(isBusy, (busy) => {
-  if (!busy) nextTick(() => ensureRowsVisible())
-}, { immediate: true })
 
 // Watcher pour nettoyer le timer de debounce au démontage
 onUnmounted(() => {
@@ -7286,6 +7033,11 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', handleGlobalMouseUp)
   document.removeEventListener('mouseleave', handleWindowMouseLeave)
   document.body.classList.remove('selection-mode')
+  document.body.classList.remove('dragging-selection')
+  
+  // Fermer les modaux pour éviter les overlays orphelins
+  showDispoModal.value = false
+  showCollabModal.value = false
   
   // Nettoyer les gestionnaires de curseur collaboratif
   // Nettoyage des gestionnaires d'événements
@@ -7413,9 +7165,9 @@ function onTouchStart(e: TouchEvent) {
       }
     }
 
-    window.addEventListener('touchmove', onSingleMove)
-    window.addEventListener('touchend', onSingleEnd)
-    window.addEventListener('touchcancel', onSingleEnd)
+    window.addEventListener('touchmove', onSingleMove, { passive: true })
+    window.addEventListener('touchend', onSingleEnd, { passive: true })
+    window.addEventListener('touchcancel', onSingleEnd, { passive: true })
   }
 }
 
@@ -7446,5146 +7198,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ========================================
-   MODALE DE CHARGEMENT MODERNE - PLEIN ÉCRAN
-   ======================================== */
-
-/* Modale de chargement moderne */
-.modern-loading-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, rgba(23, 37, 84, 0.95), rgba(90, 103, 216, 0.95));
-  padding: 20px;
-}
-
-.loading-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 24px;
-  padding: 60px 40px;
-  max-width: 480px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 
-    0 20px 60px rgba(0, 0, 0, 0.2),
-    0 8px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  animation: slideIn 0.6s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.loading-header {
-  margin-bottom: 40px;
-}
-
-.loading-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #1a237e, #5a67d8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 16px 0 8px 0;
-  letter-spacing: -0.02em;
-}
-
-.loading-subtitle {
-  font-size: 1.1rem;
-  color: #64748b;
-  font-weight: 500;
-  margin: 0;
-}
-
-.loading-content {
-  margin-bottom: 40px;
-}
-
-.loading-spinner-container {
-  margin-bottom: 32px;
-  position: relative;
-}
-
-.loading-spinner-container::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e3f2fd, #f8f9ff);
-  z-index: -1;
-}
-
-.loading-status {
-  margin-bottom: 32px;
-}
-
-.status-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #334155;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.progress-container {
-  position: relative;
-}
-
-.progress-text {
-  font-size: 0.9rem;
-  color: #64748b;
-  margin-top: 12px;
-  font-weight: 600;
-}
-
-.loading-footer {
-  padding-top: 24px;
-  border-top: 1px solid rgba(226, 232, 240, 0.6);
-}
-
-.loading-tip {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-style: italic;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .loading-card {
-    padding: 40px 24px;
-    margin: 20px;
-  }
-  
-  .loading-title {
-    font-size: 2rem;
-  }
-  
-  .loading-subtitle {
-    font-size: 1rem;
-  }
-}
-
-.loading-progress {
-  margin-top: 24px;
-}
-
-.progress-text {
-  display: block;
-  margin-top: 8px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ========================================
-   PLACEHOLDER DE CHARGEMENT INITIAL
-   ======================================== */
-.initial-loading-placeholder {
-  padding: 20px;
-  background: #f8fafc;
-  min-height: 600px;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.placeholder-header {
-  margin-bottom: 24px;
-}
-
-.placeholder-title {
-  height: 28px;
-  width: 300px;
-  background: #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.placeholder-subtitle {
-  height: 18px;
-  width: 200px;
-  background: #f1f5f9;
-  border-radius: 6px;
-}
-
-.placeholder-content {
-  display: flex;
-  gap: 20px;
-}
-
-.placeholder-sidebar {
-  width: 260px;
-  flex-shrink: 0;
-}
-
-.placeholder-collaborateur {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-
-.placeholder-avatar {
-  width: 40px;
-  height: 40px;
-  background: #e2e8f0;
-  border-radius: 50%;
-}
-
-.placeholder-name {
-  height: 16px;
-  width: 120px;
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-.placeholder-grid {
-  flex: 1;
-  overflow: hidden;
-}
-
-.placeholder-days-header {
-  display: flex;
-  gap: 1px;
-  margin-bottom: 8px;
-}
-
-.placeholder-day {
-  width: 100px;
-  height: 60px;
-  background: #e2e8f0;
-  border-radius: 6px;
-}
-
-.placeholder-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.placeholder-row {
-  display: flex;
-  gap: 1px;
-}
-
-.placeholder-cell {
-  width: 100px;
-  height: 50px;
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-/* ========================================
-   STYLES EXISTANTS
-   ======================================== */
-/* Modal design mobile-first (style unifié) */
-.dispo-modal-mobile {
-  padding: 12px;
-  max-height: none;
-  transition: all 0.3s ease;
-}
-
-/* En-tête détaillé avec thème couleur collaborateur */
-.dispo-header-detailed {
-  background: linear-gradient(135deg, 
-    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 5%, #f8fafc) 0%, 
-    color-mix(in srgb, var(--collaborateur-color, #3b82f6) 8%, #e2e8f0) 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-  border: 1px solid color-mix(in srgb, var(--collaborateur-color, #3b82f6) 20%, #e2e8f0);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Fallback pour navigateurs sans color-mix */
-.dispo-header-detailed {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-}
-
-.color-indicator-modal {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  border-radius: 0 8px 8px 0;
-}
-
-.collaborateur-section {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.collaborateur-avatar-large {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--va-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.collaborateur-info-detailed {
-  flex: 1;
-}
-
-.collaborateur-name-large {
-  font-size: 16px; /* réduit de 18px à 16px */
-  font-weight: 600;
-  color: var(--va-color-text-primary);
-  margin: 0 0 4px 0;
-  text-transform: capitalize; /* première lettre de chaque mot en majuscule */
-}
-
-.collaborateur-meta-large {
-  font-size: 14px;
-  color: var(--va-color-text-secondary);
-  margin: 0;
-}
-
-.alert-overnight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--va-warning);
-  color: white;
-  border-radius: 6px;
-  font-size: 12px;
-  border-top: 1px solid var(--va-color-border);
-  margin-top: 16px;
-  padding-top: 16px;
-}
-
-/* Sections principales numérotées */
-.form-section-primary {
-  background: var(--va-color-background-element);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--va-color-border);
-  transition: all 0.3s ease;
-}
-
-.section-title-primary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--va-color-text-primary);
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--va-primary);
-}
-
-.section-number {
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.section-number.edit-mode {
-  animation: pulse-edit 2s infinite;
-}
-
-@keyframes pulse-edit {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
-/* Vue d'ensemble des disponibilités */
-.dispos-overview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.dispo-overview-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--va-color-border);
-  background: var(--va-color-background-secondary);
-  transition: all 0.2s ease;
-}
-
-.dispo-overview-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.dispo-overview-item.card-mission {
-  border-left: 4px solid var(--va-primary);
-  background: var(--va-color-primary-lighten5);
-}
-
-.dispo-overview-item.card-dispo {
-  border-left: 4px solid var(--va-success);
-  background: var(--va-color-success-lighten5);
-}
-
-.dispo-overview-item.card-indispo {
-  border-left: 4px solid var(--va-danger);
-  background: var(--va-color-danger-lighten5);
-}
-
-.dispo-overview-item.editing-highlight {
-  border: 2px solid var(--va-warning) !important;
-  background: var(--va-color-warning-lighten5) !important;
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
-  transform: scale(1.02);
-}
-
-.dispo-overview-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.dispo-type-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--va-color-text-primary);
-}
-
-.editing-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 2px 8px;
-  background: var(--va-warning);
-  color: white;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.dispo-details-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--va-color-text-secondary);
-}
-
-.lieu-info,
-.time-info,
-.slot-info,
-.fullday-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.dispo-overview-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.edit-btn,
-.delete-btn {
-  min-width: 70px;
-}
-
-/* Formulaire d'édition */
-.edit-form-section {
-  background: var(--va-color-success-lighten5) !important;
-  border: 2px solid var(--va-success) !important;
-}
-
-.edit-form-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-subsection {
-  margin-bottom: 12px;
-}
-
-.form-subsection:last-child {
-  margin-bottom: 0;
-}
-
-.form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 12px;
-  border-top: 1px solid var(--va-success);
-  margin-top: 12px;
-}
-
-/* Transitions */
-.form-slide-enter-active,
-.form-slide-leave-active {
-  transition: all 0.3s ease;
-  max-height: 600px;
-  opacity: 1;
-}
-
-.form-slide-enter-from,
-.form-slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  margin: 0;
-}
-
-.subsection-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--va-color-text-primary);
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.subsection-title::before {
-  content: '';
-  width: 4px;
-  height: 4px;
-  background: var(--va-primary);
-  border-radius: 50%;
-}
-
-/* Boutons de type pleine largeur (style batch) */
-.type-buttons-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.type-btn-full {
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 12px;
-  font-size: 12px;
-  min-height: 32px;
-  width: 100%;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--va-primary);
-  border: 1px solid var(--va-primary);
-}
-
-.type-btn-full[color="success"] {
-  background: var(--va-success);
-  color: white;
-  border-color: var(--va-success);
-}
-
-.type-btn-full[color="danger"] {
-  background: var(--va-danger);
-  color: white;
-  border-color: var(--va-danger);
-}
-
-.type-btn-full[color="primary"] {
-  background: var(--va-primary);
-  color: white;
-  border-color: var(--va-primary);
-}
-
-/* Sections spécialisées */
-.lieu-field-mobile {
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.time-section {
-  margin-top: 12px;
-}
-
-.time-subtitle {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--va-color-text-secondary);
-  margin: 0 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.time-fields-mobile {
-  display: flex;
-  gap: 12px;
-}
-
-.custom-time-input {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.time-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--va-dark);
-}
-
-.time-input {
-  width: 100%;
-  min-width: 120px;
-}
-
-.custom-time-input {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.time-separator {
-  font-weight: bold;
-  font-size: 16px;
-  color: var(--va-dark);
-  margin: 0 2px;
-}
-
-.time-field-mobile {
-  flex: 1;
-}
-
-/* Section créneaux */
-.slots-section {
-  margin-top: 12px;
-}
-
-.slots-grid-mobile {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.slot-option-mobile {
-  border: 1px solid var(--va-primary);
-  border-radius: 4px;
-  padding: 8px 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  background: transparent;
-  text-align: center;
-  min-height: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  font-size: 11px;
-  color: var(--va-primary);
-}
-
-.slot-option-mobile:hover {
-  border-color: var(--va-success);
-  background: var(--va-color-success-lighten5);
-  transform: translateY(-1px);
-  color: var(--va-success);
-}
-
-.slot-option-mobile.active {
-  border-color: var(--va-success);
-  background: var(--va-success);
-  color: white;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
-}
-
-.slot-label {
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-/* Section suppression */
-.delete-section {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--va-color-border);
-}
-
-.delete-btn-mobile-full {
-  width: 100%;
-  justify-content: center;
-}
-
-/* Message vide */
-.no-dispos {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--va-color-text-secondary);
-  padding: 32px 16px;
-  border: 2px dashed var(--va-color-border);
-  border-radius: 8px;
-  background: var(--va-color-background-secondary);
-}
-
-/* Container du bouton d'ajout */
-.add-line-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.add-line-btn-mobile {
-  min-width: 150px;
-}
-
-/* Container du bouton d'ajout en bas */
-.add-line-container-bottom {
-  display: flex;
-  justify-content: center;
-  margin: 16px 0 8px 0;
-  padding: 12px;
-  border-top: 1px solid var(--va-color-border);
-  background: var(--va-color-background-secondary);
-  border-radius: 8px;
-}
-
-/* Actions principales */
-.actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 8px;
-  border-top: 1px solid var(--va-color-border);
-  margin-top: 8px;
-}
-
-.actions .va-button {
-  min-width: 120px;
-}
-
-/* Overlay de modale: utiliser le style global (fond sombre), aucun masquage local ici */
-
-/* Responsive mobile */
-@media (max-width: 640px) {
-  .dispo-modal-mobile {
-    padding: 8px;
-  }
-  
-  .dispo-header-detailed {
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  
-  .collaborateur-section {
-    gap: 12px;
-  }
-  
-  .collaborateur-avatar-large {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-  
-  .dispo-overview-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .dispo-overview-actions {
-    align-self: stretch;
-    justify-content: space-between;
-  }
-  
-  .edit-btn,
-  .delete-btn {
-    flex: 1;
-    min-width: auto;
-  }
-  
-  .dispo-details-summary {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .slots-grid-mobile {
-    grid-template-columns: 1fr;
-  }
-  
-  .time-fields-mobile {
-    flex-direction: column;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-  }
-  
-  .form-actions .va-button {
-    width: 100%;
-  }
-  
-  .actions {
-    flex-direction: column;
-  }
-  
-  .actions .va-button {
-    width: 100%;
-  }
-}
-.dispo-edit-item :deep(.va-select__content) {
-  gap: 4px !important;
-}
-
-.add-dispo-form .fm-grid {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 12px 16px;
-  align-items: center;
-}
-.add-dispo-form .fm-row { display: contents; }
-.field-label { font-weight: 500; color: var(--va-secondary); }
-.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.help-text { grid-column: 1 / -1; margin-top: -8px; color: var(--va-secondary); font-size: 12px; }
-.add-line-btn { justify-self: end; }
-.add-line-btn { grid-column: 1 / -1; width: 100%; }
-.planning-app {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: #f8f9fa;
-  font-family: var(--va-font-family);
-  /* Séparateur de semaine, utilisé partout (jours header, semaines header, body) */
-  --week-sep-color: rgba(0, 0, 0, 0.10);
-  --week-sep-width: 4px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Optimisation de l'espace pour maximiser la surface du planning */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* Important pour permettre au planning de grandir */
-  margin: 0;
-  padding: 0;
-}
-
-.planning-warmup-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1050;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at top, rgba(var(--va-primary-rgb), 0.12), rgba(17, 24, 39, 0.72));
-  backdrop-filter: blur(10px);
-  padding: clamp(16px, 5vw, 48px);
-}
-
-.warmup-card {
-  position: relative;
-  width: min(460px, 90vw);
-  border-radius: 24px;
-  padding: 32px clamp(24px, 4vw, 32px);
-  background: rgba(15, 23, 42, 0.78);
-  box-shadow: 0 28px 40px -24px rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
-  overflow: hidden;
-}
-
-.warmup-glow {
-  position: absolute;
-  inset: -30% -30% auto;
-  height: 200px;
-  background: radial-gradient(circle, rgba(var(--va-primary-rgb), 0.45), transparent 65%);
-  opacity: 0.6;
-  filter: blur(12px);
-  animation: warmup-glow 4s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-@keyframes warmup-glow {
-  from { transform: translateY(-20px) rotate(0deg); opacity: 0.4; }
-  to { transform: translateY(20px) rotate(8deg); opacity: 0.8; }
-}
-
-.warmup-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  position: relative;
-  z-index: 1;
-  margin-bottom: 24px;
-}
-
-.warmup-icon {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(var(--va-primary-rgb), 0.25), rgba(255, 255, 255, 0.12));
-  color: #fff;
-}
-
-.warmup-title {
-  font-size: clamp(22px, 3.5vw, 28px);
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.01em;
-  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.warmup-subtitle {
-  margin: 6px 0 0;
-  font-size: 15px;
-  color: rgba(248, 250, 252, 0.9);
-  font-weight: 400;
-}
-
-/* Animation du logo SVG qui se dessine */
-.animated-logo {
-  width: 100%;
-  max-width: 280px;
-  height: auto;
-  margin: 0 auto 32px;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(255, 255, 255, 0.2));
-}
-
-.animated-logo .logo-paths path {
-  stroke: #ffffff;
-  stroke-width: 1.5;
-  fill: transparent;
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-  animation: draw-logo 2.5s cubic-bezier(0.47, 0, 0.745, 0.715) forwards;
-}
-
-.animated-logo .logo-paths path:nth-child(1) { animation-delay: 0s; }
-.animated-logo .logo-paths path:nth-child(2) { animation-delay: 0.1s; }
-.animated-logo .logo-paths path:nth-child(3) { animation-delay: 0.2s; }
-.animated-logo .logo-paths path:nth-child(4) { animation-delay: 0.3s; }
-.animated-logo .logo-paths path:nth-child(5) { animation-delay: 0.4s; }
-.animated-logo .logo-paths path:nth-child(6) { animation-delay: 0.5s; }
-.animated-logo .logo-paths path:nth-child(7) { animation-delay: 0.6s; }
-.animated-logo .logo-paths path:nth-child(8) { animation-delay: 0.7s; }
-.animated-logo .logo-paths path:nth-child(9) { animation-delay: 0.8s; }
-.animated-logo .logo-paths path:nth-child(10) { animation-delay: 0.9s; }
-
-@keyframes draw-logo {
-  to {
-    stroke-dashoffset: 0;
-    fill: #ffffff;
-  }
-}
-
-/* Spinner simple et élégant */
-.simple-spinner {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 24px;
-}
-
-.spinner-circle {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: spinner-rotate 1s linear infinite;
-}
-
-@keyframes spinner-rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.warmup-progress {
-  position: relative;
-  z-index: 1;
-  margin-bottom: 28px;
-}
-
-.progress-track {
-  width: 100%;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.25);
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
-  background-size: 200% 100%;
-  border-radius: inherit;
-  transition: width 0.45s ease;
-  animation: shimmer 2s infinite linear;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.progress-legend {
-  margin-top: 14px;
-  font-size: 14px;
-  color: rgba(226, 232, 240, 1);
-  letter-spacing: 0.02em;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.progress-legend::before {
-  content: '⏱️';
-  font-size: 16px;
-}
-
-.warmup-steps {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 14px;
-  position: relative;
-  z-index: 1;
-  margin-bottom: 20px;
-}
-
-.warmup-step {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(30, 41, 59, 0.45);
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
-  color: rgba(226, 232, 240, 0.92);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.warmup-step.loading {
-  border-color: rgba(59, 130, 246, 0.4);
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(59, 130, 246, 0.2));
-  color: #fff;
-  transform: scale(1.02);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
-}
-
-.warmup-step.done {
-  border-color: rgba(34, 197, 94, 0.4);
-  background: linear-gradient(135deg, rgba(21, 128, 61, 0.3), rgba(34, 197, 94, 0.2));
-  color: #d1fae5;
-  opacity: 0.9;
-}
-
-.warmup-step.pending {
-  opacity: 0.6;
-}
-
-.warmup-step .va-icon {
-  color: currentColor;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-}
-
-.step-label {
-  font-size: 15px;
-  flex: 1;
-  font-weight: 500;
-}
-
-.warmup-footer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 18px;
-  background: rgba(59, 130, 246, 0.15);
-  border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  margin-top: 20px;
-  position: relative;
-  z-index: 1;
-}
-
-.warmup-footer .info-icon {
-  color: rgba(147, 197, 253, 1);
-  flex-shrink: 0;
-}
-
-.warmup-tip {
-  font-size: 13px;
-  color: rgba(226, 232, 240, 0.95);
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-.planning-warmup-fade-enter-active,
-.planning-warmup-fade-leave-active {
-  transition: opacity 0.4s ease;
-}
-
-.planning-warmup-fade-enter-from,
-.planning-warmup-fade-leave-to {
-  opacity: 0;
-}
-
-/* ========================================
-   STYLES DE L'INTERFACE PRINCIPALE
-   ======================================== */
-
-/* Indicateur des filtres actifs */
-.active-filters-indicator {
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-  border-bottom: 1px solid #e1bee7;
-  padding: 8px 0;
-  transition: all 0.3s ease;
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.indicator-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #6a1b9a;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.indicator-content .material-icons {
-  font-size: 16px;
-  color: #9c27b0;
-}
-
-.filter-type {
-  background: #9c27b0;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.perf-indicator {
-  background: #4caf50;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-family: monospace;
-  font-weight: 600;
-}
-
-.perf-indicator.slow {
-  background: #ff9800;
-}
-
-.filtering-indicator {
-  display: flex;
-  align-items: center;
-}
-
-.filtering-indicator .material-icons {
-  font-size: 14px;
-  color: #9c27b0;
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.loading-overlay {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 400px;
-}
-
-.loading-content {
-  text-align: center;
-}
-
-/* Indicateur d'extension non-bloquant */
-/* Indicateur du mois visible */
-.current-month-indicator {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 1001;
-  background: rgba(var(--va-primary-rgb), 0.9);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* Indicateur d'extension compact */
-.extending-indicator-compact {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.75);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-}
-
-/* Suggestions compactes */
-.suggestions-compact {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 999;
-  background: rgba(var(--va-info-rgb), 0.9);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.extending-indicator {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-
-/* Indicateur de scroll rapide */
-.fast-scroll-indicator {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  background: linear-gradient(135deg, var(--va-primary), color-mix(in srgb, var(--va-primary) 80%, var(--va-info)));
-  color: white;
-  padding: 8px 12px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  animation: fastScrollPulse 1.5s ease-in-out infinite;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.fast-scroll-indicator .buffer-info {
-  font-size: 10px;
-  opacity: 0.9;
-  font-weight: 400;
-}
-
-@keyframes fastScrollPulse {
-  0%, 100% { 
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-  50% { 
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  }
-}
-
-/* Indicateur DOM Cache (mode dev) */
-.dom-cache-indicator {
-  position: fixed;
-  top: 80px;
-  right: 20px;
-  z-index: 1000;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  border: 1px solid #1d4ed8;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.3s ease;
-}
-
-.dom-cache-indicator:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-/* Stats de virtualisation (mode dev) */
-.virtualization-stats {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.8);
-  color: #10b981;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  cursor: pointer;
-  border: 1px solid #10b981;
-  transition: all 0.3s ease;
-}
-
-.virtualization-stats:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: scale(1.05);
-}
-
-.virtualization-stats .stats-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-
-.virtualization-stats .stats-details {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(16, 185, 129, 0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  color: #a7f3d0;
-}
-
-/* Stats moteur WASM ultra-performant */
-.wasm-stats {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 11px;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.wasm-stats:hover {
-  transform: scale(1.05) translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-
-.wasm-stats .stats-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.wasm-stats .performance-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.wasm-stats .performance-indicator.excellent {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
-}
-
-.wasm-stats .performance-indicator.good {
-  background: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
-}
-
-.wasm-stats .performance-indicator.acceptable {
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-}
-
-.wasm-stats .stats-details {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.wasm-stats .benchmark-btn {
-  margin-top: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 9px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.wasm-stats .benchmark-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-}
-
-.wasm-stats .shortcuts {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  text-align: center;
-}
-
-.wasm-stats .shortcuts small {
-  opacity: 0.8;
-  font-size: 10px;
-}
-
-.env-badge {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 1000;
-  background: #111827;
-  color: #a7f3d0;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid #10b981;
-}
-
-.realtime-badge {
-  position: fixed;
-  top: 20px;
-  left: 200px;
-  z-index: 1000;
-  background: #1e40af;
-  color: #dbeafe;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid #3b82f6;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.realtime-badge:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
-}
-
-.listeners-count {
-  background: #3b82f6;
-  color: white;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  margin-left: 6px;
-}
-
-/* Badge présence utilisateurs */
-.users-presence-badge {
-  position: fixed;
-  top: 20px;
-  left: 380px;
-  z-index: 1000;
-  background: #059669;
-  color: #d1fae5;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid #10b981;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.users-avatars {
-  display: flex;
-  gap: 4px;
-}
-
-.user-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #10b981;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  border: 1px solid #065f46;
-  position: relative;
-}
-
-.user-avatar.multi-session {
-  border: 2px solid #f59e0b;
-  box-shadow: 0 0 0 1px #fbbf24;
-}
-
-.multi-tab-indicator {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #f59e0b;
-  color: white;
-  border-radius: 50%;
-  width: 12px;
-  height: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  font-weight: 700;
-  border: 1px solid #d97706;
-}
-
-.sessions-count {
-  font-size: 10px;
-  opacity: 0.8;
-  margin-left: 4px;
-}
-
-.user-avatar.more-users {
-  background: #047857;
-  font-size: 8px;
-}
-
-/* Indicateurs de survol collaboratifs dans les cellules */
-.cell-hover-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
-  pointer-events: none;
-  z-index: 4000; /* Au-dessus de la grille et overlays potentiels */
-  transition: all 0.3s ease;
-  opacity: 0.9;
-}
-
-/* Mode édition : plus grand et plus visible */
-.cell-hover-indicator.editing-mode {
-  width: 40px;
-  height: 40px;
-  z-index: 4005; /* légèrement au-dessus */
-  opacity: 1;
-}
-
-.cell-hover-indicator.editing-mode .hover-pulse {
-  border-width: 4px;
-  animation: pulseEditing 1.5s infinite ease-in-out;
-}
-
-.cell-hover-indicator.editing-mode .hover-user-name {
-  width: 30px;
-  height: 30px;
-  font-size: 14px;
-  border-width: 3px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-}
-
-.hover-pulse {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 3px solid var(--user-color, #3b82f6);
-  border-radius: 50%;
-  background: var(--user-color, #3b82f6);
-  opacity: 0.3;
-  animation: pulseHover 2s infinite ease-in-out;
-  transition: all 0.3s ease;
-}
-
-.hover-user-name {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
-  background: var(--user-color, #3b82f6);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  border: 2px solid white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  transition: all 0.3s ease;
-  z-index: 11;
-  animation: hoverPersist 3s infinite ease-in-out;
-  pointer-events: none;
-  /* Forcer priorité sur styles globaux */
-  background: var(--user-color, #3b82f6) !important;
-}
-
-/* Animation de persistance pour les indicateurs de survol */
-@keyframes hoverPersist {
-  0%, 90% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  95% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-.editing-lock-icon {
-  font-size: 12px !important;
-  color: white;
-  animation: lockBounce 0.5s ease-out;
-}
-
-/* Animation d'apparition du cadenas */
-@keyframes lockBounce {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Animation du pulse améliorée */
-@keyframes pulseHover {
-  0%, 100% { 
-    transform: scale(1);
-    opacity: 0.2; 
-  }
-  50% { 
-    transform: scale(1.4);
-    opacity: 0.05; 
-  }
-}
-
-/* Animation spéciale pour le mode édition */
-@keyframes pulseEditing {
-  0%, 100% { 
-    transform: scale(1);
-    opacity: 0.3;
-    border-color: var(--user-color, #ef4444);
-  }
-  50% { 
-    transform: scale(1.3);
-    opacity: 0.1;
-    border-color: #ef4444;
-  }
-}
-
-.cursor-label::before {
-  content: '';
-  position: absolute;
-  top: -3px;
-  left: 4px;
-  width: 0;
-  height: 0;
-  border-left: 3px solid transparent;
-  border-right: 3px solid transparent;
-  border-bottom: 3px solid var(--user-color, #3b82f6);
-}
-
-/* Indicateurs d'édition active */
-.active-editing-indicators {
-  position: fixed;
-  top: 80px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.editing-indicator {
-  background: var(--user-color, #3b82f6);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  animation: pulse-edit 2s infinite;
-}
-
-@keyframes pulse-edit {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.editing-user {
-  font-weight: 500;
-}
-
-/* Aide contextuelle discrète */
-.selection-help-tooltip {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  background: rgba(107, 114, 128, 0.9);
-  backdrop-filter: blur(6px);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  z-index: 998;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  animation: fadeIn 0.5s ease-out;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.selection-help-tooltip kbd {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 11px;
-}
-
-.clear-selection-btn {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  color: white !important;
-  border-radius: 50% !important;
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  padding: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.clear-selection-btn:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
-  transform: scale(1.1);
-}
-
-@keyframes slideInDown {
-  from {
-    transform: translateX(-50%) translateY(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.clear-selection-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.suggestions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  margin: 6px 16px;
-  background: rgba(255, 215, 0, 0.12);
-  border: 1px solid rgba(255, 215, 0, 0.35);
-  border-radius: 8px;
-  color: #5c4a00;
-}
-.suggestions .suggestion-item + .suggestion-item::before {
-  content: '• ';
-  margin: 0 6px 0 2px;
-  opacity: 0.6;
-}
-
-/* Layout Excel synchronisé - Optimisé pour fluidité */
-.excel-planning-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid #e0e0e0;
-  background: white;
-}
-
-/* Conteneur de scroll unique */
-.excel-scroll {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-  /* performance */
-  will-change: scroll-position;
-  -webkit-overflow-scrolling: touch;
-  /* éviter de déléguer le scroll au parent quand on atteint un bord */
-  overscroll-behavior: contain;
-  width: 100%;
-}
-
-.excel-scroll {
-  cursor: grab;
-}
-
-.excel-scroll.loading {
-  cursor: progress;
-}
-
-.excel-scroll.loading * {
-  pointer-events: none;
-}
-
-/* Containment et rendu paresseux des blocs pour optimiser layout/paint */
-/* .excel-rows: pas de contain: paint pour éviter un stacking context qui cacherait les overlays */
-
-.excel-row {
-  /* IMPORTANT: forcer le rendu immédiat des lignes pour éviter l'écran vide après filtrage */
-  content-visibility: visible; /* au lieu de auto: certains navigateurs ne peignent pas après transform */
-  /* supprimer les contain qui peuvent empêcher le paint correct lorsqu'on translate le conteneur */
-  contain: none;
-  contain-intrinsic-size: auto; /* ne pas réserver artificiellement la hauteur */
-}
-
-/* Griser les lignes non sélectionnables pendant la sélection multiple */
-.excel-row.row-disabled {
-  opacity: 0.4;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.excel-days-row {
-  contain: layout paint;
-}
-
-.days-window {
-  display: inline-flex;
-  will-change: transform;
-}
-
-.rows-window {
-  display: block;
-  will-change: transform;
-}
-
-/* S'assurer que la fenêtre de lignes est rendue et visible (pas de clipping caché) */
-.rows-window {
-  position: relative;
-  visibility: visible;
-  opacity: 1;
-  contain: none;
-}
-
-.excel-scroll.panning {
-  cursor: grabbing;
-  user-select: none;
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .excel-scroll {
-    cursor: default;
-  }
-}
-
-/* Ligne d'en-tête sticky (top:0) */
-.sticky-header-row {
-  position: sticky;
-  top: 0;
-  z-index: 150; /* au-dessus du contenu, sans bloquer le scroll horizontal */
-  display: flex;
-  flex-wrap: nowrap;
-  width: max-content;
-  max-width: none;
-  background: white;
-  border-bottom: 2px solid #e0e0e0;
-  /* ombre légère pour détacher visuellement */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-}
-
-/* Colonne sticky collaborateurs : largeur fortement réduite */
-.excel-corner {
-  width: var(--sticky-left, 190px);
-  min-width: var(--sticky-left, 190px);
-  flex: 0 0 var(--sticky-left, 190px);
-  background: #f5f5f5;
-  padding: 6px 10px; /* Aligné avec collaborateur-content: 6px 10px */
-  border-right: 1px solid #e5e7eb; /* Même bordure que collab-sticky */
-  box-shadow: 
-    2px 0 8px rgba(0,0,0,0.06),
-    inset -1px 0 0 rgba(255,255,255,0.8); /* Même shadow que collab-sticky */
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  left: 0;
-  top: 0;
-  z-index: 153; /* au-dessus des éléments du header */
-  box-sizing: border-box; /* S'assurer que padding/border sont inclus dans width */
-}
-
-.excel-corner .today-btn {
-  background: #3B82F6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 3px 5px; /* encore plus compact */
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px; /* plus petit */
-  font-weight: 500;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  width: 100%;
-  justify-content: center;
-  letter-spacing: -0.01em;
-}
-
-@media (min-width: 1600px) {
-  .excel-corner { width: var(--sticky-left, 210px); min-width: var(--sticky-left, 210px); flex:0 0 var(--sticky-left, 210px); }
-  .excel-corner .today-btn { font-size:11px; padding:4px 6px; }
-}
-@media (max-width: 1300px) and (min-width: 1000px) {
-  .excel-corner { width: var(--sticky-left, 180px); min-width: var(--sticky-left, 180px); flex:0 0 var(--sticky-left, 180px); }
-}
-@media (max-width: 999px) and (min-width: 769px) {
-  .excel-corner { width: var(--sticky-left, 175px); min-width: var(--sticky-left, 175px); flex:0 0 var(--sticky-left, 175px); }
-  .excel-corner .today-btn { font-size:9.5px; }
-}
-
-.excel-corner .today-btn:hover {
-  background: #2563EB;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-}
-
-.excel-corner .today-btn:disabled,
-.excel-corner .today-btn.disabled {
-  background: #9CA3AF;
-  color: #D1D5DB;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  opacity: 0.6;
-}
-
-.excel-corner .today-btn:disabled:hover,
-.excel-corner .today-btn.disabled:hover {
-  background: #9CA3AF;
-  transform: none;
-  box-shadow: none;
-}
-
-.excel-corner .today-btn .material-icons {
-  font-size: 14px; /* Réduit de 16px → 14px */
-}
-
-.excel-corner .corner-separator {
-  width: 80%;
-  height: 1px;
-  background: #ddd;
-  margin: 4px 0;
-}
-
-.excel-corner .corner-bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-/* Ancien système overlay supprimé - remplacé par CSS pur */
-
-/* Overlay "aujourd'hui" pour l'en-tête */
-.today-overlay-header {
-  position: absolute;
-  top: 0;
-  left: calc(var(--grid-left-header, var(--sticky-left, 220px)) + var(--today-x-local, -9999px));
-  width: var(--day-width, 100px);
-  height: 100%;
-  pointer-events: none;
-  background: rgba(33, 150, 243, 0.18);
-  z-index: 152; /* au-dessus du hover header */
-  will-change: left;
-}
-
-/* Overlay des séparateurs de semaine pour l'ensemble du header */
-.week-separators-header {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--months-h, 0px); /* commence sous la rangée des mois */
-  bottom: 0; /* couvre semaines + jours */
-  pointer-events: none;
-  z-index: 150; /* sous les overlays 151/152, au-dessus des fonds */
-}
-.week-separators-header .week-sep {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-}
-
-.corner-title {
-  font-weight: 600;
-  font-size: 12px; /* Réduit de 14px → 12px */
-  color: #333;
-}
-
-.corner-count {
-  font-size: 10px; /* Réduit de 12px → 10px */
-  color: #666;
-  margin-top: 2px;
-}
-
-/* Header des jours (dans la ligne sticky) */
-.days-header {
-  overflow: visible; /* laisse le contenu suivre le scroll du conteneur */
-  background: #fff;
-  width: max-content; /* grandit avec le contenu */
-  max-width: none;
-  flex: 0 0 auto;
-}
-
-
-.excel-days-row {
-  display: flex;
-  flex-shrink: 0;
-  /* Force le scroll horizontal */
-  width: max-content;
-  /* Éviter les transforms qui cassent sticky */
-  max-width: none;
-}
-
-/* Rangée des semaines (Sxx) */
-.excel-weeks-row {
-  display: flex;
-  flex-shrink: 0;
-  width: max-content;
-  max-width: none;
-}
-
-.excel-week-cell {
-  background: #f9fafb;
-  border-right: 3px solid #e0e0e0;
-  border-bottom: 1px solid #eef2f7;
-  padding: 4px 6px;
-  text-align: center;
-  font-size: 11px;
-  color: #4b5563;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  position: relative;
-}
-
-/* Séparateur visuel pour les changements de mois dans la même semaine */
-.excel-week-cell.month-boundary {
-  border-left: var(--week-sep-width, 4px) solid #6B7280; /* plus épais pour frontière mois */
-}
-
-.excel-week-cell.month-boundary::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 0;
-  bottom: 0;
-  width: 0; /* supprimer le doublon de trait */
-  background: transparent;
-  border-radius: 0.5px;
-}
-
-
-.excel-day-cell {
-  background: #ffffff;
-  border-right: 1px solid #e0e0e0;
-  padding: 8px 4px;
-  text-align: center;
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
-  width: var(--day-width, 100px);
-  min-width: var(--day-width, 100px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  overflow: visible;
-  box-sizing: border-box;
-  /* Optimisation légère pour fluidité */
-  will-change: background-color;
-  position: relative; /* pour ancrer le séparateur ::after et éviter la coupure */
-}
-
-/* Dimanche (header seulement): ajouter un trait épais pour marquer fin de semaine */
-.excel-day-cell.day-0 {
-  border-right: none; /* éviter doublon à droite */
-}
-.excel-day-cell.day-0::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px); /* barre plus large uniforme */
-  background: var(--week-sep-color, rgba(0,0,0,0.18));
-  pointer-events: none;
-}
-
-/* Weekend: fond légèrement orangé pour samedi et dimanche */
-/* Approche inversée: le fond orangé ne s'applique QUE quand il n'y a PAS de hover */
-/* SANS !important pour laisser les styles inline gagner, mais spécificité augmentée */
-.excel-scroll .excel-cell.day-6:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover),
-.excel-scroll .excel-cell.day-0:not(.dom-column-hovered):not(.dom-row-hovered):not(:hover) {
-  background-color: #fff4e6;
-}
-
-.excel-day-cell.day-6,
-.excel-day-cell.day-0 {
-  background-color: #fff4e6 !important;
-}
-
-/* Les cartes de dispo dans les cellules weekend ont aussi un fond légèrement teinté */
-.excel-cell.day-6 .dispo-card,
-.excel-cell.day-0 .dispo-card {
-  background-color: #ffe8cc;
-  border-color: #ffdfb3;
-}
-
-/* Garder le highlight du jour actuel même si c'est le weekend */
-.excel-day-cell[data-today="true"] {
-  background: #e3f2fd !important;
-  font-weight: 600;
-  box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
-}
-
-.excel-cell[data-today="true"] {
-  background: #e3f2fd !important;
-}
-
-/* (supprimé) séparateur sur header jours remplacé par overlay global */
-
-/* Highlight de la colonne du jour - CSS pur avec attribut data */
-.excel-day-cell[data-today="true"] {
-  background: #e3f2fd !important;
-  font-weight: 600;
-  /* Effet visuel plus marqué pour le jour actuel */
-  box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
-}
-
-/* En-têtes des jours en chargement - skeleton screen moderne */
-.excel-day-cell.loading-placeholder {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  position: relative;
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  overflow: hidden;
-}
-
-.excel-day-cell.loading-placeholder .day-name,
-.excel-day-cell.loading-placeholder .day-number {
-  visibility: hidden;
-}
-
-.excel-day-cell.loading-placeholder::before {
-  content: '';
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28px;
-  height: 10px;
-  background: linear-gradient(90deg, 
-    rgba(148, 163, 184, 0.2) 25%, 
-    rgba(203, 213, 225, 0.4) 50%, 
-    rgba(148, 163, 184, 0.2) 75%
-  );
-  background-size: 200% 100%;
-  border-radius: 5px;
-  animation: shimmer 2s infinite linear;
-}
-
-.excel-day-cell.loading-placeholder::after {
-  content: '';
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 18px;
-  height: 8px;
-  background: linear-gradient(90deg, 
-    rgba(203, 213, 225, 0.3) 0%, 
-    rgba(148, 163, 184, 0.4) 100%
-  );
-  border-radius: 4px;
-  opacity: 0.9;
-}
-
-.excel-day-cell.today {
-  background: #e8f4fd; /* Bleu très clair au lieu de #1976d2 */
-  color: #1565c0; /* Texte bleu foncé au lieu de blanc */
-  font-weight: 700; /* Garde le poids de police */
-  border: 1px solid #bbdefb; /* Bordure discrète */
-}
-
-/* Suppression des séparateurs de fin de mois - causent des barres indésirables */
-/*
-.excel-day-cell.month-boundary-right::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 3px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-  pointer-events: none;
-}
-*/
-
-.excel-day-cell.hovered {
-  background: #e8f5e8 !important;
-  /* Couleur verte harmonieuse avec les disponibilités */
-}
-
-.day-name {
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  line-height: 1.3;
-  font-weight: 500;
-  /* Assurer la visibilité absolue */
-  display: block;
-  width: 100%;
-  text-align: center;
-  /* Solution propre pour garantir l'affichage */
-  position: relative;
-  z-index: 1;
-}
-
-.day-number {
-  font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  line-height: 1.2;
-  /* Assurer la visibilité absolue */
-  display: block;
-  width: 100%;
-  text-align: center;
-  /* Solution propre pour garantir l'affichage */
-  position: relative;
-  z-index: 1;
-}
-
-/* Conteneur des lignes (dans le flux du scroll) */
-.excel-rows {
-  display: block;
-  overflow: visible; /* ne pas couper le sticky */
-  width: max-content; /* suit exactement la largeur de la grille */
-  position: relative;
-  z-index: 10; /* Contexte de stacking pour les lignes et overlays internes */
-}
-
-/* Conteneur de clipping des overlays verticaux pour ne jamais recouvrir la colonne collaborateurs */
-.grid-overlay-clip {
-  position: absolute;
-  top: 0;
-  left: var(--grid-left-body, var(--sticky-left, 220px)); /* origine mesurée, repli sticky */
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  overflow: hidden; /* empêche de recouvrir la colonne sticky en rognant à gauche */
-  z-index: 20; /* Au-dessus des cellules (z-index 1), sous les overlays */
-}
-
-/* Ancien système overlay supprimé - remplacé par CSS pur */
-
-/* Ancien système overlay supprimé - remplacé par CSS pur */
-
-/* Overlay des séparateurs dans le body pour descendre jusqu’aux lignes */
-.week-separators-body {
-  position: absolute;
-  top: 0; /* dans grid-overlay-clip, donc déjà sous l’en-tête sticky */
-  bottom: 0;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 21; /* au-dessus des cellules, sous d’autres overlays si présents */
-}
-.week-separators-body .week-sep {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-}
-
-/* === HIGHLIGHTS ULTRA-PERFORMANTS (DOM direct) === */
-
-/* Highlight de colonne via DOM direct (plus rapide que Vue) */
-.dom-column-hovered {
-  background-color: rgba(76, 175, 80, 0.12) !important;
-}
-
-/* FORCE sur weekend - ordre et spécificité max */
-.excel-cell.day-6.dom-column-hovered,
-.excel-cell.day-0.dom-column-hovered {
-  background-color: rgba(76, 175, 80, 0.12) !important;
-}
-
-/* Highlight de ligne via DOM direct (plus rapide que Vue) */
-.dom-row-hovered {
-  background-color: rgba(76, 175, 80, 0.16) !important;
-}
-
-/* FORCE sur weekend - ordre et spécificité max */
-.excel-cell.day-6.dom-row-hovered,
-.excel-cell.day-0.dom-row-hovered {
-  background-color: rgba(76, 175, 80, 0.16) !important;
-}
-
-/* === HIGHLIGHTS TRADITIONNELS (Vue) === */
-
-/* Highlight de colonne survolée - CSS pur avec hover rapide */
-/* SYSTÈME CROISEMENT PARFAIT : ligne + colonne comme la date du jour */
-
-/* Hover sur cellule individuelle - point de croisement */
-.excel-scroll:not(.panning):not(.loading) .excel-cell:hover {
-  background-color: rgba(76, 175, 80, 0.32) !important;
-  position: relative;
-  z-index: 5; /* Minimum nécessaire */
-  border: 1px solid rgba(76, 175, 80, 0.5) !important;
-  will-change: background-color; /* Optimisation GPU ciblée */
-  transform: translate3d(0, 0, 0); /* Force l'accélération GPU */
-}
-
-/* Hover de colonne complète (en-têtes + cellules) */
-[data-column-hover="true"] {
-  background-color: rgba(76, 175, 80, 0.2) !important;
-  z-index: 3 !important; /* Minimum pour rester au-dessus */
-  position: relative;
-  will-change: background-color;
-  transform: translate3d(0, 0, 0); /* Force l'accélération GPU */
-}
-
-/* Hover de ligne complète */
-[data-row-hover="true"] {
-  background-color: rgba(76, 175, 80, 0.2) !important;
-  z-index: 3 !important; /* Minimum pour rester au-dessus */
-  position: relative;
-  will-change: background-color;
-  transform: translate3d(0, 0, 0); /* Force l'accélération GPU */
-}
-
-/* Croisement : cellule qui a les deux attributs (point central) */
-[data-column-hover="true"][data-row-hover="true"] {
-  background-color: rgba(76, 175, 80, 0.38) !important;
-  border: 2px solid rgba(76, 175, 80, 0.8) !important;
-  z-index: 35 !important; /* Plus haut que les cartes */
-  position: relative;
-}
-
-/* Style spécial pour l'en-tête de colonne survolée */
-.excel-day-cell[data-column-hover="true"] {
-  background-color: rgba(76, 175, 80, 0.25) !important;
-  font-weight: 600;
-  border-bottom: 3px solid rgba(76, 175, 80, 0.8) !important;
-  z-index: 32 !important; /* Plus haut que les cartes */
-  position: relative;
-}
-
-/* Plus besoin des pseudo-éléments, on a le vrai croisement */
-
-/* Suppression explicite du highlight sur la colonne collaborateurs */
-.collab-sticky.row-hovered {
-  background-color: #f9f9f9 !important; /* Garder le fond normal */
-}
-
-/* Highlight de la colonne "aujourd'hui" */
-.excel-day-cell.today-column,
-.excel-cell.today-column {
-  background-color: rgba(25, 118, 210, 0.22) !important;
-  z-index: 3; /* Minimum nécessaire */
-  position: relative;
-  will-change: background-color; /* Optimisation GPU */
-}
-
-/* Combinaisons de highlights */
-.excel-cell.column-hovered.row-hovered,
-.dom-column-hovered.dom-row-hovered {
-  background-color: rgba(76, 175, 80, 0.25) !important;
-}
-
-/* Combinaisons avec la colonne du jour - système data-today */
-.excel-cell[data-today="true"][data-column-hover="true"] {
-  background-color: rgba(25, 118, 210, 0.28) !important;
-  z-index: 6 !important; /* Juste au-dessus des autres hover */
-  position: relative;
-  will-change: background-color;
-}
-
-.excel-cell[data-today="true"][data-row-hover="true"] {
-  background-color: rgba(25, 118, 210, 0.25) !important;
-  z-index: 6 !important; /* Juste au-dessus des autres hover */
-  position: relative;
-  will-change: background-color;
-}
-
-/* Masquer les anciens overlays (plus utilisés) */
-/* Overlays désactivés - utilisation CSS pur uniquement */
-/*
-.today-overlay-header,
-.today-overlay,
-.today-overlay-left,
-.column-hover-overlay-header,
-.column-hover-overlay,
-.row-hover-overlay {
-  display: none !important;
-}
-*/
-
-/* === STYLES EXISTANTS === */
-/* Anciens overlays supprimés - CSS pur utilisé à la place
-.today-overlay {
-  position: absolute;
-  top: 0;
-  left: var(--today-x-local, -9999px);
-  width: var(--day-width, 100px);
-  bottom: 0;
-  pointer-events: none;
-  background: rgba(33, 150, 243, 0.18);
-  z-index: 40;
-  will-change: left;
-}
-.today-overlay-left {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--sticky-left, 220px);
-  height: 100%;
-  pointer-events: none;
-  background: transparent;
-  box-shadow: inset calc(var(--today-x-local, -9999px)) 0 0 0 rgba(33, 150, 243, 0.18);
-*/
-
-.excel-collaborateur-row {
-  border-bottom: 1px solid #e0e0e0;
-  background: white;
-  /* pas d'espacement supplémentaire: le pas vertical est height + 1px bordure */
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  /* Optimisation légère pour fluidité */
-  will-change: background-color;
-}
-
-.excel-collaborateur-row:hover,
-.excel-collaborateur-row.hovered {
-  background: transparent !important; /* on laisse l'overlay gérer le survol */
-}
-
-/* === BARRE DE COULEUR COLLABORATEUR === */
-.collaborateur-color-bar {
-  width: 4px;
-  min-width: 4px;
-  background: var(--collaborateur-color, #6366f1);
-  flex-shrink: 0;
-  border-radius: 0 2px 2px 0;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-}
-
-/* === CONTENU COLLABORATEUR HORIZONTAL === */
-.collaborateur-content {
-  flex: 1;
-  padding: 6px 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  position: relative;
-  background: #ffffff;
-  /* border-left supprimée car collab-sticky a déjà border-right */
-}
-
-/* === PARTIE GAUCHE: INFOS === */
-.collaborateur-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px; /* Augmenté de 2px → 3px pour plus d'espace */
-  min-width: 0;
-}
-
-.collaborateur-nom-complet {
-  display: flex;
-  flex-direction: column;
-  gap: 2px; /* Augmenté de 1px → 2px pour plus d'espace */
-  line-height: 1.2; /* Augmenté de 1.1 → 1.2 */
-  overflow: hidden;
-}
-
-.collaborateur-nom-complet .nom {
-  font-weight: 600;
-  font-size: 12px; /* Réduit encore pour colonne plus compacte */
-  color: #1f2937;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  letter-spacing: -0.02em; /* Condensé pour plus de caractères */
-}
-
-.collaborateur-nom-complet .prenom {
-  font-weight: 500; /* Augmenté de 400 → 500 */
-  font-size: 11px; /* Réduit encore pour colonne plus compacte */
-  color: #374151; /* Couleur plus foncée pour meilleur contraste */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  letter-spacing: -0.02em; /* Condensé pour plus de caractères */
-}
-
-.collaborateur-nom-complet.clickable-name {
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-  margin: -2px -4px;
-}
-
-.collaborateur-nom-complet.clickable-name:hover {
-  background-color: #f3f4f6;
-}
-
-.collaborateur-nom-complet.clickable-name:hover .nom {
-  color: #111827;
-}
-
-.collaborateur-nom-complet.clickable-name:hover .prenom {
-  color: #111827;
-}
-
-.collaborateur-metier {
-  background: #eef2ff; /* Couleur plus douce et lisible */
-  color: #374151; /* Texte plus foncé pour meilleur contraste */
-  border: 1px solid #c7d2fe; /* Bordure plus douce */
-  padding: 1px 4px; /* Padding très compact */
-  border-radius: 3px; /* Coins plus petits */
-  font-size: 9px; /* Très petit pour économiser l'espace */
-  font-weight: 600; /* Augmenté de 500 → 600 */
-  line-height: 1.1;
-  max-width: fit-content;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 1px; /* Petit espacement avec le nom */
-}
-
-/* === PARTIE DROITE: ACTIONS === */
-.collaborateur-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.collaborateur-actions .contact-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: auto;
-  background: none;
-  border: none;
-  color: #6b7280;
-  text-decoration: none;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  padding: 2px;
-}
-
-.collaborateur-actions .contact-icon:hover {
-  color: #374151;
-  transform: scale(1.1);
-}
-
-.collaborateur-actions .contact-icon .va-icon {
-  width: 14px !important;
-  height: 14px !important;
-}
-
-/* Une ligne affichée: sticky gauche + grille scrollable dans le même conteneur */
-.excel-row {
-  display: flex;
-  border-bottom: 1px solid #e5e7eb; /* séparation claire entre collaborateurs */
-  background: white;
-  position: relative;
-  /* Suppression de l'effet hover par classe */
-}
-
-.collab-sticky {
-  position: sticky;
-  left: 0;
-  z-index: 1000; /* Au-dessus de tous les highlights (colonne/ligne/aujourd'hui) */
-  width: var(--sticky-left, 220px);
-  min-width: var(--sticky-left, 220px);
-  flex: 0 0 var(--sticky-left, 220px); /* ne pas rétrécir/allonger, fixe */
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
-  box-shadow: 
-    2px 0 8px rgba(0,0,0,0.06),
-    inset -1px 0 0 rgba(255,255,255,0.8);
-  isolation: isolate; /* créer un nouveau contexte de stacking local */
-  /* Performance optimisée */
-  will-change: auto;
-  
-  /* Design moderne harmonisé avec les cellules */
-  transition: box-shadow 0.2s ease;
-  display: flex;
-  overflow: hidden; /* Éviter tout débordement */
-  box-sizing: border-box; /* S'assurer que padding/border sont inclus dans width */
-}
-
-.collab-sticky:hover {
-  box-shadow: 
-    3px 0 12px rgba(0,0,0,0.1),
-    inset -1px 0 0 rgba(255,255,255,0.9);
-}
-
-.excel-planning-row {
-  display: flex;
-  cursor: pointer;
-  width: max-content;
-  flex: 0 1 auto; /* occupe le reste et peut s'étendre */
-}
-
-.excel-planning-row:hover,
-.excel-planning-row.hovered {
-  background: transparent !important; /* overlay colonne/ligne prend le relais */
-}
-
-.excel-cell {
-  border-right: 1px solid #e0e0e0;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 1; /* Contexte de base pour les cellules - sous les hover */
-  cursor: pointer;
-  /* Optimisations performance globales */
-  will-change: auto; /* Pas de will-change par défaut, seulement au hover */
-  transform: translate3d(0, 0, 0); /* Force GPU layer pour consistance */
-  contain: layout style; /* Conteneur isolé pour limiter recalculs */
-  /* Pas de transforms ici pour fiabiliser sticky */
-  transition: none !important;
-}
-
-/* Dimanche dans le body: pas de trait spécial, bordure standard conservée */
-
-/* ==========================================
-   DESIGN ÉLÉGANT - COULEURS VUESTIC + ICÔNES MATERIAL
-   ========================================== */
-
-/* Cellules verrouillées - Style warning (ambre/orange) */
-.excel-cell.locked {
-  position: relative;
-  background: color-mix(in srgb, var(--va-warning) 15%, var(--va-background-element)) !important;
-  border: 2px solid var(--va-warning) !important;
-  box-shadow: 
-    0 2px 8px color-mix(in srgb, var(--va-warning) 25%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  transition: all 0.2s ease;
-  cursor: not-allowed !important;
-  pointer-events: none !important; /* ESSENTIEL: empêcher les clics */
-}
-
-.excel-cell.locked::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  z-index: 9;
-}
-
-.excel-cell.locked::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ed6c02'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 1;
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* Cellules avec présence (hover) - Couleur dynamique de l'utilisateur */
-.excel-cell.has-presence {
-  position: relative;
-  background: color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 20%, var(--va-background-element)) !important;
-  border: 2px solid var(--hovering-user-color, var(--va-primary)) !important;
-  box-shadow: 
-    0 0 20px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 30%, transparent),
-    0 2px 8px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 25%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  animation: presencePulse 2s infinite ease-in-out;
-  transition: all 0.3s ease;
-}
-
-.excel-cell.has-presence[data-initials]:not([data-initials=""])::after {
-  /* Afficher les initiales via l'attribut data-initials seulement si non vide */
-  content: attr(data-initials);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
-  background: var(--hovering-user-color, var(--va-primary));
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  z-index: 10;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: initialsAppear 0.3s ease-out;
-}
-
-/* Transition vers lock pour les cellules avec initiales */
-.excel-cell.has-presence.has-initials-locked::after {
-  background: var(--va-warning);
-  border-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
-  animation: lockTransition 0.5s ease-out;
-}
-
-/* Style pour les initiales injectées dynamiquement */
-.presence-initials {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
-  background: var(--hovering-user-color, var(--va-primary));
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  z-index: 10;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: initialsAppear 0.3s ease-out;
-}
-
-/* Animation d'apparition des initiales - simplifiée pour éviter les conflits */
-@keyframes initialsAppear {
-  0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Style pour les initiales quand la cellule passe en mode lock */
-.presence-initials.locked-transition {
-  background: var(--va-warning);
-  border-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
-  animation: lockTransition 0.5s ease-out;
-}
-
-/* Animation de transition vers le lock */
-@keyframes lockTransition {
-  0% {
-    background: var(--hovering-user-color, var(--va-primary));
-    transform: translate(-50%, -50%) scale(1);
-  }
-  30% {
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  60% {
-    background: var(--va-warning);
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-  100% {
-    background: var(--va-warning);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Style pour l'overlay du cadenas (pour cohérence avec les initiales) */
-.cell-lock-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 28px;
-  height: 28px;
-  background: var(--va-warning);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
-  border: 2px solid rgba(255, 255, 255, 0.95);
-  z-index: 15;
-  animation: lockAppear 0.4s ease-out;
-}
-
-.cell-lock-overlay .lock-icon {
-  font-size: 12px !important;
-  color: white;
-  animation: lockBounce 0.5s ease-out;
-}
-
-/* Animation d'apparition du cadenas */
-@keyframes lockAppear {
-  0% {
-    transform: translate(-50%, -50%) scale(0.3);
-    opacity: 0;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Animation subtile pour la présence - Couleur dynamique de l'utilisateur */
-@keyframes presencePulse {
-  0%, 100% {
-    box-shadow: 
-      0 0 15px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 25%, transparent),
-      0 2px 8px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 20%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  50% {
-    box-shadow: 
-      0 0 25px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 40%, transparent),
-      0 4px 12px color-mix(in srgb, var(--hovering-user-color, var(--va-primary)) 30%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  }
-}
-
-/* Indicateur générique moins visible pour ne pas interferer */
-.excel-cell.has-indicator:not(.locked):not(.has-presence) {
-  outline: 1px solid color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 30%, transparent);
-  outline-offset: -1px;
-  background: color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 5%, var(--va-background-element)) !important;
-}
-
-/* Interactions avec la souris pour les cellules normales - Performance optimisée */
-.excel-cell:not(.locked):not(.has-presence):hover {
-  background: color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 8%, var(--va-background-element)) !important;
-  /* Optimisations GPU et performance */
-  will-change: background-color, transform;
-  transform: translate3d(0, 0, 0) scale(1.02);
-  /* Conteneur isolé pour limiter les recalculs */
-  contain: layout style paint;
-  /* Suppression des transitions pour un hover instantané */
-}
-
-/* Effet de survol sur cellules avec présence - Performance optimisée */
-.excel-cell.has-presence:hover {
-  /* Optimisations GPU pour des hover instantanés */
-  will-change: transform, box-shadow;
-  transform: translate3d(0, 0, 0) scale(1.05);
-  box-shadow: 
-    0 0 30px color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 45%, transparent),
-    0 4px 16px color-mix(in srgb, var(--user-indicator-color, var(--va-primary)) 35%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  /* Conteneur isolé pour optimiser les calculs */
-  contain: layout style paint;
-}
-
-/* Animation d'apparition pour nouvelles présences */
-@keyframes presenceAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.excel-cell.has-presence {
-  /* Garder seulement l'animation de pulsation, pas l'animation d'apparition */
-  animation: presencePulse 2s infinite ease-in-out;
-}
-
-/* Mode sombre - les couleurs CSS Vuestic s'adaptent automatiquement */
-@media (prefers-color-scheme: dark) {
-  .excel-cell.locked::after,
-  .excel-cell.has-presence::after {
-    filter: brightness(1.2) contrast(1.1);
-  }
-}
-
-/* Cellule sélectionnée pour la sélection par lot */
-.excel-cell.selected {
-  background-color: rgba(59, 130, 246, 0.15);
-  border: 2px solid #3b82f6;
-  box-shadow: inset 0 0 0 1px #3b82f6;
-}
-
-/* Cellules en chargement - skeleton screen moderne */
-.excel-cell.loading-placeholder {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  position: relative;
-  cursor: wait;
-  overflow: hidden;
-}
-
-.excel-cell.loading-placeholder::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  height: 12px;
-  background: linear-gradient(90deg, 
-    rgba(148, 163, 184, 0.2) 25%, 
-    rgba(203, 213, 225, 0.4) 50%, 
-    rgba(148, 163, 184, 0.2) 75%
-  );
-  background-size: 200% 100%;
-  border-radius: 6px;
-  animation: shimmer 2s infinite linear;
-}
-
-.excel-cell.loading-placeholder::after {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  width: 32px;
-  height: 6px;
-  background: linear-gradient(90deg, 
-    rgba(203, 213, 225, 0.3) 0%, 
-    rgba(148, 163, 184, 0.5) 100%
-  );
-  border-radius: 3px;
-  opacity: 0.8;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Skeleton pour la colonne collaborateur */
-.collab-sticky.loading-placeholder {
-  pointer-events: none;
-}
-
-.collab-sticky.loading-placeholder .skeleton-bar {
-  background: linear-gradient(90deg, 
-    rgba(203, 213, 225, 0.4) 0%, 
-    rgba(148, 163, 184, 0.6) 50%, 
-    rgba(203, 213, 225, 0.4) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
-.collab-sticky.loading-placeholder .skeleton-text {
-  background: linear-gradient(90deg, 
-    rgba(203, 213, 225, 0.4) 0%, 
-    rgba(148, 163, 184, 0.6) 50%, 
-    rgba(203, 213, 225, 0.4) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-  border-radius: 4px;
-  margin: 2px 0;
-}
-
-.collab-sticky.loading-placeholder .skeleton-nom {
-  height: 14px;
-  width: 80px;
-}
-
-.collab-sticky.loading-placeholder .skeleton-prenom {
-  height: 14px;
-  width: 65px;
-}
-
-.collab-sticky.loading-placeholder .skeleton-metier {
-  height: 12px;
-  width: 90px;
-  opacity: 0.8;
-}
-
-.collab-sticky.loading-placeholder .skeleton-icon {
-  background: linear-gradient(90deg, 
-    rgba(203, 213, 225, 0.4) 0%, 
-    rgba(148, 163, 184, 0.6) 50%, 
-    rgba(203, 213, 225, 0.4) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  margin: 0 2px;
-}
-
-.excel-cell.selected::after {
-  content: '✓';
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  color: #3b82f6;
-  font-weight: bold;
-  font-size: 12px;
-  background: white;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-/* Cellule sélectionnée avec initiales de présence */
-.excel-cell.selected[data-initials]::after {
-  content: attr(data-initials);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
-  background: var(--hovering-user-color, var(--va-primary));
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  font-size: 10px;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: initialsAppear 0.3s ease-out;
-}
-
-/* Cellule sélectionnée avec initiales en mode lock */
-.excel-cell.selected[data-initials].has-initials-locked::after {
-  background: var(--va-warning);
-  border-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 0 0 3px color-mix(in srgb, var(--va-warning) 20%, transparent);
-  animation: lockTransition 0.5s ease-out;
-}
-
-/* Effet hover pour les cellules pendant la sélection - Performance optimisée */
-.excel-cell:hover {
-  background-color: rgba(59, 130, 246, 0.06);
-  z-index: 5; /* Minimum nécessaire */
-  position: relative;
-  /* Optimisations GPU */
-  will-change: background-color;
-  transform: translate3d(0, 0, 0);
-  contain: layout style paint;
-}
-
-.excel-cell.selected:hover {
-  background-color: rgba(59, 130, 246, 0.15);
-}
-
-/* Mode sélection : curseur crosshair */
-body.selection-mode .excel-cell {
-  cursor: crosshair !important;
-}
-
-body.selection-mode .excel-cell:hover {
-  background-color: rgba(59, 130, 246, 0.08) !important;
-  border: 1px dashed #3b82f6;
-  z-index: 5; /* Minimum nécessaire */
-  position: relative;
-  will-change: background-color, border-color;
-}
-
-/* Pendant le glissement, désactiver la sélection de texte */
-body.dragging-selection {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-body.dragging-selection .excel-cell {
-  cursor: crosshair !important;
-}
-
-.excel-cell.week-boundary-right::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-  pointer-events: none;
-}
-
-/* Suppression des séparateurs week-boundary-left - doublons avec week-sep */
-/*
-.excel-cell.week-boundary-left::before,
-.excel-day-cell.week-boundary-left::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-  pointer-events: none;
-}
-*/
-
-/* Suppression des séparateurs de fin de mois dans les cellules - causent des barres indésirables */
-/*
-.excel-cell.month-boundary-right::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  top: 0;
-  bottom: 0;
-  width: var(--week-sep-width, 4px);
-  background: linear-gradient(to bottom, var(--week-sep-color, rgba(0,0,0,0.10)), var(--week-sep-color, rgba(0,0,0,0.10)));
-  pointer-events: none;
-}
-*/
-
-.excel-cell:hover { background: transparent; }
-
-/* Highlight de la colonne du jour - CSS pur avec attribut data */
-.excel-cell[data-today="true"] {
-  background: #e3f2fd !important;
-  /* Bordure subtile pour marquer la colonne */
-  box-shadow: inset 2px 0 0 0 rgba(33, 150, 243, 0.4), inset -2px 0 0 0 rgba(33, 150, 243, 0.4);
-}
-
-.excel-cell.today {
-  background: #e8f4fd;
-  color: #1565c0;
-  font-weight: 600;
-  z-index: 3; /* Minimum nécessaire */
-  position: relative;
-  will-change: background-color;
-}
-
-.excel-cell.has-dispos { background: #f8f8f8; }
-/* Rendu coloré par type (état antérieur) */
-.excel-cell.cell-dispo { background: #f3faf4; }
-.excel-cell.cell-mission { background: #f3f7ff; }
-.excel-cell.cell-indispo { background: #fdf3f3; }
-.excel-cell.cell-empty { background: #ffffff; }
-
-/* ==========================================
-   NOUVEAU DESIGN DES CELLULES - CARTES COMPACTES
-   ========================================== */
-
-.dispo-bars {
-  width: 100%;
-  padding: 3px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: stretch;
-  height: 100%;
-  pointer-events: auto;
-  position: relative;
-  z-index: 1; /* Bas z-index pour ne pas cacher les hover */
-}
-
-/* ============ CARTES DE DISPONIBILITÉ ============ */
-
-.dispo-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 3px 6px;
-  font-size: 10px;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  height: 100%; /* Prendre toute la hauteur disponible */
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  z-index: 10; /* Sous les effets de hover (21-25) */
-}
-
-/* Types de cartes avec couleurs distinctes */
-.dispo-card-mission {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  border-color: #2563eb;
-  color: white;
-}
-
-.dispo-card-disponible {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border-color: #047857;
-  color: white;
-}
-
-.dispo-card-indisponible {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border-color: #b91c1c;
-  color: white;
-}
-
-/* Header avec indicateur de type et overnight */
-.dispo-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 14px;
-  margin-bottom: 2px;
-}
-
-.dispo-type-icon {
-  opacity: 0.9;
-  flex-shrink: 0;
-}
-
-.overnight-indicator {
-  font-size: 10px;
-  opacity: 0.8;
-  font-weight: bold;
-}
-
-/* Contenu principal de la carte */
-.dispo-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  overflow: hidden;
-}
-
-.dispo-time-range {
-  font-weight: 600;
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dispo-time-full {
-  font-weight: 500;
-  font-size: 9px;
-  opacity: 0.9;
-}
-
-.dispo-slots {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-}
-
-.slot-tag {
-  background: rgba(255, 255, 255, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 4px;
-  padding: 0 3px;
-  font-size: 8px;
-  line-height: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.slot-more {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  padding: 0 2px;
-  font-size: 7px;
-  line-height: 10px;
-  font-weight: bold;
-  opacity: 0.8;
-}
-
-/* Footer avec lieu */
-.dispo-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 10px;
-  margin-top: 1px;
-}
-
-.dispo-lieu {
-  font-size: 8px;
-  opacity: 0.8;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
-
-/* États des cartes */
-.dispo-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-}
-
-.dispo-card-mission:hover {
-  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
-}
-
-.dispo-card-disponible:hover {
-  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
-}
-
-.dispo-card-indisponible:hover {
-  box-shadow: 0 3px 8px rgba(239, 68, 68, 0.3);
-}
-
-/* Gestion de l'empilement - max 3 cartes */
-.dispo-bars.single .dispo-card {
-  height: 100%; /* Prendre toute la hauteur de la cellule */
-  font-size: 11px;
-  justify-content: space-between; /* Distribuer le contenu sur toute la hauteur */
-}
-
-.dispo-bars.single .dispo-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dispo-bars.single .dispo-time-range {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.dispo-bars.multi .dispo-card {
-  min-height: 24px;
-  max-height: 28px;
-  font-size: 9px;
-}
-
-.dispo-bars.multi .dispo-time-range {
-  font-size: 9px;
-}
-
-/* Cas spécial: 2 disponibilités remplissent toute la cellule */
-.dispo-bars.dual .dispo-card {
-  height: calc(50% - 1px); /* 50% de la hauteur moins l'espacement */
-  min-height: 30px;
-  font-size: 10px;
-  justify-content: space-between;
-}
-
-.dispo-bars.dual .dispo-time-range {
-  font-size: 10px;
-  font-weight: 500;
-}
-
-/* Continuation overnight - indicateurs visuels */
-.dispo-card.cont-from-prev {
-  border-left: 3px solid rgba(255, 255, 255, 0.6);
-  padding-left: 4px;
-}
-
-.dispo-card.cont-to-next {
-  border-right: 3px solid rgba(255, 255, 255, 0.6);
-  padding-right: 4px;
-}
-
-/* ============ BOUTON D'AJOUT AMÉLIORÉ ============ */
-
-.dispo-add-card {
-  width: 100%;
-  height: 100%;
-  min-height: 40px;
-  border: 2px dashed #d1d5db;
-  background: rgba(250, 251, 252, 0.4); /* Garde la transparence */
-  color: #6b7280;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border-radius: 8px;
-  cursor: pointer;
-  /* Suppression complète des transitions pour performance max */
-}
-
-.add-icon {
-  opacity: 0.7;
-}
-
-.add-text {
-  font-size: 9px;
-  font-weight: 500;
-  opacity: 0.8;
-}
-
-.dispo-add-card:hover {
-  background: rgba(243, 244, 246, 0.6); /* Garde la transparence */
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.dispo-add-card:hover .add-icon,
-.dispo-add-card:hover .add-text {
-  opacity: 1;
-}
-
-/* Mode dragging */
-.dispo-add-card.dragging-mode {
-  opacity: 0.4;
-  cursor: crosshair;
-  border-color: #d1d5db;
-  background: #fafbfc;
-  color: #6b7280;
-}
-
-.dispo-add-card.dragging-mode:hover {
-  opacity: 0.4;
-  border-color: #d1d5db;
-  background: #fafbfc;
-  color: #6b7280;
-}
-
-/* ============ ANCIEN DESIGN (gardé pour compatibilité) ============ */
-
-.dispo-bar {
-  background: #4caf50;
-  color: white;
-  border-radius: 3px;
-  padding: 4px 6px;
-  font-size: 11px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  cursor: pointer;
-  /* Suppression des transitions pour fluidité maximale */
-  min-height: 18px;
-  width: 100%;
-  max-width: 100%;
-  /* Assurer que le hover remonte */
-  pointer-events: auto;
-  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.25), 0 1px 0 rgba(0,0,0,0.05);
-}
-
-/* Une seule barre: elle s’étire sur toute la hauteur utile */
-.dispo-bars.single .dispo-bar {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-}
-
-/* Plusieurs barres: elles se partagent l’espace équitablement */
-.dispo-bars.multi {
-  gap: 4px;
-}
-.dispo-bars.multi .dispo-bar { flex: 1 1 0; }
-
-/* Hover des barres: éclaircir légèrement, sans changer la couleur de la cellule */
-.dispo-bar:hover {
-  filter: brightness(1.06);
-  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.35), 0 1px 0 rgba(0,0,0,0.06);
-}
-
-.dispo-bar-available {
-  background: #4caf50; /* vert pour disponible */
-}
-
-.dispo-bar-unavailable {
-  background: #f44336; /* rouge pour indisponible */
-}
-
-.dispo-bar-mission {
-  background: #1976d2; /* bleu uniforme pour toutes les missions */
-}
-
-/* Heure compacte dans la barre */
-.dispo-time {
-  background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.35);
-  color: #fff;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 16px;
-  height: 16px;
-  white-space: nowrap;
-}
-
-.dispo-badge {
-  background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.35);
-  color: #fff;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 16px;
-  height: 16px;
-  white-space: nowrap;
-}
-
-.dispo-badge.indispo {
-  background: rgba(255,255,255,0.25);
-}
-
-.slot-pill {
-  background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.35);
-  color: #fff;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 18px;
-  height: 18px;
-  margin-left: 6px;
-  backdrop-filter: saturate(120%);
-}
-
-.dispo-icn {
-  opacity: 0.9;
-}
-
-/* Indicateurs de continuation nuit */
-.dispo-continuation.cont-from-prev {
-  position: relative;
-}
-.dispo-continuation.cont-from-prev::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  background: linear-gradient(to right, rgba(0,0,0,0.25), transparent);
-  border-top-left-radius: 3px;
-  border-bottom-left-radius: 3px;
-  opacity: 0.25;
-}
-.dispo-continuation.cont-to-next {
-  position: relative;
-}
-.dispo-continuation.cont-to-next::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  background: linear-gradient(to left, rgba(0,0,0,0.25), transparent);
-  border-top-right-radius: 3px;
-  border-bottom-right-radius: 3px;
-  opacity: 0.25;
-}
-.cont-flag {
-  font-size: 12px;
-  opacity: 0.9;
-}
-.cont-flag.left { margin-right: auto; }
-.cont-flag.right { margin-left: auto; }
-
-/* Ancien style .dispo-add désactivé - remplacé par .dispo-add-card */
-/*
-.dispo-add {
-  width: 100%;
-  height: 100%;
-  border: 2px dashed #d9d9d9;
-  color: #9ca3af;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
-}
-
-.dispo-add:hover {
-  background: #f3f4f6;
-  border-color: #60a5fa;
-  color: #60a5fa;
-}
-
-.dispo-add.dragging-mode {
-  opacity: 0.4;
-  cursor: crosshair;
-}
-
-.dispo-add.dragging-mode:hover {
-  background: transparent;
-  border-color: #d9d9d9;
-  color: #9ca3af;
-  opacity: 0.4;
-}
-*/
-
-/* Quick Add compact et lisible */
-.quick-add-ultra-compact {
-  position: fixed;
-  z-index: 1001;
-  width: 320px;
-  max-width: calc(100vw - 20px);
-  background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-  padding: 16px;
-  font-size: 13px;
-  animation: quickFadeIn 0.2s ease-out;
-}
-
-/* Header lisible */
-.quick-mini-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.quick-mini-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.quick-mini-close {
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.quick-mini-close:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Alerte overnight lisible */
-.quick-mini-alert {
-  background: #fef3c7;
-  color: #92400e;
-  border-radius: 8px;
-  padding: 6px 10px;
-  margin-bottom: 12px;
-  font-size: 10px;
-  text-align: center;
-  border: 1px solid #f59e0b;
-}
-
-/* Types en ligne lisibles */
-.quick-types-inline {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.quick-type-mini {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 8px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  min-height: 50px;
-}
-
-.quick-type-mini:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  transform: translateY(-1px);
-}
-
-.quick-type-mini.active {
-  background: var(--va-primary);
-  color: white;
-  border-color: var(--va-primary);
-  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.3);
-}
-
-/* Format horaire lisible */
-.quick-time-inline {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.quick-time-mini {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 6px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  min-height: 40px;
-}
-
-.quick-time-mini:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  transform: translateY(-1px);
-}
-
-.quick-time-mini.active {
-  background: var(--va-success);
-  color: white;
-  border-color: var(--va-success);
-  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
-}
-
-/* Champs lisibles */
-.quick-fields-compact {
-  margin-bottom: 12px;
-}
-
-.quick-lieu-mini {
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.quick-time-mini-fields {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.quick-time-mini-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.time-separator {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 600;
-}
-
-.quick-slots-mini {
-  width: 100%;
-}
-
-/* Actions lisibles */
-.quick-actions-mini {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #f3f4f6;
-}
-
-.quick-btn-mini {
-  flex: 1;
-  min-height: 36px !important;
-  border-radius: 10px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 0 12px !important;
-}
-
-.quick-btn-add {
-  flex: 2;
-}
-
-/* Personnalisation des composants Vuestic lisibles */
-:deep(.quick-lieu-mini .va-input-wrapper) {
-  min-height: 36px;
-}
-
-:deep(.quick-lieu-mini .va-input) {
-  font-size: 13px;
-  padding: 8px 12px;
-}
-
-:deep(.quick-time-mini-input .va-input-wrapper) {
-  min-height: 34px;
-}
-
-:deep(.quick-time-mini-input .va-input) {
-  font-size: 12px;
-  padding: 6px 10px;
-}
-
-:deep(.quick-slots-mini .va-input-wrapper) {
-  min-height: 36px;
-}
-
-:deep(.quick-slots-mini .va-input) {
-  font-size: 13px;
-  padding: 8px 12px;
-}
-
-@keyframes quickFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Responsive ultra-compact */
-@media (max-width: 480px) {
-  .quick-add-ultra-compact {
-    width: calc(100vw - 12px);
-    left: 6px !important;
-    font-size: 10px;
-  }
-  
-  .quick-types-inline {
-    flex-direction: column;
-    gap: 3px;
-  }
-  
-  .quick-type-mini {
-    flex-direction: row;
-    justify-content: center;
-    gap: 4px;
-  }
-  
-  .quick-time-inline {
-    flex-direction: column;
-    gap: 2px;
-  }
-  
-  .quick-time-mini {
-    flex-direction: row;
-    justify-content: center;
-    gap: 3px;
-  }
-}
-
-/* Modal */
-.dispo-modal-content {
-  padding: 14px;
-}
-
-/* Z-index modale géré globalement dans src/style.css (suppression des overrides locaux) */
-/* Conserver uniquement la typographie si nécessaire */
-:deep(.va-modal),
-:deep(.va-modal__container),
-:deep(.va-modal__dialog) {
-  font-family: var(--kd-font) !important;
-}
-
-
-/* Popover Vuestic (infos rapides) */
-/* Assurer la visibilité des menus déroulants (VaSelect/VaDropdown) au-dessus de tout */
-/* Couvre les contenus téléportés et non téléportés */
-:deep(.va-select-dropdown__content),
-:deep(.va-select-option-list) {
-  z-index: 2147483647 !important;
-}
-:deep(.va-dropdown__content),
-:deep(.va-dropdown__content-wrapper) {
-  z-index: initial !important;
-}
-
-/* Titre de la modale (barre d'en-tête de Vuestic) */
-.va-modal__title {
-  font-family: var(--kd-font) !important;
-  font-weight: 700 !important;
-  font-size: 18px !important;
-  letter-spacing: 0.2px;
-}
-
-/* Composants de formulaire dans la modale */
-.va-modal :is(.va-input, .va-select, .va-button, .va-dropdown, .va-checkbox, .va-radio) {
-  font-family: var(--kd-font) !important;
-}
-
-/* Ne pas écraser la police des icônes */
-/* Icônes Material: forcer la bonne fonte pour éviter l'affichage du nom (ex: "expand_more") */
-.material-icons {
-  font-family: 'Material Icons' !important;
-  font-weight: normal;
-  font-style: normal;
-  font-size: 1em;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-smoothing: antialiased;
-}
-.material-icons-outlined { font-family: 'Material Icons Outlined' !important; }
-.material-icons-round { font-family: 'Material Icons Round' !important; }
-.material-icons-sharp { font-family: 'Material Icons Sharp' !important; }
-.material-icons-two-tone { font-family: 'Material Icons Two Tone' !important; }
-
-/* Couverture des icônes Vuestic dans la modale (ex: chevrons de VaSelect) */
-.va-modal .va-icon {
-  font-family: 'Material Icons' !important;
-  font-feature-settings: 'liga' !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Icône d'heure personnalisée (append) */
-.time-append-icon {
-  color: #111 !important;
-  cursor: pointer;
-}
-
-/* Bouton flottant de sélection par lot */
-.batch-action-fab {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 9999 !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  padding: 8px 12px;
-  border-radius: 25px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  animation: slideInUp 0.3s ease-out;
-  pointer-events: auto !important;
-}
-
-.batch-action-fab .fab-content {
-  display: flex;
-  align-items: center;
-  pointer-events: auto !important;
-}
-
-.go-to-today-fab {
-  position: fixed;
-  top: 180px;
-  left: 20px;
-  z-index: 1000;
-  background: white;
-  padding: 4px;
-  border-radius: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes slideInUp {
-  from {
-    transform: translateY(100px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
-  .batch-action-fab {
-    bottom: 80px; /* Au-dessus de la navigation mobile éventuelle */
-    right: 10px;
-    left: 10px;
-    justify-content: center;
-  }
-  
-  .go-to-today-fab {
-    top: 140px;
-    left: 10px;
-  }
-
-  /* Amélioration du bouton Aujourd'hui sur mobile */
-  .excel-corner .today-btn {
-    padding: 6px 8px; /* Réduit de 8px 10px → 6px 8px */
-    font-size: 11px; /* Réduit de 12px → 11px */
-    min-height: 32px; /* Réduit de 36px → 32px */
-    border-radius: 4px; /* Réduit de 6px → 4px */
-  }
-  
-  .excel-corner .today-btn .material-icons {
-    font-size: 12px; /* Réduit de 14px → 12px */
-  }
-  
-  /* Corner plus compact sur mobile */
-  .excel-corner {
-  width: var(--sticky-left, 220px);
-  min-width: var(--sticky-left, 220px);
-  flex: 0 0 var(--sticky-left, 220px);
-    padding: 4px 5px; /* Même padding que collaborateur-content sur mobile */
-  }
-  
-  /* Header plus compact sur mobile */
-  .planning-header {
-    position: sticky;
-    top: 0;
-    z-index: 200;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-}
-
-/* === POPUP CONTEXTUEL === */
-
-/* Container principal du popup d'ajout rapide */
-.quick-add-footer {
-  position: fixed;
-  background: var(--va-background-primary);
-  border: 1px solid var(--va-color-border);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  width: 380px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  font-family: var(--kd-font);
-  animation: popupAppear 0.2s ease-out;
-  transform-origin: top left;
-  padding: 12px;
-}
-
-@keyframes popupAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Handle pour indiquer qu'on peut glisser */
-.quick-footer-handle {
-  display: flex;
-  justify-content: center;
-  padding: 8px;
-  margin: -12px -12px 12px -12px;
-  background: var(--va-color-background-element);
-  border-bottom: 1px solid var(--va-color-border);
-}
-
-.handle-bar {
-  width: 40px;
-  height: 4px;
-  background: var(--va-color-text-secondary);
-  border-radius: 2px;
-  opacity: 0.3;
-}
-
-@keyframes slideUpFromBottom {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* En-tête du footer */
-.quick-footer-header {
-  background: var(--dark-surface-secondary);
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--dark-border);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.quick-footer-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--dark-text-primary);
-}
-
-.quick-footer-subtitle {
-  font-size: 14px;
-  color: var(--dark-text-secondary);
-  margin: 4px 0 0 0;
-}
-
-/* Contenu du formulaire */
-.quick-footer-content {
-  padding: 20px;
-  background: var(--dark-surface);
-}
-
-/* Grille responsive des champs */
-.quick-form-grid {
-  display: grid;
-  gap: 16px;
-}
-
-/* 2 colonnes sur tablet+ */
-@media (min-width: 768px) {
-  .quick-form-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  
-  .quick-field-full {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Champs du formulaire */
-.quick-field-full {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.quick-field-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--va-color-text-primary);
-  margin-bottom: 4px;
-}
-
-/* Info du collaborateur et date - Style identique aux modales */
-.quick-footer-info {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-  border: 1px solid var(--va-color-border);
-}
-
-.selected-cell-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.collaborateur-avatar-large {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--va-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.collaborateur-info-detailed {
-  flex: 1;
-}
-
-.collaborateur-name {
-  font-size: 16px; /* réduit de 18px à 16px */
-  font-weight: 600;
-  color: var(--va-color-text-primary);
-  margin: 0 0 4px 0;
-  text-transform: capitalize; /* première lettre de chaque mot en majuscule */
-}
-
-.selected-date {
-  font-size: 14px;
-  color: var(--va-color-text-secondary);
-  margin: 0;
-}
-
-.overnight-alert {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--va-warning);
-  color: white;
-  border-radius: 6px;
-  font-size: 12px;
-  border-top: 1px solid var(--va-color-border);
-  margin-top: 16px;
-  padding-top: 16px;
-}
-
-/* Contenu du formulaire - Style section primaire des modales */
-.quick-footer-content {
-  background: var(--va-color-background-element);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--va-color-border);
-  transition: all 0.3s ease;
-}
-
-/* Boutons radio pour type */
-.quick-type-selector {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.quick-radio-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 2px solid var(--va-color-border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--va-color-background-element);
-  color: var(--va-color-text-primary);
-}
-
-.quick-radio-item.active {
-  border-color: var(--va-primary);
-  background: color-mix(in srgb, var(--va-primary) 15%, var(--va-color-background-element));
-  color: var(--va-primary);
-}
-
-.quick-radio-item input[type="radio"] {
-  margin: 0;
-}
-
-/* Boutons radio pour timeKind */
-.quick-timekind-selector {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.timekind-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--va-color-border);
-  border-radius: 6px;
-  background: var(--va-color-background-element);
-  color: var(--va-color-text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.timekind-btn.active {
-  background: var(--va-primary);
-  color: white;
-  border-color: var(--va-primary);
-}
-
-.timekind-btn:hover:not(.active) {
-  background: var(--va-color-background-secondary);
-  border-color: var(--va-color-text-secondary);
-}
-
-/* Champs d'heure côte à côte */
-.quick-time-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-/* Actions du footer */
-.quick-footer-actions {
-  padding: 16px 0 0 0;
-  border-top: 1px solid var(--va-color-border);
-  background: transparent;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-.action-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  border: none;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  min-width: 120px;
-  justify-content: center;
-  font-family: var(--kd-font);
-}
-
-.cancel-btn {
-  background: var(--va-color-background-secondary);
-  color: var(--va-color-text-primary);
-  border: 1px solid var(--va-color-border);
-}
-
-.cancel-btn:hover {
-  background: var(--va-color-background-border);
-}
-
-.add-btn {
-  background: var(--va-success);
-  color: white;
-}
-
-.add-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--va-success) 90%, black);
-}
-
-.add-btn:disabled {
-  background: var(--va-color-background-secondary);
-  color: var(--va-color-text-secondary);
-  cursor: not-allowed;
-}
-
-/* Responsive sur mobile - Popup adaptatif */
-@media (max-width: 768px) {
-  .quick-add-footer {
-    width: calc(100vw - 32px);
-    max-width: none;
-    left: 16px !important;
-    right: 16px;
-    top: 50% !important;
-    transform: translateY(-50%);
-  }
-  
-  .quick-footer-content {
-    padding: 8px;
-  }
-  
-  .quick-footer-actions {
-    padding: 12px 0 0 0;
-    flex-direction: column;
-  }
-  
-  .action-btn {
-    width: 100%;
-    padding: 14px;
-  }
-  
-  .quick-time-fields {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .quick-footer-info {
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  
-  .selected-cell-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-}
-
-/* Animation de fermeture */
-.quick-add-footer.closing {
-  animation: popupDisappear 0.2s ease-in forwards;
-}
-
-@keyframes popupDisappear {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
-
-/* Harmonisation avec le design des modales */
-.quick-add-footer .form-section-primary {
-  background: var(--va-background-secondary);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
-}
-
-.quick-add-footer .form-subsection {
-  margin-bottom: 12px;
-}
-
-.quick-add-footer .subsection-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--va-text-primary);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.quick-add-footer .type-btn-full {
-  width: 100%;
-  margin-bottom: 6px;
-}
-
-.quick-add-footer .time-format-buttons {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.quick-add-footer .time-format-btn {
-  flex: 1;
-  min-width: 100px;
-}
-
-.quick-add-footer .time-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quick-add-footer .time-input {
-  flex: 1;
-}
-
-.quick-add-footer .time-separator {
-  color: var(--va-text-secondary);
-  font-weight: 500;
-}
-
-.quick-add-footer .quick-footer-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 12px;
-  border-top: 1px solid var(--va-background-border);
-}
-
-.quick-add-footer .action-btn {
-  min-width: 80px;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Système de statut centralisé */
-.system-status-panel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--va-background-secondary);
-  border-radius: 8px;
-  font-size: 12px;
-  color: var(--va-text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(4px);
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-indicator.synced {
-  background: #10b981;
-  animation: pulse 2s infinite;
-}
-
-.status-indicator.users {
-  background: #3b82f6;
-}
-
-.status-indicator.emulator {
-  background: #f59e0b;
-}
-
-.mini-avatars {
-  display: flex;
-  gap: 2px;
-  margin-left: 4px;
-}
-
-.mini-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--va-primary);
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.mini-avatar.more {
-  background: #6b7280;
-  font-size: 8px;
-}
-
-/* Avatars utilisateurs actifs sur le planning */
-.active-user-avatars {
-  display: flex;
-  gap: 2px;
-  margin-left: 4px;
-}
-
-.active-user-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--va-primary);
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
-  box-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.active-user-avatar:hover {
-  transform: scale(1.1);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 0 0 2px var(--va-primary);
-}
-
-.active-user-avatar.more {
-  background: #6b7280;
-  font-size: 8px;
-}
-
-/* Styles pour distinguer les différents status */
-.status-item.active-users .active-user-avatar {
-  animation: subtlePulse 2s infinite ease-in-out;
-}
-
-@keyframes subtlePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-/* Thème clair pour les collaborateurs */
-.collaborateur-light-theme {
-  background: #ffffff !important;
-  min-height: 100vh;
-}
-
-.collaborateur-light-theme .planning-container {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.collaborateur-light-theme .filters-header {
-  background: #fafafa !important;
-  border-bottom: 1px solid #e5e7eb;
-  backdrop-filter: none;
-}
-
-.collaborateur-light-theme .grid-container {
-  background: #ffffff !important;
-}
-
-.collaborateur-light-theme .collaborateur-row {
-  background: #fafafa !important;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.collaborateur-light-theme .collaborateur-row:hover {
-  background: #f3f4f6 !important;
-}
-
-.collaborateur-light-theme .time-header-cell,
-.collaborateur-light-theme .corner-cell {
-  background: #f9fafb !important;
-  border-right: 1px solid #e5e7eb;
-  color: #374151 !important;
-}
-
-.collaborateur-light-theme .grid-cell {
-  border-right: 1px solid #f3f4f6;
-  background: #ffffff !important;
-}
-
-.collaborateur-light-theme .grid-cell:hover {
-  background: #f8fafc !important;
-}
-
-.collaborateur-light-theme .dispo-item {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
-  border: 1px solid #bfdbfe;
-  color: #1e40af !important;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
-}
-
-.collaborateur-light-theme .dispo-item:hover {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-}
-
-/* Navigation plus claire pour collaborateurs */
-.collaborateur-light-theme .va-sidebar {
-  background: #ffffff !important;
-  border-right: 1px solid #e5e7eb !important;
-}
-
-.collaborateur-light-theme .va-sidebar-item {
-  color: #374151 !important;
-}
-
-.collaborateur-light-theme .va-sidebar-item:hover {
-  background: #f3f4f6 !important;
-}
-
-.collaborateur-light-theme .va-sidebar-item.router-link-active {
-  background: #eff6ff !important;
-  color: #2563eb !important;
-}
-
-/* =================================================
-   AFFICHAGE UNIFORME DES CELLULES
-   ================================================= */
-
-/* Contenu unifié des cartes de disponibilité */
-.dispo-unified-content {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 4px;
-}
-
-/* Badge avec icône et label en haut à gauche */
-.dispo-type-badge {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  z-index: 20;
-  font-size: 7px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  max-width: 50px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 12px;
-}
-
-.dispo-badge-icon {
-  flex-shrink: 0;
-  opacity: 1;
-}
-
-.dispo-indisponible-label {
-  flex-shrink: 0;
-  opacity: 1;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  text-align: center;
-}
-
-.dispo-main-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dispo-temporal {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.overnight-symbol {
-  flex-shrink: 0;
-  font-size: 8px;
-  opacity: 0.8;
-  font-weight: bold;
-}
-
-/* Styles pour les cellules multiples - empilage vertical */
-.dispo-bars.multi {
-  gap: 1px !important;
-  flex-direction: column !important;
-}
-
-.dispo-bars.multi .dispo-card {
-  min-height: 18px !important;
-  max-height: 20px !important;
-  border-radius: 3px !important;
-}
-
-.dispo-bars.multi .dispo-main-info {
-  font-size: 8px !important;
-  gap: 2px !important;
-}
-
-.dispo-bars.multi .overnight-symbol {
-  font-size: 7px !important;
-}
-
-/* Styles pour une seule disponibilité - plus grand */
-.dispo-bars.single .dispo-main-info {
-  font-size: 10px;
-  gap: 5px;
-}
-
-/* =================================================
-   AMÉLIORATION AFFICHAGE CELLULES MULTIPLES
-   ================================================= */
-
-/* Plusieurs barres: affichage en colonne pour plus de clarté */
-.dispo-bars.multi {
-  gap: 2px !important;
-  flex-direction: column !important;
-}
-
-/* Styles améliorés pour les cartes multiples */
-.dispo-bars.multi .dispo-card {
-  min-height: 20px !important;
-  max-height: 22px !important;
-  font-size: 8px !important;
-  padding: 2px 4px !important;
-  border-radius: 4px !important;
-}
-
-.dispo-bars.multi .dispo-content {
-  padding: 0 !important;
-}
-
-.dispo-bars.multi .dispo-time-range {
-  font-size: 8px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-}
-
-.dispo-bars.multi .dispo-time-full {
-  font-size: 7px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-}
-
-.dispo-bars.multi .dispo-header {
-  padding: 0 !important;
-  margin-bottom: 1px !important;
-}
-
-.dispo-bars.multi .dispo-type-badge {
-  top: 1px !important;
-  left: 1px !important;
-  padding: 0 2px !important;
-  font-size: 6px !important;
-  gap: 1px !important;
-}
-
-.dispo-bars.multi .dispo-badge-icon {
-  font-size: 6px !important;
-}
-
-.dispo-bars.multi .slot-tag {
-  font-size: 6px !important;
-  padding: 0 2px !important;
-  line-height: 10px !important;
-}
-
-.dispo-bars.multi .slot-more {
-  font-size: 6px !important;
-}
-
-.dispo-bars.multi .dispo-footer {
-  display: none !important; /* Masquer le lieu en mode multi pour économiser l'espace */
-}
-
-/* =================================================
-   OPTIMISATIONS MOBILE POUR INFORMATIONS COLLABORATEURS
-   ================================================= */
-
-/* Styles spécifiques mobile pour améliorer la lisibilité */
-@media (max-width: 640px), (max-height: 500px) and (orientation: landscape) {
-  .collaborateur-content {
-    padding: 4px 5px; /* Padding très compact pour colonne étroite */
-  }
-  
-  .collaborateur-nom-complet .nom {
-    font-size: 12px !important; /* Compact mais lisible */
-    font-weight: 700 !important; /* Plus gras pour meilleur contraste */
-  }
-  
-  .collaborateur-nom-complet .prenom {
-    font-size: 11px !important; /* Compact mais lisible */
-    font-weight: 600 !important; /* Plus gras pour meilleur contraste */
-  }
-  
-  .collaborateur-metier {
-    font-size: 9px !important; /* Très compact */
-    padding: 1px 3px !important; /* Padding minimal */
-    font-weight: 700 !important; /* Plus gras */
-    background: #ddd6fe !important; /* Couleur plus contrastée */
-    color: #1f2937 !important; /* Texte plus foncé */
-  }
-  
-  .collaborateur-actions .contact-icon {
-    width: 16px !important; /* Très compact */
-    height: 16px !important;
-    font-size: 12px !important;
-  }
-}
-
-/* Encore plus d'optimisations pour très petits écrans */
-@media (max-width: 430px) {
-  .collaborateur-nom-complet .nom {
-    font-size: 11px !important; /* Maximum compacité sur iPhone */
-  }
-  
-  .collaborateur-nom-complet .prenom {
-    font-size: 10px !important; /* Maximum compacité sur iPhone */
-  }
-  
-  .collaborateur-metier {
-    font-size: 8px !important; /* Ultra compact sur iPhone */
-    padding: 1px 2px !important;
-  }
-  
-  /* Hauteur des lignes optimisée pour le nouvel équilibre ultra-compact */
-  .collab-sticky {
-    min-height: 58px;
-  }
-}
-
-/* FAB Mode Sélection Mobile */
-.selection-mode-fab {
-  position: fixed;
-  bottom: 80px; /* Remonté de 20px à 80px pour éviter les zones non-cliquables sur mobile */
-  left: 16px;
-  z-index: 1000;
-  animation: fabSlideIn 0.3s ease-out;
-}
-
-.selection-mode-fab.active {
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: 50px;
-  padding: 4px;
-}
-
-.selection-toggle-btn {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  font-size: 0.8rem !important;
-  white-space: nowrap !important;
-}
-
-@keyframes fabSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Optimisations spécifiques mode paysage mobile */
-@media (max-height: 500px) and (orientation: landscape) {
-  .planning-header {
-    padding: 4px 8px !important; /* Réduire la hauteur du header */
-  }
-  
-  .excel-corner {
-    padding: 2px 4px !important; /* Ultra-compact en paysage */
-  }
-  
-  .excel-corner .today-btn {
-    padding: 3px 5px !important;
-    font-size: 10px !important;
-    min-height: 26px !important;
-  }
-  
-  .corner-title {
-    font-size: 10px !important;
-  }
-  
-  .corner-count {
-    font-size: 8px !important;
-  }
-  
-  .collaborateur-content {
-    padding: 2px 4px !important; /* Ultra-compact en paysage */
-  }
-  
-  .collab-sticky {
-    min-height: 45px !important; /* Réduire hauteur des lignes */
-  }
-}
-
-/* Fin des styles */
+@import "@/styles/planning-semaine.css";
 </style>
