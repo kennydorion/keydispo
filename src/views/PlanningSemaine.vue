@@ -6269,8 +6269,17 @@ async function checkPlanningReadiness() {
     setTimeout(() => {
       planningReady.value = true
       
-      // Masquer l'overlay après une petite transition - SANS naviguer vers aujourd'hui
-      // (la navigation vers aujourd'hui est déjà faite dans generateInitialDays)
+      // Centrer sur aujourd'hui avant de masquer l'overlay
+      const scroller = planningScroll.value
+      if (scroller) {
+        const todayIndex = visibleDays.value.findIndex(d => d.isToday)
+        if (todayIndex >= 0) {
+          const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
+          scroller.scrollLeft = centerOffset
+        }
+      }
+      
+      // Masquer l'overlay après une petite transition
       setTimeout(() => {
         isInitialLoad.value = false
       }, 300)
@@ -6287,6 +6296,17 @@ async function checkPlanningReadiness() {
     if (now - (window as any).planningReadinessStartTime > maxWaitTime) {
       // Forcer le planning comme prêt après 5s
       planningReady.value = true
+      
+      // Centrer sur aujourd'hui même en cas de timeout
+      const scroller = planningScroll.value
+      if (scroller) {
+        const todayIndex = visibleDays.value.findIndex(d => d.isToday)
+        if (todayIndex >= 0) {
+          const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
+          scroller.scrollLeft = centerOffset
+        }
+      }
+      
       setTimeout(() => {
         isInitialLoad.value = false
       }, 300)
