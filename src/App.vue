@@ -96,6 +96,12 @@ watch(() => route.path, () => {
     }
   })
   
+  // IMPORTANT: Retirer l'attribut inert que Vuestic ajoute au #app quand une modale est ouverte
+  const appElement = document.getElementById('app')
+  if (appElement) {
+    appElement.removeAttribute('inert')
+  }
+  
   // Nettoyer aussi les classes du body qui pourraient bloquer les interactions
   document.body.classList.remove('selection-mode')
   document.body.classList.remove('dragging-selection')

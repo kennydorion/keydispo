@@ -703,6 +703,12 @@ onMounted(() => {
 
 // Nettoyage des éléments orphelins qui pourraient bloquer les interactions
 function cleanupOrphanElements() {
+  // IMPORTANT: Retirer l'attribut inert que Vuestic ajoute au #app
+  const appElement = document.getElementById('app')
+  if (appElement) {
+    appElement.removeAttribute('inert')
+  }
+  
   // Supprimer les overlays de modal Vuestic orphelins
   document.querySelectorAll('.va-modal__overlay, .va-modal-overlay, .va-modal__container').forEach(el => {
     el.remove()
