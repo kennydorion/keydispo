@@ -152,17 +152,18 @@ input[type="time"]::-webkit-clear-button {
 }
 
 /* Forcer la modale Vuestic au-dessus de tout (planning, sticky, overlays) */
-/* Note: Ne pas forcer display/visibility/opacity car cela bloque les clics même sans modale */
-.va-modal__overlay, .va-modal-overlay {
+/* Note: Ne s'applique que quand le body a la classe va-modal-open (modal visible) */
+body.va-modal-open .va-modal__overlay,
+body.va-modal-open .va-modal-overlay {
   z-index: 2147483646 !important; /* au-dessus de tout overlay/app */
 }
 
 /* OVERLAY DES MODALES - Style du fond sombre quand visible */
 /* Note: Vuestic gère l'affichage/masquage, on ne définit que le style visuel */
-.va-modal__overlay,
-.va-modal__overlay--lowest,
-.va-modal__overlay--top,
-.va-modal-overlay {
+body.va-modal-open .va-modal__overlay,
+body.va-modal-open .va-modal__overlay--lowest,
+body.va-modal-open .va-modal__overlay--top,
+body.va-modal-open .va-modal-overlay {
   background: rgba(0, 0, 0, 0.6) !important;
   /* Pas de blur pour éviter qu'il affecte le contenu de la modale */
 }

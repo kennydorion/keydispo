@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { AuthService } from './services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import NavBar from './components/NavBar.vue'
@@ -81,6 +81,26 @@ onMounted(() => {
       router.push('/login')
     }
   })
+})
+
+// Nettoyer les overlays de modal orphelins lors de la navigation
+// Vuestic téléporte les modaux au niveau du body, ils peuvent rester après navigation
+watch(() => route.path, () => {
+  // Nettoyer les overlays de modal Vuestic orphelins
+  const overlays = document.querySelectorAll('.va-modal__overlay, .va-modal-overlay')
+  overlays.forEach(overlay => {
+    // Vérifier si l'overlay n'a pas de modal associé visible
+    const container = overlay.closest('.va-modal__container')
+    if (!container || !container.querySelector('.va-modal__dialog')) {
+      overlay.remove()
+    }
+  })
+  
+  // Nettoyer aussi les classes du body qui pourraient bloquer les interactions
+  document.body.classList.remove('selection-mode')
+  document.body.classList.remove('dragging-selection')
+  document.body.style.overflow = ''
+  document.body.style.pointerEvents = ''
 })
 </script>
 
