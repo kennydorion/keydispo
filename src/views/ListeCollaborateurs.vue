@@ -1066,11 +1066,7 @@ onActivated(() => {
 }
 
 /* Overlay de la modale avec fond sombre */
-:deep(.va-modal__overlay) {
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: none !important;
-  z-index: 2147483646 !important; /* derrière le dialog */
-}
+/* Note: le style global avec body.va-modal-open gère le z-index et le fond */
 
 /* Contenu de la modale avec fond blanc */
 :deep(.va-modal__container) {

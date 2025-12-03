@@ -1,5 +1,16 @@
 /* === FIXES POUR LES MODALES VUESTIC === */
 
+/* IMPORTANT: Quand aucune modale n'est ouverte, forcer les overlays à être invisibles et non-interactifs */
+body:not(.va-modal-open) .va-modal__overlay,
+body:not(.va-modal-open) .va-modal-overlay,
+body:not(.va-modal-open) [class*="va-modal__overlay"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: -1 !important;
+}
+
 /* Correction du va-modal__dialog - FOND BLANC OPAQUE */
 .va-modal__dialog {
   background: white !important;
@@ -36,8 +47,8 @@
   }
 }
 
-/* Amélioration de l'overlay */
-.va-modal__overlay {
+/* Amélioration de l'overlay - uniquement quand modale ouverte */
+body.va-modal-open .va-modal__overlay {
   background: rgba(0, 0, 0, 0.6) !important;
   /* Pas de backdrop-filter pour éviter que le flou affecte la modale */
 }
@@ -176,8 +187,9 @@ body.va-modal-open .va-modal-overlay {
 }
 
 /* Overlay des modales avec fond sombre visible */
-.va-modal__overlay,
-.va-modal-overlay {
+/* Ne s'applique que quand une modale est vraiment ouverte */
+body.va-modal-open .va-modal__overlay,
+body.va-modal-open .va-modal-overlay {
   background: rgba(0, 0, 0, 0.6) !important;
   backdrop-filter: none !important;
 }
@@ -479,8 +491,9 @@ body > .va-toasts-container .va-toast .va-toast__content {
 
 
 /* OVERLAY DES MODALES - Style uniforme avec fond sombre */
-[class*="va-modal__overlay"],
-[class*="modal-overlay"] {
+/* Ne s'applique que quand une modale est vraiment ouverte */
+body.va-modal-open [class*="va-modal__overlay"],
+body.va-modal-open [class*="modal-overlay"] {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -498,11 +511,11 @@ body > .va-toasts-container .va-toast .va-toast__content {
 }
 
 /* Correction spécifique : le contenu de la modale doit être au-dessus de son propre overlay */
-.va-modal__dialog {
+body.va-modal-open .va-modal__dialog {
   z-index: 2147483647 !important;
 }
 
-.va-modal__overlay {
+body.va-modal-open .va-modal__overlay {
   z-index: 2147483646 !important;
 }
 

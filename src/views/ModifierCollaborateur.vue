@@ -1060,12 +1060,8 @@ watch(() => route.params.id, () => {
   gap: 1rem;
 }
 
-/* Overlay de la modale avec fond sombre */
-:deep(.va-modal__overlay) {
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: none !important;
-  z-index: 2147483646 !important; /* derrière le dialog */
-}
+/* Overlay de la modale de suppression avec fond sombre - uniquement quand showDeleteModal est true */
+/* Note: pas besoin de forcer z-index ici, le style global avec body.va-modal-open s'en charge */
 
 /* Contenu de la modale avec fond blanc */
 :deep(.va-modal__container) { background-color: transparent !important; }

@@ -99,6 +99,7 @@ watch(() => route.path, () => {
   // Nettoyer aussi les classes du body qui pourraient bloquer les interactions
   document.body.classList.remove('selection-mode')
   document.body.classList.remove('dragging-selection')
+  document.body.classList.remove('va-modal-open')
   document.body.style.overflow = ''
   document.body.style.pointerEvents = ''
 })
