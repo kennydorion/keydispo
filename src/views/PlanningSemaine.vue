@@ -1701,37 +1701,20 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - ULTRA FLUIDE et CONTINU
+// Auto-scroll pendant la sélection - VERSION ULTRA-LÉGÈRE
 let autoScrollRAF: number | null = null
 const isAutoScrolling = ref(false)
 
-// Configuration du scroll fluide
-const EDGE_ZONE = 120
-const MAX_SPEED_X = 22
-const MAX_SPEED_Y = 16
+// Configuration
+const EDGE_ZONE = 100
+const MAX_SPEED_X = 15
+const MAX_SPEED_Y = 10
 
-// Position de la souris en coordonnées écran (persistante)
+// Position souris
 let lastClientX = 0
 let lastClientY = 0
 
-// Vélocité avec lissage
-let currentVelocityX = 0
-let currentVelocityY = 0
-const SMOOTHING = 0.25
-
-// Throttle pour le recompute pendant l'auto-scroll
-let lastRecomputeTime = 0
-const RECOMPUTE_INTERVAL = 150 // Recompute max toutes les 150ms pendant l'auto-scroll
-
-function calculateScrollSpeed(distanceFromEdge: number, maxSpeed: number): number {
-  if (distanceFromEdge <= 0) return maxSpeed
-  if (distanceFromEdge >= EDGE_ZONE) return 0
-  const progress = 1 - (distanceFromEdge / EDGE_ZONE)
-  return maxSpeed * progress * progress
-}
-
 function autoScrollLoop() {
-  // Vérifier les conditions d'arrêt
   if (!planningScroll.value || !isSelectionMode.value || !isDraggingSelection.value) {
     stopAutoScroll()
     return
@@ -1739,77 +1722,39 @@ function autoScrollLoop() {
   
   const scroller = planningScroll.value
   const rect = scroller.getBoundingClientRect()
-  
-  // Recalculer la position relative à chaque frame (la souris peut être immobile)
   const mouseX = lastClientX - rect.left
   const mouseY = lastClientY - rect.top
   
-  // Calculer les vitesses cibles
-  let targetX = 0
-  let targetY = 0
+  let dx = 0
+  let dy = 0
   
-  // Bord gauche
-  if (mouseX < EDGE_ZONE && mouseX > -50) {
-    targetX = -calculateScrollSpeed(Math.max(0, mouseX), MAX_SPEED_X)
-  }
-  // Bord droit
-  else if (mouseX > rect.width - EDGE_ZONE && mouseX < rect.width + 50) {
-    targetX = calculateScrollSpeed(Math.max(0, rect.width - mouseX), MAX_SPEED_X)
+  // Calcul simple et direct des déplacements
+  if (mouseX < EDGE_ZONE) {
+    dx = -MAX_SPEED_X * (1 - mouseX / EDGE_ZONE)
+  } else if (mouseX > rect.width - EDGE_ZONE) {
+    dx = MAX_SPEED_X * (1 - (rect.width - mouseX) / EDGE_ZONE)
   }
   
-  // Bord haut
-  if (mouseY < EDGE_ZONE && mouseY > -50) {
-    targetY = -calculateScrollSpeed(Math.max(0, mouseY), MAX_SPEED_Y)
-  }
-  // Bord bas
-  else if (mouseY > rect.height - EDGE_ZONE && mouseY < rect.height + 50) {
-    targetY = calculateScrollSpeed(Math.max(0, rect.height - mouseY), MAX_SPEED_Y)
+  if (mouseY < EDGE_ZONE) {
+    dy = -MAX_SPEED_Y * (1 - mouseY / EDGE_ZONE)
+  } else if (mouseY > rect.height - EDGE_ZONE) {
+    dy = MAX_SPEED_Y * (1 - (rect.height - mouseY) / EDGE_ZONE)
   }
   
-  // Lissage de la vélocité
-  currentVelocityX += (targetX - currentVelocityX) * SMOOTHING
-  currentVelocityY += (targetY - currentVelocityY) * SMOOTHING
+  // Appliquer directement - PAS de recompute, le navigateur gère le rendu
+  if (dx !== 0) scroller.scrollLeft += dx
+  if (dy !== 0) scroller.scrollTop += dy
   
-  // Appliquer le scroll si significatif
-  if (Math.abs(currentVelocityX) > 0.5) {
-    scroller.scrollLeft += currentVelocityX
-  }
-  if (Math.abs(currentVelocityY) > 0.5) {
-    scroller.scrollTop += currentVelocityY
-  }
-  
-  // Recompute throttlé pour mettre à jour la virtualisation
-  const now = performance.now()
-  if (now - lastRecomputeTime > RECOMPUTE_INTERVAL) {
-    lastRecomputeTime = now
-    recomputeWindow(scroller)
-  }
-  
-  // Continuer la boucle tant qu'on est en mode sélection avec drag
-  autoScrollRAF = requestAnimationFrame(autoScrollLoop)
-}
-
-function startAutoScroll() {
-  if (autoScrollRAF) return // Déjà en cours
-  
-  isAutoScrolling.value = true
-  lastRecomputeTime = performance.now()
-  if (planningScroll.value) {
-    planningScroll.value.style.willChange = 'scroll-position'
-  }
   autoScrollRAF = requestAnimationFrame(autoScrollLoop)
 }
 
 function handleAutoScroll(e: MouseEvent) {
-  // Toujours mettre à jour la position de la souris
   lastClientX = e.clientX
   lastClientY = e.clientY
   
-  // Démarrer le scroll si en mode sélection avec drag
-  if (isSelectionMode.value && isDraggingSelection.value && planningScroll.value) {
-    if (!autoScrollRAF) {
-      startAutoScroll()
-    }
+  if (isSelectionMode.value && isDraggingSelection.value && planningScroll.value && !autoScrollRAF) {
+    isAutoScrolling.value = true
+    autoScrollRAF = requestAnimationFrame(autoScrollLoop)
   }
 }
 
@@ -1818,14 +1763,12 @@ function stopAutoScroll() {
     cancelAnimationFrame(autoScrollRAF)
     autoScrollRAF = null
   }
-  if (planningScroll.value) {
-    planningScroll.value.style.willChange = 'auto'
-    // Faire un dernier recompute pour s'assurer que tout est à jour
+  // Recompute final quand on arrête
+  if (planningScroll.value && isAutoScrolling.value) {
     recomputeWindow(planningScroll.value)
+    recomputeRowWindow(planningScroll.value)
   }
   isAutoScrolling.value = false
-  currentVelocityX = 0
-  currentVelocityY = 0
 }
 
 // Gestionnaire global pour le mousemove pendant le drag
