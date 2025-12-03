@@ -1707,8 +1707,8 @@ const isAutoScrolling = ref(false)
 
 // Configuration du scroll fluide
 const EDGE_ZONE = 120
-const MAX_SPEED_X = 20
-const MAX_SPEED_Y = 14
+const MAX_SPEED_X = 22
+const MAX_SPEED_Y = 16
 
 // Position de la souris en coordonnées écran (persistante)
 let lastClientX = 0
@@ -1717,7 +1717,11 @@ let lastClientY = 0
 // Vélocité avec lissage
 let currentVelocityX = 0
 let currentVelocityY = 0
-const SMOOTHING = 0.2
+const SMOOTHING = 0.25
+
+// Throttle pour le recompute pendant l'auto-scroll
+let lastRecomputeTime = 0
+const RECOMPUTE_INTERVAL = 150 // Recompute max toutes les 150ms pendant l'auto-scroll
 
 function calculateScrollSpeed(distanceFromEdge: number, maxSpeed: number): number {
   if (distanceFromEdge <= 0) return maxSpeed
@@ -1767,11 +1771,18 @@ function autoScrollLoop() {
   currentVelocityY += (targetY - currentVelocityY) * SMOOTHING
   
   // Appliquer le scroll si significatif
-  if (Math.abs(currentVelocityX) > 0.3) {
+  if (Math.abs(currentVelocityX) > 0.5) {
     scroller.scrollLeft += currentVelocityX
   }
-  if (Math.abs(currentVelocityY) > 0.3) {
+  if (Math.abs(currentVelocityY) > 0.5) {
     scroller.scrollTop += currentVelocityY
+  }
+  
+  // Recompute throttlé pour mettre à jour la virtualisation
+  const now = performance.now()
+  if (now - lastRecomputeTime > RECOMPUTE_INTERVAL) {
+    lastRecomputeTime = now
+    recomputeWindow(scroller)
   }
   
   // Continuer la boucle tant qu'on est en mode sélection avec drag
@@ -1782,6 +1793,7 @@ function startAutoScroll() {
   if (autoScrollRAF) return // Déjà en cours
   
   isAutoScrolling.value = true
+  lastRecomputeTime = performance.now()
   if (planningScroll.value) {
     planningScroll.value.style.willChange = 'scroll-position'
   }
@@ -1808,6 +1820,8 @@ function stopAutoScroll() {
   }
   if (planningScroll.value) {
     planningScroll.value.style.willChange = 'auto'
+    // Faire un dernier recompute pour s'assurer que tout est à jour
+    recomputeWindow(planningScroll.value)
   }
   isAutoScrolling.value = false
   currentVelocityX = 0
@@ -5476,10 +5490,9 @@ async function onScrollExtend(e: Event) {
   const scroller = e.currentTarget as HTMLElement
   if (!scroller) return
 
-  // OPTIMISATION: Pendant l'auto-scroll de sélection, on fait le minimum absolu
-  // pour éviter les saccades - juste recalculer la fenêtre virtualisée
+  // OPTIMISATION: Pendant l'auto-scroll de sélection, ignorer complètement
+  // La boucle d'auto-scroll gère son propre recompute avec throttling
   if (isAutoScrolling.value) {
-    recomputeWindow(scroller)
     return
   }
 
