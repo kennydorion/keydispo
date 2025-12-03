@@ -692,10 +692,43 @@ const voirDetail = () => {
 
 // Lifecycle
 onMounted(() => {
+  // Nettoyage agressif des overlays et éléments résiduels au montage
+  // Pour s'assurer qu'aucun élément du planning ne bloque les interactions
+  cleanupOrphanElements()
+  
   chargerCollaborateur()
   // Vérifier les permissions au chargement
   verifierPermissions()
 })
+
+// Nettoyage des éléments orphelins qui pourraient bloquer les interactions
+function cleanupOrphanElements() {
+  // Supprimer les overlays de modal Vuestic orphelins
+  document.querySelectorAll('.va-modal__overlay, .va-modal-overlay, .va-modal__container').forEach(el => {
+    el.remove()
+  })
+  
+  // Supprimer la classe va-modal-open du body
+  document.body.classList.remove('va-modal-open')
+  document.body.classList.remove('selection-mode')
+  document.body.classList.remove('dragging-selection')
+  
+  // Reset des styles du body
+  document.body.style.overflow = ''
+  document.body.style.pointerEvents = ''
+  
+  // Supprimer tout élément avec un z-index très élevé qui pourrait bloquer
+  document.querySelectorAll('[style*="z-index: 2147483"]').forEach(el => {
+    // Ne pas supprimer les toasts
+    if (!el.classList.contains('va-toast') && !el.closest('.va-toast')) {
+      const rect = el.getBoundingClientRect()
+      // Si c'est un élément qui couvre beaucoup de l'écran
+      if (rect.width > window.innerWidth * 0.5 && rect.height > window.innerHeight * 0.5) {
+        el.remove()
+      }
+    }
+  })
+}
 
 // Nouvelle méthode pour vérifier les permissions
 const verifierPermissions = async () => {

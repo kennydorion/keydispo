@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Overlay</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .element { padding: 10px; margin: 5px 0; border: 1px solid #ccc; }
+        .blocking { background: #ffcccc; }
+    </style>
+</head>
+<body>
+    <h1>Debug: Éléments bloquants potentiels</h1>
+    <p>Ouvrez ce fichier puis collez ce code dans la console de la page ModifierCollaborateur:</p>
+    <pre>
+// Trouver tous les éléments avec z-index > 0 ou position fixed/absolute
+function findBlockingElements() {
+    const all = document.querySelectorAll('*');
+    const blocking = [];
+    
+    all.forEach(el => {
+        const style = getComputedStyle(el);
+        const zIndex = parseInt(style.zIndex) || 0;
+        const position = style.position;
+        const pointerEvents = style.pointerEvents;
+        const display = style.display;
+        const visibility = style.visibility;
+        const opacity = parseFloat(style.opacity);
+        
+        // Éléments suspects
+        if ((position === 'fixed' || position === 'absolute') && 
+            (zIndex > 10 || pointerEvents !== 'none') &&
+            display !== 'none' && visibility !== 'hidden') {
+            
+            const rect = el.getBoundingClientRect();
+            
+            // Vérifier si l'élément couvre le formulaire (centre de l'écran)
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const coversCenter = rect.left <= centerX && rect.right >= centerX &&
+                                 rect.top <= centerY && rect.bottom >= centerY;
+            
+            if (rect.width > 50 && rect.height > 50) {
+                blocking.push({
+                    element: el,
+                    tagName: el.tagName,
+                    className: el.className,
+                    id: el.id,
+                    zIndex: zIndex,
+                    position: position,
+                    pointerEvents: pointerEvents,
+                    opacity: opacity,
+                    rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+                    coversCenter: coversCenter
+                });
+            }
+        }
+    });
+    
+    // Trier par z-index décroissant
+    blocking.sort((a, b) => b.zIndex - a.zIndex);
+    
+    console.log('=== ÉLÉMENTS POTENTIELLEMENT BLOQUANTS ===');
+    blocking.forEach((item, i) => {
+        console.log(`${i+1}. ${item.tagName}.${item.className}#${item.id}`);
+        console.log(`   z-index: ${item.zIndex}, position: ${item.position}, pointer-events: ${item.pointerEvents}`);
+        console.log(`   rect: top=${Math.round(item.rect.top)}, left=${Math.round(item.rect.left)}, w=${Math.round(item.rect.width)}, h=${Math.round(item.rect.height)}`);
+        console.log(`   coversCenter: ${item.coversCenter}`);
+        console.log('   element:', item.element);
+    });
+    
+    return blocking;
+}
+
+// Également vérifier l'élément sous le curseur
+document.addEventListener('mousemove', function debug(e) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el) {
+        const style = getComputedStyle(el);
+        console.log('Élément sous curseur:', el.tagName, el.className, 'z-index:', style.zIndex, 'pointer-events:', style.pointerEvents);
+    }
+}, { once: true });
+
+findBlockingElements();
+    </pre>
+</body>
+</html>
