@@ -1701,92 +1701,117 @@ let _debounceTimer: number | null = null
 
 // SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
 
-// Auto-scroll pendant la sélection - optimisé pour fluidité
-let autoScrollTimer: number | null = null
-let currentScrollX = 0
-let currentScrollY = 0
-const isAutoScrolling = ref(false) // Flag pour bloquer la sélection pendant l'auto-scroll
-const EDGE_ZONE = 80 // Zone en bord d'écran qui déclenche le scroll
-// Paramètres optimisés: scroll plus fluide
-const SCROLL_JUMP_X = 120   // 120px par saut (augmenté pour rapidité)
-const SCROLL_JUMP_Y = 60    // 60px par saut (augmenté pour rapidité)
-const SCROLL_INTERVAL = 80  // 12-13 sauts/sec (plus fluide)
+// Auto-scroll pendant la sélection - ULTRA FLUIDE et CONTINU
+let autoScrollRAF: number | null = null
+const isAutoScrolling = ref(false)
 
-function scrollTick() {
-  if (!planningScroll.value || (currentScrollX === 0 && currentScrollY === 0)) {
+// Configuration du scroll fluide
+const EDGE_ZONE = 120
+const MAX_SPEED_X = 20
+const MAX_SPEED_Y = 14
+
+// Position de la souris en coordonnées écran (persistante)
+let lastClientX = 0
+let lastClientY = 0
+
+// Vélocité avec lissage
+let currentVelocityX = 0
+let currentVelocityY = 0
+const SMOOTHING = 0.2
+
+function calculateScrollSpeed(distanceFromEdge: number, maxSpeed: number): number {
+  if (distanceFromEdge <= 0) return maxSpeed
+  if (distanceFromEdge >= EDGE_ZONE) return 0
+  const progress = 1 - (distanceFromEdge / EDGE_ZONE)
+  return maxSpeed * progress * progress
+}
+
+function autoScrollLoop() {
+  // Vérifier les conditions d'arrêt
+  if (!planningScroll.value || !isSelectionMode.value || !isDraggingSelection.value) {
     stopAutoScroll()
     return
   }
   
-  // Activer le flag d'auto-scroll
-  isAutoScrolling.value = true
+  const scroller = planningScroll.value
+  const rect = scroller.getBoundingClientRect()
   
-  // Gros sauts espacés - technique Google Sheets
-  if (currentScrollX !== 0) {
-    planningScroll.value.scrollLeft += currentScrollX
+  // Recalculer la position relative à chaque frame (la souris peut être immobile)
+  const mouseX = lastClientX - rect.left
+  const mouseY = lastClientY - rect.top
+  
+  // Calculer les vitesses cibles
+  let targetX = 0
+  let targetY = 0
+  
+  // Bord gauche
+  if (mouseX < EDGE_ZONE && mouseX > -50) {
+    targetX = -calculateScrollSpeed(Math.max(0, mouseX), MAX_SPEED_X)
   }
-  if (currentScrollY !== 0) {
-    planningScroll.value.scrollTop += currentScrollY
+  // Bord droit
+  else if (mouseX > rect.width - EDGE_ZONE && mouseX < rect.width + 50) {
+    targetX = calculateScrollSpeed(Math.max(0, rect.width - mouseX), MAX_SPEED_X)
   }
+  
+  // Bord haut
+  if (mouseY < EDGE_ZONE && mouseY > -50) {
+    targetY = -calculateScrollSpeed(Math.max(0, mouseY), MAX_SPEED_Y)
+  }
+  // Bord bas
+  else if (mouseY > rect.height - EDGE_ZONE && mouseY < rect.height + 50) {
+    targetY = calculateScrollSpeed(Math.max(0, rect.height - mouseY), MAX_SPEED_Y)
+  }
+  
+  // Lissage de la vélocité
+  currentVelocityX += (targetX - currentVelocityX) * SMOOTHING
+  currentVelocityY += (targetY - currentVelocityY) * SMOOTHING
+  
+  // Appliquer le scroll si significatif
+  if (Math.abs(currentVelocityX) > 0.3) {
+    scroller.scrollLeft += currentVelocityX
+  }
+  if (Math.abs(currentVelocityY) > 0.3) {
+    scroller.scrollTop += currentVelocityY
+  }
+  
+  // Continuer la boucle tant qu'on est en mode sélection avec drag
+  autoScrollRAF = requestAnimationFrame(autoScrollLoop)
+}
+
+function startAutoScroll() {
+  if (autoScrollRAF) return // Déjà en cours
+  
+  isAutoScrolling.value = true
+  if (planningScroll.value) {
+    planningScroll.value.style.willChange = 'scroll-position'
+  }
+  autoScrollRAF = requestAnimationFrame(autoScrollLoop)
 }
 
 function handleAutoScroll(e: MouseEvent) {
-  // Auto-scroll seulement pendant un drag actif avec mode sélection
-  // Ne pas activer juste parce que Cmd est pressé (évite scroll infini)
-  if (!isSelectionMode.value || !isDraggingSelection.value || !planningScroll.value) {
-    stopAutoScroll()
-    return
-  }
-
-  const rect = planningScroll.value.getBoundingClientRect()
-  const mouseX = e.clientX - rect.left
-  const mouseY = e.clientY - rect.top
+  // Toujours mettre à jour la position de la souris
+  lastClientX = e.clientX
+  lastClientY = e.clientY
   
-  // Si la souris est complètement hors de la zone du planning, arrêter le scroll
-  if (mouseX < -50 || mouseX > rect.width + 50 || mouseY < -50 || mouseY > rect.height + 50) {
-    stopAutoScroll()
-    return
-  }
-  
-  const prevScrollX = currentScrollX
-  const prevScrollY = currentScrollY
-  
-  currentScrollX = 0
-  currentScrollY = 0
-  
-  // Gauche/Droite - gros sauts
-  if (mouseX < EDGE_ZONE) currentScrollX = -SCROLL_JUMP_X
-  else if (mouseX > rect.width - EDGE_ZONE) currentScrollX = SCROLL_JUMP_X
-  
-  // Haut/Bas - gros sauts
-  if (mouseY < EDGE_ZONE) currentScrollY = -SCROLL_JUMP_Y
-  else if (mouseY > rect.height - EDGE_ZONE) currentScrollY = SCROLL_JUMP_Y
-  
-  // Démarrer/arrêter avec intervalle espacé
-  if ((currentScrollX !== 0 || currentScrollY !== 0) && !autoScrollTimer) {
-    // Activer will-change pour optimisation GPU
-    if (planningScroll.value) {
-      planningScroll.value.style.willChange = 'scroll-position'
+  // Démarrer le scroll si en mode sélection avec drag
+  if (isSelectionMode.value && isDraggingSelection.value && planningScroll.value) {
+    if (!autoScrollRAF) {
+      startAutoScroll()
     }
-    autoScrollTimer = window.setInterval(scrollTick, SCROLL_INTERVAL)
-  } else if (currentScrollX === 0 && currentScrollY === 0 && (prevScrollX !== 0 || prevScrollY !== 0)) {
-    stopAutoScroll()
   }
 }
 
 function stopAutoScroll() {
-  if (autoScrollTimer) {
-    clearInterval(autoScrollTimer)
-    autoScrollTimer = null
+  if (autoScrollRAF) {
+    cancelAnimationFrame(autoScrollRAF)
+    autoScrollRAF = null
   }
-  // Désactiver will-change pour économiser la mémoire
   if (planningScroll.value) {
     planningScroll.value.style.willChange = 'auto'
   }
-  // Désactiver le flag d'auto-scroll
   isAutoScrolling.value = false
-  currentScrollX = 0
-  currentScrollY = 0
+  currentVelocityX = 0
+  currentVelocityY = 0
 }
 
 // Gestionnaire global pour le mousemove pendant le drag
@@ -5450,6 +5475,13 @@ async function ensureRightBuffer(scroller: HTMLElement) {
 async function onScrollExtend(e: Event) {
   const scroller = e.currentTarget as HTMLElement
   if (!scroller) return
+
+  // OPTIMISATION: Pendant l'auto-scroll de sélection, on fait le minimum absolu
+  // pour éviter les saccades - juste recalculer la fenêtre virtualisée
+  if (isAutoScrolling.value) {
+    recomputeWindow(scroller)
+    return
+  }
 
   // Nettoyer les highlights de hover pendant le scroll SEULEMENT si pas en scroll rapide
   if (!isScrollingFast.value) {
