@@ -137,13 +137,13 @@ export function usePlanningCollaboration(options: {
     const lock = getCellLock(collaborateurId, date)
     if (lock) {
       const userName = lock.userName || ''
-      return userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+      return userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     }
     
     const selection = getCellSelection(collaborateurId, date)
     if (selection) {
       const userName = selection.userName || ''
-      return userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+      return userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     }
     
     return ''

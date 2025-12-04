@@ -1918,7 +1918,7 @@ function onGridMouseMove(e: MouseEvent) {
 // NOTE: La gestion du cache DOM et des highlights est maintenant dans usePlanningDOMCache
 // Les fonctions suivantes sont accessibles via le composable:
 // - invalidateDOMCache()
-// - rebuildDOMCache()
+// - rerebuildDOMCache()
 // - updateHighlightWithDOMCache(columnIndex, rowIndex)
 // - clearAllDOMHighlights()
 // - domCacheStatus (computed)
@@ -1959,132 +1959,11 @@ function updateWASMConfiguration() {
   }
 }
 
-// NOTE: buildDOMCache est maintenant rebuildDOMCache() dans le composable
+// NOTE: buildDOMCache est maintenant rerebuildDOMCache() dans le composable
 
 // Fonction de highlighting ultra-rapide avec cache DOM
 // NOTE: updateHighlightWithDOMCache est dans le composable usePlanningDOMCache
-// Gardons les fonctions WASM comme optimisation supplémentaire
-
-// Nouvelle fonction WASM ultra-performante (fallback sur composable si WASM non disponible)
-function updateHighlightWithWASM(columnIndex: number, rowIndex: number) {
-  // Si rien ne change, pas besoin de recalculer
-  if (_currentHighlightedColumn === columnIndex && _currentHighlightedRow === rowIndex) {
-    return
-  }
-  
-  // Nettoyer les anciens highlights avec le cache DOM
-  if (_currentHighlightedColumn >= 0) {
-    const oldColumnElements = _domCache.columnElements.get(_currentHighlightedColumn)
-    if (oldColumnElements) {
-      oldColumnElements.forEach(el => el.classList.remove('dom-column-hovered'))
-    }
-  }
-  
-  if (_currentHighlightedRow >= 0) {
-    const oldRowElements = _domCache.rowElements.get(_currentHighlightedRow)
-    if (oldRowElements) {
-      oldRowElements.forEach(el => el.classList.remove('dom-row-hovered'))
-    }
-  }
-  
-  // Appliquer les nouveaux highlights avec WASM + DOM cache
-  if (columnIndex >= 0 && columnIndex !== _currentHighlightedColumn) {
-    const newColumnElements = _domCache.columnElements.get(columnIndex)
-    if (newColumnElements) {
-      newColumnElements.forEach(el => {
-        el.classList.add('dom-column-hovered')
-        // FORCE inline style pour weekend - priorité absolue
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.12)'
-        }
-      })
-    }
-  }
-  
-  if (rowIndex >= 0 && rowIndex !== _currentHighlightedRow) {
-    const newRowElements = _domCache.rowElements.get(rowIndex)
-    if (newRowElements) {
-      newRowElements.forEach(el => {
-        el.classList.add('dom-row-hovered')
-        // FORCE inline style pour weekend - priorité absolue
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.16)'
-        }
-      })
-    }
-  }
-  
-  // Mettre à jour les variables de tracking
-  _currentHighlightedColumn = columnIndex
-  _currentHighlightedRow = rowIndex
-}
-
-// Version classique DOM cache (fallback)
-function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: number) {
-  // Optimisation : ne rien faire si rien n'a changé
-  if (_currentHighlightedColumn === columnIndex && _currentHighlightedRow === rowIndex) {
-    return
-  }
-  
-  // Nettoyer l'ancienne colonne (cache DOM)
-  if (_currentHighlightedColumn !== columnIndex && _currentHighlightedColumn >= 0) {
-    const oldColumnElements = _domCache.columnElements.get(_currentHighlightedColumn)
-    if (oldColumnElements) {
-      oldColumnElements.forEach(el => {
-        el.classList.remove('dom-column-hovered')
-        // Nettoyer le style inline pour weekend
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = ''
-        }
-      })
-    }
-  }
-  
-  // Nettoyer l'ancienne ligne (cache DOM)
-  if (_currentHighlightedRow !== rowIndex && _currentHighlightedRow >= 0) {
-    const oldRowElements = _domCache.rowElements.get(_currentHighlightedRow)
-    if (oldRowElements) {
-      oldRowElements.forEach(el => {
-        el.classList.remove('dom-row-hovered')
-        // Nettoyer le style inline pour weekend
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = ''
-        }
-      })
-    }
-  }
-  
-  // Ajouter la nouvelle colonne (cache DOM)
-  if (columnIndex >= 0 && columnIndex !== _currentHighlightedColumn) {
-    const newColumnElements = _domCache.columnElements.get(columnIndex)
-    if (newColumnElements) {
-      newColumnElements.forEach(el => {
-        el.classList.add('dom-column-hovered')
-        // FORCE inline style pour weekend - priorité absolue
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.12)'
-        }
-      })
-    }
-  }
-  
-  // Ajouter la nouvelle ligne (cache DOM)
-  if (rowIndex >= 0 && rowIndex !== _currentHighlightedRow) {
-    const newRowElements = _domCache.rowElements.get(rowIndex)
-    if (newRowElements) {
-      newRowElements.forEach(el => {
-        el.classList.add('dom-row-hovered')
-        // FORCE inline style pour weekend - priorité absolue
-        if (el.classList.contains('day-6') || el.classList.contains('day-0')) {
-          (el as HTMLElement).style.backgroundColor = 'rgba(76, 175, 80, 0.16)'
-        }
-      })
-    }
-  }
-  
-  _currentHighlightedColumn = columnIndex
-  _currentHighlightedRow = rowIndex
-}
+// Il gère automatiquement les highlights de colonnes et lignes avec cache DOM optimisé
 
 // NOTE: getDayStatus et isAvailableOnDate sont maintenant fournis par usePlanningDispos
 
@@ -2199,14 +2078,8 @@ watch(planningFilters.filterState, async () => {
 // (isDevelopment déjà défini plus haut)
 
 // Statut du cache DOM pour l'indicateur de performance
-const domCacheStatus = computed(() => {
-  return {
-    isValid: _domCache.cacheValid,
-    elements: _domCache.columnElements.size + _domCache.rowElements.size,
-    columns: _domCache.columnElements.size,
-    rows: _domCache.rowElements.size
-  }
-})
+// NOTE: Maintenant fourni par le composable usePlanningDOMCache
+const domCacheStatus = domCacheStatusFromComposable
 
 // Suggestions contextuelles (utilise le système centralisé)
 const suggestions = computed(() => {
@@ -5048,7 +4921,7 @@ onMounted(async () => {
   
   // Construire le cache DOM après que tout soit rendu
   await nextTick()
-  setTimeout(buildDOMCache, 100) // Petit délai pour assurer le rendu complet
+  setTimeout(rebuildDOMCache, 100) // Petit délai pour assurer le rendu complet
   
   // S'abonner aux changements de locks pour la réactivité
   if (collaborationService && typeof collaborationService.onLockChange === 'function') {
@@ -5067,7 +4940,7 @@ onMounted(async () => {
         cacheValid: _domCache.cacheValid,
         columnCount: _domCache.columnElements.size,
         rowCount: _domCache.rowElements.size,
-        lastBuilt: new Date(_domCache.lastBuilt)
+        lastBuilt: new Date(_domCache.lastRebuild)
       }
     }
     ;(window as any).benchmarkHighlight = function(iterations = 100) {
@@ -5082,7 +4955,7 @@ onMounted(async () => {
     }
     ;(window as any).rebuildCache = function() {
       invalidateDOMCache('Test manuel')
-      buildDOMCache()
+      rebuildDOMCache()
     }
     ;(window as any).testLock = function(collaborateurId: string, date: string) {
       if (collaborationService) {
@@ -5208,7 +5081,7 @@ onMounted(async () => {
 watch([visibleDays, paginatedCollaborateurs], () => {
   clearAllHighlights()
   invalidateDOMCache('Structure du planning modifiée')
-  setTimeout(buildDOMCache, 50)
+  setTimeout(rebuildDOMCache, 50)
   updateWASMConfiguration()
 }, { immediate: false })
 
@@ -5422,7 +5295,7 @@ watch(() => planningFilters.hasActiveFilters.value, (active, prev) => {
       ensureRowsVisible()
       // Invalider/reconstruire le cache DOM pour refléter la structure restaurée
       invalidateDOMCache('Reset après clearAllFilters')
-      setTimeout(buildDOMCache, 50)
+      setTimeout(rebuildDOMCache, 50)
     })
   }
 })
