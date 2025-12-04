@@ -806,12 +806,12 @@ class HybridMultiUserService {
     this.rtdbListeners.forEach(unsubscribe => unsubscribe())
     this.rtdbListeners = []
     
-    // Nettoyer les callbacks
-    this.lockChangeCallbacks = []
-    this.presenceChangeCallbacks = []
-    this.userChangeCallbacks = []
-    this.activityChangeCallbacks = []
-    this.selectionChangeCallbacks = []
+    // Nettoyer les callbacks (nouvelle structure)
+    this.callbacks.locks = []
+    this.callbacks.presence = []
+    this.callbacks.users = []
+    this.callbacks.activities = []
+    this.callbacks.selections = []
     
     // Nettoyer l'état local
     this._users.clear()

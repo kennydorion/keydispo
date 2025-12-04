@@ -11,7 +11,7 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Horizontal window (days)
   const windowStartIndex = ref(0)
   const windowEndIndex = ref(0)
-  // OPTIMISÉ: Buffers augmentés pour éviter le blanc pendant le scroll
+  // Buffers optimisés pour fluidité (plus de colonnes = moins de flash blanc)
   const windowPaddingCols = ref(5)  // Buffer normal: 5 colonnes de chaque côté
   const fastScrollBufferCols = ref(10)  // Buffer scroll rapide: 10 colonnes
   const isScrollingFast = ref(false)
@@ -20,6 +20,13 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Direction du scroll pour prefetch prédictif
   const scrollDirection = ref<'left' | 'right' | 'none'>('none')
   const lastScrollLeft = ref(0)
+  // Cache pour éviter les recalculs inutiles
+  let cachedWindowStart = -1
+  let cachedWindowEnd = -1
+  let cachedRowStart = -1
+  let cachedRowEnd = -1
+  // Debounce timer pour reset direction
+  let directionResetTimer: number | null = null
 
   const windowOffsetPx = computed(() => windowStartIndex.value * dayWidth.value)
   // Buffer asymétrique: plus de colonnes dans la direction du scroll
@@ -30,7 +37,7 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Padding additionnel dans la direction du scroll (prefetch prédictif)
   const directionalPadding = computed(() => {
     if (scrollDirection.value === 'none') return { left: 0, right: 0 }
-    const extra = isScrollingFast.value ? 8 : 4  // Plus de prefetch dans la direction du mouvement
+    const extra = isScrollingFast.value ? 3 : 2  // +2/+3 colonnes dans la direction
     return scrollDirection.value === 'right' 
       ? { left: 0, right: extra }
       : { left: extra, right: 0 }
@@ -43,19 +50,19 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
   // Vertical window (rows)
   const rowWindowStartIndex = ref(0)
   const rowWindowEndIndex = ref(0)
-  // OPTIMISÉ: Buffers augmentés pour les lignes
-  const windowPaddingRows = ref(8)  // Buffer normal: 8 lignes (augmenté de 5)
-  const fastScrollBufferRows = ref(15)  // Buffer scroll rapide: 15 lignes (augmenté de 10)
+  // Buffers optimisés pour les lignes (plus de lignes = scroll vertical plus fluide)
+  const windowPaddingRows = ref(8)  // Buffer normal: 8 lignes
+  const fastScrollBufferRows = ref(15)  // Buffer scroll rapide: 15 lignes
   // Direction scroll vertical
   const scrollDirectionY = ref<'up' | 'down' | 'none'>('none')
   const lastScrollTop = ref(0)
   
   const rowWindowOffsetPx = computed(() => rowWindowStartIndex.value * rowHeight.value)
   const adaptiveRowPadding = computed(() => (isScrollingFast.value ? fastScrollBufferRows.value : windowPaddingRows.value))
-  // Padding directionnel vertical - AUGMENTÉ pour prefetch plus agressif
+  // Padding directionnel vertical
   const directionalPaddingY = computed(() => {
     if (scrollDirectionY.value === 'none') return { top: 0, bottom: 0 }
-    const extra = isScrollingFast.value ? 10 : 5  // Augmenté: +5/+10 lignes dans la direction du scroll
+    const extra = isScrollingFast.value ? 3 : 2  // +2/+3 lignes dans la direction du scroll
     return scrollDirectionY.value === 'down'
       ? { top: 0, bottom: extra }
       : { top: extra, bottom: 0 }
@@ -116,8 +123,16 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     // Appliquer padding + padding directionnel pour prefetch dans la direction du scroll
     const firstRowIdx = Math.max(0, Math.floor(scrollTop / rh) - padding - dirPadY.top)
     const lastRowIdx = Math.min(total - 1, Math.ceil((scrollTop + clientHeight) / rh) + padding + dirPadY.bottom)
-    rowWindowStartIndex.value = Math.min(firstRowIdx, lastRowIdx)
-    rowWindowEndIndex.value = Math.max(firstRowIdx, lastRowIdx)
+    
+    // OPTIMISATION: Ne mettre à jour que si les indices ont vraiment changé
+    const newRowStart = Math.min(firstRowIdx, lastRowIdx)
+    const newRowEnd = Math.max(firstRowIdx, lastRowIdx)
+    if (newRowStart !== cachedRowStart || newRowEnd !== cachedRowEnd) {
+      rowWindowStartIndex.value = newRowStart
+      rowWindowEndIndex.value = newRowEnd
+      cachedRowStart = newRowStart
+      cachedRowEnd = newRowEnd
+    }
   }
 
   // Réagir aux changements de longueur des lignes pour maintenir des indices valides
@@ -144,22 +159,22 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     }
   })
 
-  // Throttle pour recomputeWindow : max 60fps
-  let recomputeThrottleTimer: number | null = null
+  // RAF-based throttle pour recomputeWindow : sync avec le refresh rate
+  let recomputeRafId: number | null = null
   let pendingRecomputeScroller: HTMLElement | null | undefined = null
   
   function recomputeWindowThrottled(scroller?: HTMLElement | null) {
     pendingRecomputeScroller = scroller
     
-    if (recomputeThrottleTimer !== null) {
-      return // Déjà planifié
+    if (recomputeRafId !== null) {
+      return // Déjà planifié pour le prochain frame
     }
     
-    recomputeThrottleTimer = window.setTimeout(() => {
+    recomputeRafId = requestAnimationFrame(() => {
       recomputeWindow(pendingRecomputeScroller)
-      recomputeThrottleTimer = null
+      recomputeRafId = null
       pendingRecomputeScroller = null
-    }, 16) // 16ms = ~60fps max
+    })
   }
 
   function recomputeWindow(scroller?: HTMLElement | null) {
@@ -213,13 +228,17 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
       isScrollingFast.value = scrollVelocity.value > 2
     }
     
-    // Reset direction après inactivité
-    setTimeout(() => {
+    // Reset direction après inactivité - DEBOUNCED pour éviter les resets multiples
+    if (directionResetTimer !== null) {
+      clearTimeout(directionResetTimer)
+    }
+    directionResetTimer = window.setTimeout(() => {
       if (performance.now() - lastScrollTime.value > 150) {
         isScrollingFast.value = false
         scrollDirection.value = 'none'
         scrollDirectionY.value = 'none'
       }
+      directionResetTimer = null
     }, 200)
 
     // Horizontal window avec prefetch prédictif
@@ -231,15 +250,24 @@ export function useVirtualGrid<TDay = any, TRow = any>({ dayWidth, rowHeight, vi
     if (totalDays === 0 || dw <= 0) {
       windowStartIndex.value = 0
       windowEndIndex.value = -1
+      cachedWindowStart = 0
+      cachedWindowEnd = -1
     } else {
-      // Clamp le scroll dans la largeur de contenu
-      const contentWidth = totalDays * dw
-      const clampedScrollLeft = Math.max(0, Math.min(scrollLeft, Math.max(0, contentWidth - clientWidth)))
+      // NE PAS clamper le scroll - sinon on cause un "rollback" quand les nouvelles cellules
+      // ne sont pas encore chargées. Le scroll natif gère déjà les limites.
       // Appliquer le padding + le padding directionnel (prefetch dans la direction du scroll)
-      const firstIdx = Math.max(0, Math.floor(clampedScrollLeft / dw) - padding - dirPad.left)
-      const lastIdx = Math.min(totalDays - 1, Math.ceil((clampedScrollLeft + clientWidth) / dw) + padding + dirPad.right)
-      windowStartIndex.value = Math.min(firstIdx, lastIdx)
-      windowEndIndex.value = Math.max(firstIdx, lastIdx)
+      const firstIdx = Math.max(0, Math.floor(scrollLeft / dw) - padding - dirPad.left)
+      const lastIdx = Math.min(totalDays - 1, Math.ceil((scrollLeft + clientWidth) / dw) + padding + dirPad.right)
+      
+      // OPTIMISATION: Ne mettre à jour que si les indices ont vraiment changé
+      const newStart = Math.min(firstIdx, lastIdx)
+      const newEnd = Math.max(firstIdx, lastIdx)
+      if (newStart !== cachedWindowStart || newEnd !== cachedWindowEnd) {
+        windowStartIndex.value = newStart
+        windowEndIndex.value = newEnd
+        cachedWindowStart = newStart
+        cachedWindowEnd = newEnd
+      }
     }
 
     // Vertical window

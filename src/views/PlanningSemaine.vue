@@ -365,7 +365,6 @@
                         @click="onInnerDispoClick(dispo, collaborateur.id, day.date, $event)"
                       >
                         <!-- Badge avec type icon en haut à gauche -->
-                        <!-- Badge avec type icon en haut à gauche -->
                         <div class="dispo-type-badge">
                           <va-icon 
                             :name="getDispoTypeIcon(dispo)" 
@@ -400,7 +399,7 @@
                     
                     <!-- Bouton d'ajout pour cellules vides -->
                     <div 
-                      v-if="getCellDisposSorted(collaborateur.id, day.date).length === 0 && !isDayLoaded(day.date) === false"
+                      v-if="getCellDisposSorted(collaborateur.id, day.date).length === 0 && isDayLoaded(day.date)"
                       class="dispo-add-card"
                       :class="{ 'dragging-mode': isDraggingSelection }"
                       @click="onInnerAddClick(collaborateur.id, day.date, $event)"
@@ -488,13 +487,9 @@
         @save-notes="handleSaveCollaborateurNotes"
         @edit-collaborateur="handleEditCollaborateur"
       />
-
-      
     </va-modal>
 
   </div> <!-- Fin excel-planning-container -->
-
-  
 
   <!-- Indicateurs de cellules en cours d'édition -->
   <div class="active-editing-indicators">
@@ -532,7 +527,7 @@
   </div> <!-- Fin planning-app -->
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vuestic-ui'
 
@@ -545,8 +540,6 @@ const CollabEditContent = defineAsyncComponent(() => import('@/components/Collab
 // Composant de chargement nécessaire pour l'UX (sync car visible immédiatement)
 import PlanningLoadingModal from '../components/planning/PlanningLoadingModal.vue'
 
-// Nouveaux composants modulaires supprimés car non utilisés
-// EmergencyFirestoreDashboard supprimé: migration RTDB terminée
 import { CollaborateursServiceV2 } from '../services/collaborateursV2'
 import { AuthService } from '../services/auth'
 import { InterfaceManager } from '../services/interfaceManager'
@@ -554,19 +547,26 @@ const { isCollaborateurInterface, canAccessAdminFeatures } = InterfaceManager
 import { useUserPreferences } from '../services/userPreferences'
 import { getUserInitials } from '../services/avatarUtils'
 import { UserColorsService } from '../services/userColorsService'
-import { formatPhone as formatPhoneUtil, phoneToHref } from '../utils/phoneFormatter'
-// firestoreCounter et firestoreCache supprimés: migration RTDB terminée
+import { phoneToHref } from '../utils/phoneFormatter'
 import { auth, rtdb } from '../services/firebase'
 import { canonicalizeLieu as canonicalizeLieuShared, detectSlotsFromText as detectSlotsShared, normalizeDispo as normalizeDispoShared } from '../services/normalization'
 import { 
   slotLabel as sharedSlotLabel, 
   getTemporalDisplay as sharedGetTemporalDisplay, 
-  getDispoTypeIcon as sharedGetDispoTypeIcon,
-  getDispoBarsLayoutClass as sharedGetDispoBarsLayoutClass
+  getDispoTypeIcon as sharedGetDispoTypeIcon
+  // NOTE: getDispoBarsLayoutClass est maintenant dans usePlanningLayout
 } from '../services/planningDisplayService'
 import { toDateStr, addDaysStr, diffDays, calcMinPastDate } from '@/utils/dateHelpers'
 import { ref as rtdbRef, onValue, off } from 'firebase/database'
 import { deriveTimeKindFromData } from '@/utils/timeKindDerivation'
+
+// NOUVEAU: Utilitaires pour la gestion des jours du planning (pure functions)
+// NOTE: generateAppendDays, generatePrependDays, calculatePrunePast, calculatePruneFuture 
+// sont maintenant utilisés via usePlanningDays - gardons seulement ce qui est encore utilisé directement
+import {
+  generateDays,
+  calculateScrollOffset
+} from '@/utils/planningDaysUtils'
 
 // NOUVEAU: Service RTDB pour les disponibilités (migration complète)
 import { disponibilitesRTDBService } from '../services/disponibilitesRTDBService'
@@ -590,15 +590,24 @@ import { useCollabPresence } from '@/composables/useCollabPresence'
 import { usePlanningFilters } from '@/composables/usePlanningFilters'
 import { usePlanningData } from '@/composables/usePlanningData'
 import { useModalA11y } from '@/composables/useModalA11y'
+import { usePlanningMeasure } from '@/composables/usePlanningMeasure'
+import { usePlanningDays } from '@/composables/usePlanningDays'
+import { usePlanningHover } from '@/composables/usePlanningHover'
+import { usePlanningLayout } from '@/composables/usePlanningLayout'
+import { usePlanningScroll } from '@/composables/usePlanningScroll'
+import { usePlanningSelection } from '@/composables/usePlanningSelection'
+import { usePlanningDispos } from '@/composables/usePlanningDispos'
+import { usePlanningCellStyles } from '@/composables/usePlanningCellStyles'
+import { useDispoConflicts } from '@/composables/useDispoConflicts'
+import { getTypeColor, getTypeIcon, getTimeKindIcon, getSlotText } from '@/utils/dispoTypeHelpers'
+// NOTE: Ce composable est prêt pour intégration future (actuellement tree-shaken)
+// import { usePlanningModal } from '@/composables/usePlanningModal'
+import { formatModalDate, formatPhone } from '@/utils/planningFormatters'
 
-// Flag pour tester le nouveau système
 const USE_NEW_COLLABORATION = true
 
 const { notify } = useToast()
 const route = useRoute()
-
-// Initialisation des services multi-utilisateur (Phase 4)
-// (notificationService retiré: non utilisé)
 
 // Variables pour cleanup des listeners de collaboration
 const activityUnsubscribe = ref<(() => void) | null>(null)
@@ -611,8 +620,6 @@ const { preferences, loadPreferences } = useUserPreferences()
 
 // Listener pour synchronisation temps réel des préférences
 let preferencesUnsubscribe: (() => void) | null = null
-
-// (openTimePickerFromIcon retiré: non utilisé dans ce composant)
 
 // Types compatibles avec l'existant
 interface Disponibilite {
@@ -693,11 +700,6 @@ const dateTo = computed({
   set: (value) => planningFilters.updateFilter('dateTo', value)
 })
 
-// État de filtrage du système centralisé – non utilisé ici
-
-// Variables restantes non liées aux filtres
-// (viewMode, mobileFiltersOpen retirés: non utilisés ici)
-
 // Initialisation des filtres depuis les paramètres de query
 const initFiltersFromQuery = () => {
   if (route.query.collaborateur) {
@@ -706,16 +708,28 @@ const initFiltersFromQuery = () => {
   }
 }
 
-// Cache de recherche pour améliorer les performances (géré maintenant par le composable centralisé)
 const searchDebounceTimer = ref<number | null>(null)
 
-// Format de la plage de dates pour l'affichage (utilise le composable centralisé)
-// (formatFilterDateRange retiré: non utilisé ici)
-
-const loadedDays = ref<any[]>([])
-// Gestion des zones chargées
-const loadedDateRanges = ref<Array<{start: string, end: string}>>([])
+// NOTE: loadedDays et loadedDateRanges sont maintenant gérés par usePlanningDays (initialisé plus bas)
 const saving = ref(false)
+
+// === DIMENSIONS RESPONSIVE (via composable) ===
+import { useResponsiveDimensions } from '@/composables/useResponsiveDimensions'
+const responsiveDimensions = useResponsiveDimensions()
+const { 
+  isMobileView, 
+  dayWidth, 
+  stickyLeftWidth, 
+  rowHeight, 
+  rowPitch
+} = responsiveDimensions
+
+// Ref unique pour le conteneur scroll
+const planningScroll = ref<HTMLElement>()
+const rowsRef = ref<HTMLElement | null>(null)
+
+// Initialisation du composable de mesures DOM
+const { measureAndSetHeaderHeight, onResize } = usePlanningMeasure(planningScroll as Ref<HTMLElement | null>)
 
 // Nouveaux états pour les fonctionnalités ajoutées
 const collaborateurs = ref<Collaborateur[]>([])
@@ -723,55 +737,47 @@ const batchModalOpen = ref(false)
 const isBatchMode = ref(false)
 const batchDates = ref<string[]>([])
 const batchCollaborateurId = ref<string>('')
+const lockUpdateCounter = ref(0)
+
+// === COMPOSABLE usePlanningSelection ===
+// NOTE: Le composable sera initialisé plus tard, après la définition de stopAutoScroll
+// Pour l'instant, on garde les refs locales qui seront remplacées par les exports du composable
 const selectedCells = ref<Set<string>>(new Set())
-// (cellLocks retiré: la grille utilise getCellLockClasses() basé sur le service)
-const lockUpdateCounter = ref(0) // Force la réactivité des verrous
+const isSelectionMode = ref(false)
+const isDraggingSelection = ref(false)
+const dragStartCell = ref<string | null>(null)
+const hasMouseMoved = ref(false)
 
 // Computed: ID du collaborateur actuellement sélectionné (pour griser les autres lignes)
+// NOTE: sera remplacé par selectedCollaborateurId du composable
 const selectedCollaborateurId = computed(() => {
   if (selectedCells.value.size === 0) return null
   return getCurrentSelectedCollaborateur()
 })
 
-// État pour la sélection par lot
-const isSelectionMode = ref(false)
-const isDraggingSelection = ref(false)
-const dragStartCell = ref<string | null>(null)
-const hasMouseMoved = ref(false) // Flag pour distinguer clic simple vs drag
-
-// Auto-scroll DÉSACTIVÉ - DOM trop massif pour performance acceptable
-// L'utilisateur scrolle manuellement avec trackpad/molette pendant la sélection
-
-// Gestionnaires d'événements clavier pour la sélection par lot
+// Gestionnaires d'événements clavier - temporaire jusqu'à intégration complète
 const handleKeyDown = (e: KeyboardEvent) => {
-  // Sur desktop, activer le mode sélection avec Ctrl/Cmd
-  // Sur mobile, laisser le FAB gérer le mode sélection
   if ((e.ctrlKey || e.metaKey) && !isMobileView.value) {
     isSelectionMode.value = true
   }
 }
 
 const handleKeyUp = (e: KeyboardEvent) => {
-  // Sur desktop, désactiver le mode sélection quand on relâche Ctrl/Cmd
-  // Sur mobile, laisser le FAB gérer le mode sélection
   if (!e.ctrlKey && !e.metaKey && !isMobileView.value) {
     isSelectionMode.value = false
   }
 }
 
-// Watcher pour appliquer la classe CSS au body
-// Watcher unique pour les classes CSS du mode sélection et glissement
+// Watcher pour les classes CSS du mode sélection
+// NOTE: utilise stopAutoScroll et handleGlobalMouseMoveDuringDrag de usePlanningScroll
 watch([isSelectionMode, isDraggingSelection], ([selMode, dragMode]) => {
   document.body.classList.toggle('selection-mode', selMode)
   document.body.classList.toggle('dragging-selection', dragMode)
   
-  // Attacher/détacher le listener global pour le mousemove pendant le drag
-  // Cela permet d'arrêter le scroll si la souris sort de la zone du planning
   if (dragMode) {
     document.addEventListener('mousemove', handleGlobalMouseMoveDuringDrag)
   } else {
     document.removeEventListener('mousemove', handleGlobalMouseMoveDuringDrag)
-    // S'assurer que l'auto-scroll est arrêté quand le drag s'arrête
     stopAutoScroll()
   }
 })
@@ -779,21 +785,16 @@ watch([isSelectionMode, isDraggingSelection], ([selMode, dragMode]) => {
 // Debounce timer pour la synchronisation des cellules sélectionnées
 let syncSelectedCellsTimer: number | null = null
 
-// Watcher pour la sélection de cellules (mettre à jour les initiales + transmettre aux autres)
+// Watcher pour synchroniser les sélections avec les autres utilisateurs
 watch(selectedCells, () => {
-  // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
-  // Plus besoin de updatePresenceInitials()
-  
-  // Debounce la synchronisation pour éviter le spam réseau pendant le drag
   if (syncSelectedCellsTimer) {
     clearTimeout(syncSelectedCellsTimer)
   }
   syncSelectedCellsTimer = window.setTimeout(() => {
-    // Transmettre les sélections aux autres utilisateurs via RTDB
     if (collaborationService.isActive) {
       collaborationService.updateSelectedCells(selectedCells.value)
     }
-  }, 100) // 100ms de debounce
+  }, 100)
 }, { deep: true })
 
 // Watcher pour le modal batch - lock des cellules sélectionnées côté admin
@@ -839,30 +840,40 @@ watch(batchModalOpen, async (isOpen) => {
 
 // Services (pour les futures fonctionnalités temps réel)
 
-function isDayLoaded(date: string): boolean {
-  return loadedDateRanges.value.some(range => date >= range.start && date <= range.end)
-}
-
-function addLoadedRange(start: string, end: string) {
-  loadedDateRanges.value.push({ start, end })
-  // Fusionner les plages qui se chevauchent
-  loadedDateRanges.value.sort((a, b) => a.start.localeCompare(b.start))
-  const merged = []
-  for (const range of loadedDateRanges.value) {
-    if (merged.length === 0 || merged[merged.length - 1].end < range.start) {
-      merged.push(range)
-    } else {
-      merged[merged.length - 1].end = range.end > merged[merged.length - 1].end ? range.end : merged[merged.length - 1].end
-    }
-  }
-  loadedDateRanges.value = merged
-}
-
+// Calcul minPastDate (déplacé avant usePlanningDays qui en dépend)
 const minPastDate = computed<string>(() => {
   if (dateFrom.value) return dateFrom.value
   if (dateTo.value && !dateFrom.value) return '2000-01-01'
   return calcMinPastDate()
 })
+
+// === COMPOSABLE usePlanningDays ===
+// Gère loadedDays, loadedDateRanges, isDayLoaded, addLoadedRange, appendDays, prependDays, etc.
+const planningDays = usePlanningDays({
+  dateFrom: computed(() => dateFrom.value),
+  dateTo: computed(() => dateTo.value),
+  minPastDate,
+  dayWidth,
+  stickyLeftWidth,
+  planningScrollRef: planningScroll as Ref<HTMLElement | undefined>,
+  onMeasure: measureAndSetHeaderHeight
+})
+
+// Destructurer pour un accès direct
+const {
+  loadedDays,
+  loadedDateRanges,
+  isDayLoaded,
+  addLoadedRange,
+  // invalidateIsDayLoadedCache, // disponible via planningDays si besoin
+  appendDays: appendDaysFromComposable,
+  prependDays: prependDaysFromComposable,
+  prunePastIfFar,
+  pruneFutureIfFar,
+  // goToToday est géré localement (utilise visibleDays filtrés)
+  // goToDate, // disponible via planningDays si besoin
+  setScrollingFastChecker
+} = planningDays
 
 // Environnement
 const isLocalhostEnv = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -872,19 +883,12 @@ function canonicalizeLieu(lieu: string): string {
   return canonicalizeLieuShared(lieu)
 }
 
-// (retiré) ancienne heuristique de statut par lieu
-
-// Détection simple de créneaux à partir d'un texte
 function detectSlotsFromText(text: string): string[] {
   return detectSlotsShared(text || '')
 }
 
-// Hover entièrement géré par CSS (:hover) et overlay de colonne
-
 // Debug: fonction globale pour diagnostiquer l'état
 function diagnoseMutliUser() {
-
-  
   if (collaborationService) {
 
   }
@@ -909,11 +913,91 @@ const allCollaborateurs = ref<Collaborateur[]>([])
 const loadingCollaborateurs = ref(false)
 const loadingDisponibilites = ref(false)
 const disponibilitesCache = ref<Map<string, Disponibilite[]>>(new Map())
+// Version counter pour invalider les caches sans deep watch
+const disponibilitesCacheVersion = ref(0)
 
 // Type pour les disponibilités enrichies avec info de continuation
 type CellDispo = Disponibilite & { _cont?: 'start'|'end' }
 
-// Cache memoizé pour getCellDisposSorted (optimisation performance)
+// ==========================================
+// COMPOSABLE usePlanningDispos
+// ==========================================
+// Intégré pour centraliser la logique des disponibilités
+const planningDispos = usePlanningDispos({
+  disponibilitesCache,
+  canonicalizeLieu,
+  detectSlotsFromText,
+  deriveTimeKindFromData
+})
+
+// Extraction des fonctions du composable (remplace les définitions locales)
+const {
+  resolveDispoKind: resolveDispoKindRaw,
+  typePriority,
+  partForDay,
+  getDisponibilites,
+  getCellDispos: getCellDisposRaw,
+  getCellDisposSorted: getCellDisposSortedRaw,
+  getDayStatus,
+  isAvailableOnDate,
+  invalidateCellDisposCache: invalidateCellDisposCacheFromComposable,
+  clearCaches: clearDisposCaches,
+  toMinutes,
+  SLOT_ORDER: slotOrder
+} = planningDispos
+
+// Wrappers avec types locaux pour compatibilité TypeScript
+function resolveDispoKind(d: any) {
+  return resolveDispoKindRaw(d)
+}
+function getCellDispos(collaborateurId: string, date: string): CellDispo[] {
+  return getCellDisposRaw(collaborateurId, date) as CellDispo[]
+}
+function getCellDisposSorted(collaborateurId: string, date: string): CellDispo[] {
+  return getCellDisposSortedRaw(collaborateurId, date) as CellDispo[]
+}
+
+// ==========================================
+// COMPOSABLE usePlanningCellStyles
+// ==========================================
+// Intégré pour centraliser les styles des cellules
+const planningCellStyles = usePlanningCellStyles({
+  resolveDispoKind,
+  getCellDispos
+})
+
+// Extraction des fonctions du composable
+const {
+  getDispoTypeClass,
+  getDispoContinuationClass,
+  getCellKindClass: getCellKindClassRaw,
+  getDispoCardClass,
+  getDispoCardStyle,
+  getDispoTypeIcon,
+  isOvernightContinuation,
+  isOvernightStart
+} = planningCellStyles
+
+// Wrapper pour getCellKindClass avec cache local
+const cellKindClassCache = new Map<string, string>()
+let cellKindClassCacheVersion = 0
+function getCellKindClass(collaborateurId: string, date: string): string {
+  const cacheKey = `${collaborateurId}-${date}-${cellDisposCacheVersion}`
+  const cached = cellKindClassCache.get(cacheKey)
+  if (cached !== undefined) return cached
+  
+  if (cellKindClassCacheVersion !== cellDisposCacheVersion) {
+    cellKindClassCache.clear()
+    cellKindClassCacheVersion = cellDisposCacheVersion
+  }
+  
+  const result = getCellKindClassRaw(collaborateurId, date) || 'cell-empty'
+  cellKindClassCache.set(cacheKey, result)
+  return result
+}
+
+// Cache memoizé local (synchronisé avec le composable)
+// NOTE: Conservé pour compatibilité avec le code existant
 const cellDisposSortedCache = new Map<string, CellDispo[]>()
 let cellDisposCacheVersion = 0
 
@@ -927,21 +1011,70 @@ function invalidateCellDisposCache(specificKey?: string) {
   }
 }
 
-// Watcher pour invalider le cache quand les disponibilités changent
-watch(disponibilitesCache, () => {
+// ==========================================
+// COMPOSABLE useDispoConflicts
+// ==========================================
+// Intégré pour centraliser la logique de détection des conflits
+// NOTE: sanitizeDisposition est passée après sa définition via late-binding
+let dispoConflictsInitialized = false
+let conflictFunctions: ReturnType<typeof useDispoConflicts> | null = null
+
+function initDispoConflicts() {
+  if (dispoConflictsInitialized) return conflictFunctions!
+  conflictFunctions = useDispoConflicts({
+    resolveDispoKind,
+    sanitizeDisposition
+  })
+  dispoConflictsInitialized = true
+  return conflictFunctions
+}
+
+// Wrappers pour les fonctions de conflit (initialisation lazy)
+function violatesMissionDispoOverlap(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): boolean {
+  return initDispoConflicts().violatesMissionDispoOverlap(existing, candidate)
+}
+function wouldConflict(list: Partial<Disponibilite>[]): boolean {
+  return initDispoConflicts().wouldConflict(list)
+}
+function wouldConflictWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): boolean {
+  return initDispoConflicts().wouldConflictWithCandidate(existing, candidate)
+}
+function getConflictMessage(list: Partial<Disponibilite>[]): string | null {
+  return initDispoConflicts().getConflictMessage(list)
+}
+function getConflictMessageWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): string | null {
+  return initDispoConflicts().getConflictMessageWithCandidate(existing, candidate)
+}
+function dispoSignature(d: Partial<Disponibilite>): string {
+  return initDispoConflicts().dispoSignature(d)
+}
+function isOvernightContinuationFromPrevDay(dispo: Partial<Disponibilite>): boolean {
+  return initDispoConflicts().isOvernightContinuationFromPrevDay(dispo)
+}
+
+// Fonction pour signaler un changement dans le cache des disponibilités
+function notifyDisponibilitesChanged() {
+  disponibilitesCacheVersion.value++
   invalidateCellDisposCache()
-}, { deep: true })
+}
+
+// Wrappers pour les opérations sur disponibilitesCache (évite le deep watch)
+function setCacheDispos(date: string, dispos: Disponibilite[]) {
+  disponibilitesCache.value.set(date, dispos)
+  notifyDisponibilitesChanged()
+}
+
+function clearDisposCache() {
+  disponibilitesCache.value.clear()
+  notifyDisponibilitesChanged()
+}
 
 // État de chargement initial
 const isInitialLoad = ref(true)
 const planningReady = ref(false)
 
-// Modale de chargement Vuestic - FORCÉE COMME FERMÉE
-const showLoadingModal = computed(() => false) // TEMPORAIREMENT FORCÉ À FALSE
-
-
-// État combiné : planning vraiment prêt - FORCÉ POUR DEBUG
-// (isPlanningFullyReady retiré: non utilisé)
+// Modale de chargement (désactivée)
+const showLoadingModal = computed(() => false)
 
 // Synchronisation temps réel
 const realtimeListeners = ref<string[]>([])
@@ -955,9 +1088,9 @@ const connectedUsers = computed(() => {
   
   return users
 })
+// Timer pour debounce du hover collaboratif dans handleCellMouseEnter
 let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
-let hoverEndGraceTimer: ReturnType<typeof setTimeout> | null = null
-// Cache local pour indicateurs de cellules (reconstruit toutes les 200ms)
+
 // ==========================================
 // NOUVEAU SYSTÈME RÉACTIF DE PRÉSENCE
 // ==========================================
@@ -1079,6 +1212,17 @@ const typeOptions = computed(() => {
   }
   return allTypeOptions
 })
+
+// === SECTION MODAL ===
+// NOTE: La logique de modal est partiellement extractible vers usePlanningModal.
+// Composable disponible dans @/composables/usePlanningModal mais pas encore intégré
+// car les fonctions de sauvegarde dépendent de beaucoup de code local.
+// Pour intégration future, voir les exports du composable :
+// - showModal, showDispoModal, showCollabModal, selectedCell, selectedCellDispos
+// - editingDispoIndex, isAddingNewDispo, editingDispo, newDispo, saving
+// - openModalForCollaborateur, openDispoModal, openBatchModal, cancelModal
+// - addNewDispo, removeDispo, editDispo, saveDispos, saveBatchDispos, deleteBatchDispos
+// - getTypeColor, getTypeIcon, getTimeKindIcon, getTypeText, getSlotText
 
 // Modal & ajout états
 const showDispoModal = ref(false)
@@ -1247,22 +1391,9 @@ function openModalForCollaborateur(collaborateurId: string, date: string) {
   openDispoModal(collaborateurId, date)
 }
 
-const isMobileView = ref(false)
-const dayWidthRef = ref(100) // Réduit de 124px à 100px pour afficher plus de jours
-// Largeur colonne collaborateurs (desktop) réduite
-const stickyLeftWidthRef = ref(190)
-const rowHeightRef = ref(65) // Réduit à 65px pour une meilleure proportion
-const rowPitchRef = computed(() => rowHeightRef.value + 1)
-
+// === FONCTION RESPONSIVE (utilise le composable useResponsiveDimensions) ===
 function computeResponsive() {
-  const w = window.innerWidth
-  const h = window.innerHeight
-  
-  // Activer le style mobile si largeur <= 900px OU si c'est un écran mobile en paysage
-  // (hauteur < largeur ET hauteur <= 500px pour détecter les mobiles en paysage)
-  isMobileView.value = w <= 900 || (h < w && h <= 500)
-  
-  // Sauvegarder la position de scroll actuelle pour la restaurer après redimensionnement
+  // Sauvegarder la position de scroll pour la restaurer après redimensionnement
   const scroller = planningScroll.value
   let centerDayIndex = -1
   if (scroller) {
@@ -1270,52 +1401,27 @@ function computeResponsive() {
     const currentViewportWidth = scroller.clientWidth
     const currentStickyWidth = stickyLeftWidth.value
     const currentPitch = dayPitchBodyPx.value || (dayWidth.value + 1)
-    
-    // Calculer quel jour est au centre de l'écran actuellement
     const centerX = currentScrollLeft + (currentViewportWidth - currentStickyWidth) / 2
     centerDayIndex = Math.round(centerX / currentPitch)
   }
   
-  // Calculer les nouvelles dimensions selon la taille d'écran
-  let sticky = 240
-  let day = 100 // Réduit de 124px à 100px pour afficher plus de jours sur desktop
-  let rowH = 65 // Réduit à 65px pour une meilleure proportion
-  if (w <= 390) { // iPhone 12 width
-  sticky = 100; day = Math.max(54, Math.min(74, Math.floor((w - sticky - 8)/5))); rowH = 60 // Colonne plus large sur très petit écran
-  } else if (w <= 430) {
-  sticky = 115; day = Math.max(59, Math.min(79, Math.floor((w - sticky - 10)/5))); rowH = 62 // Colonne plus large
-  } else if (w <= 520) {
-  sticky = 130; day = Math.max(69, Math.min(89, Math.floor((w - sticky - 12)/5))); rowH = 64 // Colonne plus large
-  } else if (w <= 640) {
-  sticky = 145; day = Math.max(79, Math.min(99, Math.floor((w - sticky - 16)/5))); rowH = 66 // Colonne plus large
-  } else if (w <= 900) {
-    sticky = 160; day = Math.max(89, Math.min(109, Math.floor((w - sticky - 20)/5))); rowH = 68
-  } else {
-    // Desktop large: réduire encore si > 900
-    sticky = Math.min(240, Math.max(200, Math.floor(w * 0.16))) // approx 16% viewport, borné 200-240
-  }
-  
-  dayWidthRef.value = day
-  stickyLeftWidthRef.value = sticky
-  rowHeightRef.value = rowH
-  
-  nextTick(() => {
-    if (planningScroll.value) {
-      recomputeWindow(planningScroll.value)
-      
-      // Utiliser le système optimisé de mesures avec timing approprié
-      requestAnimationFrame(() => {
-        scheduleMeasurements(true) // Inclure la mise à jour de l'overlay aujourd'hui
-        
-        // Restaurer la position de scroll pour garder le même jour au centre
-        if (centerDayIndex >= 0) {
-          const newPitch = dayWidth.value + 1
-          const newCenterX = centerDayIndex * newPitch
-          const newScrollLeft = Math.max(0, newCenterX - (planningScroll.value!.clientWidth - stickyLeftWidth.value) / 2)
-          planningScroll.value!.scrollLeft = newScrollLeft
-        }
-      })
-    }
+  // Utiliser le composable pour calculer et appliquer les dimensions
+  responsiveDimensions.applyDimensions(() => {
+    nextTick(() => {
+      if (planningScroll.value) {
+        recomputeWindow(planningScroll.value)
+        requestAnimationFrame(() => {
+          scheduleMeasurements()
+          // Restaurer la position de scroll
+          if (centerDayIndex >= 0) {
+            const newPitch = dayWidth.value + 1
+            const newCenterX = centerDayIndex * newPitch
+            const newScrollLeft = Math.max(0, newCenterX - (planningScroll.value!.clientWidth - stickyLeftWidth.value) / 2)
+            planningScroll.value!.scrollLeft = newScrollLeft
+          }
+        })
+      }
+    })
   })
 }
 
@@ -1326,21 +1432,15 @@ onMounted(() => {
   try {
     if (AuthService.currentTenantId) {
       disponibilitesRTDBService.setTenantId(AuthService.currentTenantId)
-      // RTDB tenantId appliqué
     }
   } catch (e) {
     console.warn('⚠️ Impossible d\'appliquer le tenantId au service RTDB:', e)
   }
-  // Lorsque le DOM est prêt, s'assurer d'afficher au moins une fenêtre de lignes
   nextTick(() => ensureRowsVisible())
 })
 onUnmounted(() => window.removeEventListener('resize', computeResponsive))
 
-// Aliases simples
-const dayWidth = computed(() => dayWidthRef.value)
-const stickyLeftWidth = computed(() => stickyLeftWidthRef.value)
-const rowHeight = computed(() => rowHeightRef.value)
-const rowPitch = computed(() => rowPitchRef.value)
+// Aliases simples déplacés plus haut (ligne ~727)
 
 // Quand la largeur d'une journée change (responsive),
 // re-calculer window et rowWindow pour éviter un écran vide transitoire.
@@ -1357,42 +1457,13 @@ watch(dayWidth, () => {
 // re-clamper la fenêtre verticale pour éviter d'afficher 0 ligne
 // (watch déplacé plus bas après la déclaration de filteredCollaborateurs)
 
-// Visible days = fenêtre dynamique basée sur loadedDays
-const visibleDays = computed(() => {
-  const days = loadedDays.value
-  const from = dateFrom.value
-  const to = dateTo.value
-
-  if (from && to) {
-    const a = from <= to ? from : to
-    const b = from <= to ? to : from
-    return days.filter(d => d.date >= a && d.date <= b)
-  }
-  if (from && !to) {
-    const a = from
-    return days.filter(d => d.date >= a)
-  }
-  if (to && !from) {
-    // Avec seulement une date de fin, on affiche de "très loin" jusqu'à la date de fin incluse
-    // Borne gauche: minPastDate dynamique (2000-01-01 quand dateTo seule)
-    const a = minPastDate.value
-    const b = to
-    return days.filter(d => d.date <= b && d.date >= a)
-  }
-  return days
-})
-const gridMinWidth = computed(() => (visibleDays.value.length * dayWidth.value) + 'px')
-
-// Vérifier si aujourd'hui est visible dans la plage filtrée
-const isTodayVisible = computed(() => visibleDays.value.some(d => d.isToday))
-
-// Hauteur totale de la grille des collaborateurs pour le scroll virtuel
-const gridTotalHeight = computed(() => (filteredCollaborateurs.value.length * rowHeight.value) + 'px')
+// NOTE: visibleDays, gridMinWidth, isTodayVisible, gridTotalHeight sont maintenant gérés par usePlanningLayout
+// (initialisé après useVirtualGrid car il a besoin de windowStartIndex et hoveredColumnIndex)
 
 const vg = useVirtualGrid({
   dayWidth,
   rowHeight,
-  visibleDays,
+  visibleDays: computed(() => planningLayout.visibleDays.value),
   rows: computed(() => filteredCollaborateurs.value),
 })
 const {
@@ -1410,6 +1481,61 @@ const {
   // virtualizationStats, // retiré: non utilisé
   // updateVirtualizationStats, // retiré: non utilisé
 } = vg
+
+// Configurer le checker isScrollingFast pour usePlanningDays (pruning)
+setScrollingFastChecker(() => isScrollingFast.value)
+
+// === COMPOSABLE usePlanningHover ===
+// Gère hoveredColumnIndex, hoveredRowIndex, handleCellHover, handleCellHoverEnd, clearAllHighlights, etc.
+const planningHover = usePlanningHover({
+  planningScrollRef: planningScroll as Ref<HTMLElement | undefined>,
+  isScrollingFast,
+  isBusy,
+  collaborationService,
+  isDraggingSelection,
+  hasMouseMoved
+})
+
+// Destructurer pour un accès direct (remplace les implémentations locales)
+const {
+  hoveredColumnIndex,
+  hoveredRowIndex,
+  clearAllHighlights,
+  cleanHoverHighlights,
+  handleCellHover,
+  handleCellHoverEnd
+  // Autres exports disponibles si besoin: onGridMouseLeave, getLastPointerPosition, setLastPointerPosition, cleanup
+} = planningHover
+
+// === COMPOSABLE usePlanningLayout ===
+// Gère visibleDays, highlightStyles, getCellClasses, getDayHeaderClasses, gridTotalHeight, etc.
+const planningLayout = usePlanningLayout({
+  dayWidth,
+  stickyLeftWidth,
+  rowHeight,
+  loadedDays,
+  filteredCollaborateurs,
+  dateFrom: computed(() => dateFrom.value),
+  dateTo: computed(() => dateTo.value),
+  minPastDate,
+  windowStartIndex,
+  hoveredColumnIndex,
+  hoveredRowIndex
+})
+
+// Destructurer les exports du layout (remplace les implémentations locales)
+const {
+  visibleDays,
+  isTodayVisible,
+  gridMinWidth,
+  gridTotalHeight,
+  highlightStyles,
+  getCellClasses,
+  getDayHeaderClasses,
+  getDispoBarsLayoutClass,
+  currentVisibleMonth,
+  setGetCellDispos
+} = planningLayout
 
 // Clé pour forcer un re-render de la fenêtre des lignes
 const renderKey = ref(0)
@@ -1449,14 +1575,11 @@ function ensureRowsVisible() {
 
 // NOTE: le watch(filteredCollaborateurs) est positionné plus bas après sa déclaration
 
-// Ref unique pour le conteneur scroll
-const planningScroll = ref<HTMLElement>()
+// planningScroll et rowsRef déclarés plus haut (ligne ~732)
 // Refs overlays pour MAJ directe des transforms (évite CSS vars globales)
 const colHoverEl = ref<HTMLElement | null>(null)
 const colHoverHeaderEl = ref<HTMLElement | null>(null)
 const rowHoverEl = ref<HTMLElement | null>(null)
-// Ref pour le conteneur des lignes, utilisé pour calculer précisément la position Y du survol
-const rowsRef = ref<HTMLElement | null>(null)
 // Origines/pas mesurés des colonnes (px depuis le bord du scroller)
 const gridLeftHeaderPx = ref<number>(0)
 const gridLeftBodyPx = ref<number>(0)
@@ -1481,9 +1604,7 @@ let perfStats = {
   lastMeasureTime: 0
 }
 
-function scheduleMeasurements(_includeToday = true) {
-  // Marquer le paramètre comme utilisé pour les outils stricts
-  void _includeToday
+function scheduleMeasurements() {
   if (measurementPending) return
   measurementPending = true
   
@@ -1514,7 +1635,6 @@ function scheduleMeasurements(_includeToday = true) {
       
       if (perfStats.measureCalls % 10 === 0) {
         // const avgTime = perfStats.totalMeasureTime / perfStats.measureCalls
-        // console.log(`🔧 Perf mesures: ${perfStats.measureCalls} calls, avg=${avgTime.toFixed(2)}ms, last=${measureTime.toFixed(2)}ms`)
       }
     }
   })
@@ -1585,85 +1705,11 @@ function measureRowPitch() {
   }
 }
 
-
 // Debug hover perf
 // === SYSTÈME SIMPLIFIÉ DE HIGHLIGHTS ===
 
-// Variables d'index simplifiées - plus utilisées pour le hover maintenant
-const hoveredColumnIndex = ref(-1) // Index de la colonne survolée
-const hoveredRowIndex = ref(-1)    // Index de la ligne survolée
-
-// Mois actuellement visible
-const currentVisibleMonth = ref('')
-
-// CSS Variables simplifiées
-const highlightStyles = computed(() => {
-  return {
-    '--day-width': dayWidth.value + 'px',
-    '--sticky-left': stickyLeftWidth.value + 'px', 
-    '--day-pitch': (dayWidth.value + 1) + 'px'
-    // Plus besoin de --today-column ni --hovered-column/--hovered-row
-  }
-})
-
-// Plus de cache pour todayColumnIndex - utilisation CSS pur avec data-today
-
-// Fonctions pour calculer les classes CSS des cellules (haute performance)
-const cellClassesCache = new Map<string, string[]>()
-let lastHoveredColumn = -1
-let lastHoveredRow = -1
-
-function getCellClasses(dayIndex: number, rowIndex: number) {
-  const localDayIndex = dayIndex - windowStartIndex.value
-  
-  // Cache ultra-optimisé - ne recalculer que si les valeurs de hover ont changé
-  const currentHoveredColumn = hoveredColumnIndex.value
-  const currentHoveredRow = hoveredRowIndex.value
-  
-  if (lastHoveredColumn !== currentHoveredColumn || lastHoveredRow !== currentHoveredRow) {
-    cellClassesCache.clear()
-    lastHoveredColumn = currentHoveredColumn
-    lastHoveredRow = currentHoveredRow
-  }
-  
-  const cacheKey = `${localDayIndex}-${rowIndex}`
-  if (cellClassesCache.has(cacheKey)) {
-    return cellClassesCache.get(cacheKey)!
-  }
-  
-  const classes = []
-  
-  if (currentHoveredColumn === localDayIndex) {
-    classes.push('column-hovered')
-  }
-  
-  if (currentHoveredRow === rowIndex) {
-    classes.push('row-hovered')
-  }
-  
-  // Plus besoin d'ajouter saturday/sunday - géré par la classe day-N dans le template
-  
-  // Plus besoin de today-column - géré par data-today dans le template
-  
-  cellClassesCache.set(cacheKey, classes)
-  return classes
-}
-
-function getDayHeaderClasses(dayIndex: number) {
-  // Même logique : convertir l'index absolu en index local
-  const localDayIndex = dayIndex - windowStartIndex.value
-  const classes = []
-  
-  if (hoveredColumnIndex.value === localDayIndex) {
-    classes.push('column-hovered')
-  }
-  
-  // Plus besoin d'ajouter saturday/sunday - géré par la classe day-N dans le template
-  
-  // Plus besoin de today-column - géré par data-today dans le template
-  
-  return classes
-}
+// NOTE: hoveredColumnIndex et hoveredRowIndex sont maintenant gérés par usePlanningHover
+// NOTE: currentVisibleMonth, highlightStyles, getCellClasses, getDayHeaderClasses sont maintenant gérés par usePlanningLayout
 
 function getCollaborateurRowClasses(rowIndex: number) {
   const classes = []
@@ -1675,117 +1721,81 @@ function getCollaborateurRowClasses(rowIndex: number) {
   return classes
 }
 
-// === GESTION OPTIMISÉE DU HOVER ===
+// === COMPOSABLE usePlanningScroll ===
+// Gère onScrollExtend, auto-scroll, updateHoverOnScroll, triggerHoverAtCursor, etc.
+// Note: generateDisponibilitesForDateRange sera set via setGenerateDisponibilitesForDateRange plus tard
+const planningScroll_ = usePlanningScroll({
+  planningScrollRef: planningScroll as Ref<HTMLElement | undefined>,
+  rowsRef,
+  dayWidth,
+  stickyLeftWidth,
+  rowHeight,
+  loadedDays,
+  visibleDays,
+  filteredCollaborateurs,
+  paginatedCollaborateurs,
+  dateFrom: computed(() => dateFrom.value),
+  dateTo: computed(() => dateTo.value),
+  minPastDate,
+  isScrollingFast,
+  isBusy,
+  isSelectionMode,
+  isDraggingSelection,
+  extending,
+  windowStartIndex,
+  recomputeWindow,
+  recomputeRowWindow,
+  hoveredColumnIndex,
+  hoveredRowIndex,
+  colHoverEl,
+  colHoverHeaderEl,
+  rowHoverEl,
+  gridLeftBodyPx,
+  dayPitchBodyPx,
+  rowPitchPx,
+  appendDays,
+  prependDays,
+  prunePastIfFar,
+  pruneFutureIfFar,
+  // Placeholder temporaire - sera remplacé par setGenerateDisponibilitesForDateRange
+  generateDisponibilitesForDateRange: async () => {},
+  triggerPrefetch: planningData.triggerPrefetch,
+  cleanHoverHighlights,
+  currentVisibleMonth
+})
 
-// (DEBUG_HOVER supprimé – non utilisé)
+// Destructurer les exports du scroll (remplace les implémentations locales)
+const {
+  isAutoScrolling,
+  onScrollExtend,
+  stopAutoScroll,
+  handleAutoScroll,
+  handleGlobalMouseMoveDuringDrag,
+  updateHoverOnScroll,
+  triggerHoverAtCursor,
+  updateCurrentVisibleMonth,
+  invalidateHoverCache,
+  getLastPointerPosition,
+  setLastPointerPosition,
+  resetPointerPosition,
+  setHandleCellMouseEnter,
+  setGenerateDisponibilitesForDateRange
+} = planningScroll_
+
+// === GESTION OPTIMISÉE DU HOVER (variables locales restantes) ===
+
 let _hoverRafId: number | null = null
-let _lastPointerX = 0
-let _lastPointerY = 0
 
-// Cache des valeurs calculées pour éviter les re-calculs
-let _cachedGridValues: {
-  gridLeft: number
-  pitch: number
-  rowsOffset: number
-  nRows: number
-  rect: DOMRect
-  timestamp: number
-} | null = null
-
-function invalidateHoverCache() {
-  _cachedGridValues = null
-}
-
-// Met à jour les index de colonne/ligne survolées (version révolutionnaire)
-let _debounceTimer: number | null = null
-
-// SYSTÈME CROISEMENT PARFAIT : colonne + ligne comme la date du jour
-
-// Auto-scroll pendant la sélection - VERSION ULTRA-LÉGÈRE
-let autoScrollRAF: number | null = null
-const isAutoScrolling = ref(false)
-
-// Configuration
-const EDGE_ZONE = 100
-const MAX_SPEED_X = 15
-const MAX_SPEED_Y = 10
-
-// Position souris
-let lastClientX = 0
-let lastClientY = 0
-
-function autoScrollLoop() {
-  if (!planningScroll.value || !isSelectionMode.value || !isDraggingSelection.value) {
-    stopAutoScroll()
-    return
-  }
-  
-  const scroller = planningScroll.value
-  const rect = scroller.getBoundingClientRect()
-  const mouseX = lastClientX - rect.left
-  const mouseY = lastClientY - rect.top
-  
-  let dx = 0
-  let dy = 0
-  
-  // Calcul simple et direct des déplacements
-  if (mouseX < EDGE_ZONE) {
-    dx = -MAX_SPEED_X * (1 - mouseX / EDGE_ZONE)
-  } else if (mouseX > rect.width - EDGE_ZONE) {
-    dx = MAX_SPEED_X * (1 - (rect.width - mouseX) / EDGE_ZONE)
-  }
-  
-  if (mouseY < EDGE_ZONE) {
-    dy = -MAX_SPEED_Y * (1 - mouseY / EDGE_ZONE)
-  } else if (mouseY > rect.height - EDGE_ZONE) {
-    dy = MAX_SPEED_Y * (1 - (rect.height - mouseY) / EDGE_ZONE)
-  }
-  
-  // Appliquer directement - PAS de recompute, le navigateur gère le rendu
-  if (dx !== 0) scroller.scrollLeft += dx
-  if (dy !== 0) scroller.scrollTop += dy
-  
-  autoScrollRAF = requestAnimationFrame(autoScrollLoop)
-}
-
-function handleAutoScroll(e: MouseEvent) {
-  lastClientX = e.clientX
-  lastClientY = e.clientY
-  
-  if (isSelectionMode.value && isDraggingSelection.value && planningScroll.value && !autoScrollRAF) {
-    isAutoScrolling.value = true
-    autoScrollRAF = requestAnimationFrame(autoScrollLoop)
-  }
-}
-
-function stopAutoScroll() {
-  if (autoScrollRAF) {
-    cancelAnimationFrame(autoScrollRAF)
-    autoScrollRAF = null
-  }
-  // Recompute final quand on arrête
-  if (planningScroll.value && isAutoScrolling.value) {
-    recomputeWindow(planningScroll.value)
-    recomputeRowWindow(planningScroll.value)
-  }
-  isAutoScrolling.value = false
-}
-
-// Gestionnaire global pour le mousemove pendant le drag
-// Permet d'arrêter le scroll si la souris sort de la zone du planning
-function handleGlobalMouseMoveDuringDrag(e: MouseEvent) {
-  if (!isDraggingSelection.value || !planningScroll.value) {
-    return
-  }
-  handleAutoScroll(e)
-}
+// Met à jour les index de colonne/ligne survolées
+// NOTE: _debounceTimer pour le hover est maintenant dans usePlanningHover
+// NOTE: auto-scroll (autoScrollRAF, isAutoScrolling, autoScrollLoop, handleAutoScroll, stopAutoScroll) sont maintenant dans usePlanningScroll
+// NOTE: _lastPointerX, _lastPointerY, _cachedGridValues, invalidateHoverCache sont maintenant dans usePlanningScroll
 
 function onGridMouseMove(e: MouseEvent) {
   const target = e.target as HTMLElement
   
   // Capturer la position actuelle de la souris pour le hover après scroll
-  _lastPointerX = e.clientX
-  _lastPointerY = e.clientY
+  setLastPointerPosition(e.clientX, e.clientY)
   
   // Auto-scroll actif dès que le mode sélection est activé (Cmd pressé)
   if (isSelectionMode.value) {
@@ -1936,10 +1946,7 @@ function buildDOMCache() {
   
   _domCache.cacheValid = true
   _domCache.lastBuilt = Date.now()
-  // console.log('🚀 Cache DOM construit:', _domCache.columnElements.size, 'colonnes,', _domCache.rowElements.size, 'lignes')
 }
-
-// (updateHoverWithCache supprimée – plus utilisée)
 
 // Fonction de highlighting ultra-rapide avec cache DOM
 let _currentHighlightedColumn = -1
@@ -2077,123 +2084,12 @@ function updateHighlightWithDOMCacheClassic(columnIndex: number, rowIndex: numbe
   _currentHighlightedRow = rowIndex
 }
 
-// (logHover supprimée – debug)
+// NOTE: getDayStatus et isAvailableOnDate sont maintenant fournis par usePlanningDispos
 
-// Disponibilité par jour/plage
-function getDayStatus(collaborateurId: string, date: string): 'disponible' | 'indisponible' | 'unknown' {
-  const dispos = getDisponibilites(collaborateurId, date)
-  if (!dispos.length) return 'unknown'
-  let hasDispo = false
-  for (const d of dispos) {
-    const kind = resolveDispoKind(d)
-    if (kind.type === 'indisponible' || kind.type === 'mission') return 'indisponible'
-    if (kind.type === 'disponible') hasDispo = true
-  }
-  return hasDispo ? 'disponible' : 'unknown'
-}
-
-function isAvailableOnDate(collaborateurId: string, date: string): boolean {
-  return getDayStatus(collaborateurId, date) === 'disponible'
-}
-
-// (eachDateInRange supprimée – inutilisée)
-
-// ANCIENNES FONCTIONS DE FILTRAGE LOCAL - REMPLACÉES PAR LE SYSTÈME CENTRALISÉ
-// function isAvailableInRange(collaborateurId: string, a: string, b?: string): boolean {
-//   if (!a) return true
-//   const days = b ? eachDateInRange(a, b) : [a]
-//   if (!days.length) return false
-//   return days.every(d => isAvailableOnDate(collaborateurId, d))
-// }
-
-// function hasExplicitIndispoInRange(collaborateurId: string, a: string, b?: string): boolean {
-//   if (!a) return false
-//   const days = b ? eachDateInRange(a, b) : [a]
-//   for (const date of days) {
-//     const dispos = getDisponibilites(collaborateurId, date)
-//     if (dispos.some(d => {
-//       const k = resolveDispoKind(d)
-//       return k.type === 'indisponible' || k.type === 'mission'
-//     })) return true
-//   }
-//   return false
-// }
-
-// function hasLieuInRange(collaborateurId: string, lieu: string, a: string, b?: string): boolean {
-//   const canon = canonicalizeLieu(lieu)
-//   if (!canon) return true
-//   const days = b ? eachDateInRange(a, b) : [a]
-//   for (const date of days) {
-//     const dispos = getDisponibilites(collaborateurId, date)
-//     if (dispos.some(d => canonicalizeLieu(d.lieu || '') === canon)) return true
-//   }
-//   return false
-// }
-
-// Mode développement (déclaré ici pour être disponible dans le filtrage ci-dessous)
+// Mode développement
 const isDev = computed(() => {
   return import.meta.env.DEV || (typeof window !== 'undefined' && window.location.hostname === 'localhost')
 })
-// (alias isDevelopment supprimé – inutilisé)
-
-// Filtres (inclut statut/lieu/coupes sur dates)
-// MIGRATION: Utilisation du système centralisé usePlanningData
-// const filteredCollaborateurs = computed(() => {
-//   // Filtrage initial selon le rôle utilisateur
-//   let baseCollaborateurs = allCollaborateurs.value
-//   
-//   // Si c'est un collaborateur, ne montrer que ses propres données
-//   if (isCollaborateurInterface.value) {
-//     const uid = auth.currentUser?.uid || ''
-//     const email = auth.currentUser?.email || ''
-//     // Tenter un match par userId si dispo, sinon fallback email
-//     const byUserId = allCollaborateurs.value.filter(c => (c as any).userId && (c as any).userId === uid)
-//     if (byUserId.length > 0) {
-//       baseCollaborateurs = byUserId
-//     } else if (email) {
-//       baseCollaborateurs = allCollaborateurs.value.filter(c => c.email === email)
-//     } else {
-//       baseCollaborateurs = []
-//     }
-//   }
-//   
-//   // Si aucun filtre n'est actif du tout, retourner directement baseCollaborateurs
-//   if (!planningFilters.hasActiveFilters.value) {
-//     return baseCollaborateurs
-//   }
-//   
-//   // Utiliser le système de filtrage centralisé
-//   const results = planningFilters.filterCollaborateurs(baseCollaborateurs)
-//   
-//   // Si aucun filtre avancé n'est actif, retourner directement les résultats
-//   if (!planningFilters.filterState.lieu && !planningFilters.filterState.statut) {
-//     return results
-//   }  // Filtres avancés spécifiques au planning (lieu et statut par date)
-//   const effectiveStart = planningFilters.filterState.dateFrom || visibleDays.value[0]?.date || ''
-//   const effectiveEnd = planningFilters.filterState.dateTo || visibleDays.value[visibleDays.value.length - 1]?.date || ''
-
-//   const finalResults = results.filter(collab => {
-//     // Filtre de lieu avec recherche dans les disponibilités
-//     let lieuMatch = true
-//     if (planningFilters.filterState.lieu && effectiveStart) {
-//       lieuMatch = hasLieuInRange(collab.id, planningFilters.filterState.lieu, effectiveStart, effectiveEnd || undefined)
-//     }
-//     
-//     // Filtres de statut intelligents
-//     let statutMatch = true
-//     if (planningFilters.filterState.statut && effectiveStart) {
-//       if (planningFilters.filterState.statut === 'disponible') {
-//         statutMatch = isAvailableInRange(collab.id, effectiveStart, effectiveEnd || undefined)
-//       } else if (planningFilters.filterState.statut === 'indisponible') {
-//         statutMatch = hasExplicitIndispoInRange(collab.id, effectiveStart, effectiveEnd || undefined)
-//       }
-//     }
-//     
-//     return lieuMatch && statutMatch
-//   })
-//   
-//   return finalResults
-// })
 
 // Utiliser le système centralisé 
 // (déclaration déplacée plus haut)
@@ -2254,21 +2150,8 @@ watch([windowedRows, windowedDays], () => {
   invalidateDOMCache('Fenêtre virtuelle changée')
 }, { immediate: false, deep: false })
 
-// CORRECTION: Watcher sur les changements de filtres pour forcer recalcul virtualisation
-watch(planningFilters.filterState, async (newFilters, oldFilters) => {
-  // Détecter si la plage de dates a changé
-  const dateChanged = !!oldFilters && (
-    newFilters.dateFrom !== oldFilters.dateFrom || newFilters.dateTo !== oldFilters.dateTo
-  )
-
-  // Vérifier si tous les filtres sont vides (remis à zéro)
-  const allFiltersEmpty = !newFilters.search && 
-                         !newFilters.metier && 
-                         !newFilters.lieu && 
-                         !newFilters.statut && 
-                         !newFilters.dateFrom && 
-                         !newFilters.dateTo
-
+// Watcher sur les changements de filtres pour forcer recalcul virtualisation
+watch(planningFilters.filterState, async () => {
   await nextTick()
 
   // Recalcul de la virtualisation quand les filtres changent
@@ -2284,13 +2167,9 @@ watch(planningFilters.filterState, async (newFilters, oldFilters) => {
 
   await nextTick()
 
-  // Politique de recentrage: rester/aller à aujourd'hui si la plage de dates n'a pas été modifiée,
-  // ou si tous les filtres sont vidés.
-  if (allFiltersEmpty || !dateChanged) {
-    setTimeout(() => {
-      goToToday()
-    }, 150)
-  }
+  // CORRECTION: Ne recentrer sur aujourd'hui que si on vient de VIDER tous les filtres
+  // (pas à chaque changement de filtre quand ils sont déjà vides ou si la date n'a pas changé)
+  // Cette logique est maintenant gérée par le watcher hasActiveFilters ci-dessous
 
   // Force refresh automatique si les résultats ne s'affichent pas
   if (filteredCollaborateurs.value.length > 0 && windowedRows.value.length === 0) {
@@ -2313,7 +2192,7 @@ watch(planningFilters.filterState, async (newFilters, oldFilters) => {
       }
     }, 120)
   }
-}, { immediate: false, deep: true })
+}, { immediate: false, deep: false })
 
 // (isDevelopment déjà défini plus haut)
 
@@ -2362,16 +2241,11 @@ function findNextAvailability(collaborateurId: string, fromDate: string): string
   return null
 }
 
-// (totalDisponibilites/statutOptions/formatCurrentPeriod supprimés – inutilisés)
-
-// monthSegments supprimé car non utilisé (remplacé par weekSegments avec monthLabel)
-
 // Numéros de semaines ISO alignés sur 7 jours
 function getISOWeek(dateStr: string): number {
-  // Calcul ISO-8601 en local pour rester cohérent avec nos dates locales
-  const d = new Date(dateStr + 'T12:00:00') // milieu de journée pour éviter les bords DST
+  const d = new Date(dateStr + 'T12:00:00')
   const target = new Date(d)
-  const dayNr = (d.getDay() + 6) % 7 // 0=lundi ... 6=dimanche
+  const dayNr = (d.getDay() + 6) % 7
   target.setDate(target.getDate() - dayNr + 3)
   const firstThursday = new Date(target.getFullYear(), 0, 4)
   const firstThursdayDayNr = (firstThursday.getDay() + 6) % 7
@@ -2379,13 +2253,6 @@ function getISOWeek(dateStr: string): number {
   const diff = target.getTime() - firstThursday.getTime()
   return 1 + Math.round(diff / (7 * 24 * 3600 * 1000))
 }
-
-// (isWeekBoundary / getWeekSeparatorPosition obsolètes – remplacés par weekBoundaryPositions)
-
-// (weekBoundaryPositions retiré – approche purement CSS pour dimanche)
-
-// Détecte la fin de mois (jour dont le lendemain change de mois)
-// (supprimé) Fin de mois: plus utilisée pour jours/body; le style mois utilise un séparateur dédié
 
 const weekSegments = computed(() => {
   const segs: Array<{ key: string; week: number; count: number; monthLabel: string }> = []
@@ -2451,41 +2318,7 @@ function isMonthBoundary(_seg: { week: number; monthLabel: string }, _segIndex: 
 }
 
 // Gestion hover performante
-// plus de setters de hover réactifs: supprimés
-
-// Colonne survolée via overlay (CSS var en pixels)
-
-// Fonction pour nettoyer complètement le state de highlighting
-function clearAllHighlights() {
-  // Nettoyer avec le cache DOM
-  if (_currentHighlightedColumn >= 0) {
-    const columnElements = _domCache.columnElements.get(_currentHighlightedColumn)
-    if (columnElements) {
-      columnElements.forEach(el => el.classList.remove('dom-column-hovered'))
-    }
-  }
-  
-  if (_currentHighlightedRow >= 0) {
-    const rowElements = _domCache.rowElements.get(_currentHighlightedRow)
-    if (rowElements) {
-      rowElements.forEach(el => el.classList.remove('dom-row-hovered'))
-    }
-  }
-  
-  // Reset des variables de tracking
-  _currentHighlightedColumn = -1
-  _currentHighlightedRow = -1
-  
-  // Reset Vue reactivity
-  hoveredColumnIndex.value = -1
-  hoveredRowIndex.value = -1
-  
-  // Nettoyer le timer
-  if (_debounceTimer) {
-    clearTimeout(_debounceTimer)
-    _debounceTimer = null
-  }
-}
+// NOTE: clearAllHighlights et cleanHoverHighlights sont maintenant gérés par usePlanningHover
 
 function onGridMouseLeave() {
   clearAllHighlights()
@@ -2507,305 +2340,24 @@ function onGridMouseLeave() {
   hoveredColumnIndex.value = -1
   hoveredRowIndex.value = -1
   
-  // Reset des coordonnées
-  _lastPointerX = 0
-  _lastPointerY = 0
+  // Reset des coordonnées via le composable
+  resetPointerPosition()
   
-  // Nettoyer le timer de fin de scroll
-  if (scrollEndTimer) {
-    clearTimeout(scrollEndTimer)
-    scrollEndTimer = null
-  }
+  // Nettoyer les timers du composable scroll
+  planningScroll_.cleanup()
   
   // Nettoyer le hover collaboratif
   collaborationService.onMouseLeavePlanning()
 }
 
-// Fonction centralisée pour nettoyer les highlights crosshair
-// Throttle pour cleanHoverHighlights - max 30fps (33ms) pour réactivité
-let cleanHoverThrottleTimer: number | null = null
-let pendingCleanHover = false
+// NOTE: cleanHoverHighlights et executeCleanHover sont maintenant gérés par usePlanningHover
 
-function cleanHoverHighlights() {
-  if (!planningScroll.value) return
-  
-  // Si un nettoyage est déjà programmé, ne rien faire
-  if (pendingCleanHover) return
-  
-  // Si le throttle est actif, programmer pour plus tard
-  if (cleanHoverThrottleTimer !== null) {
-    pendingCleanHover = true
-    return
-  }
-  
-  // Exécuter le nettoyage immédiatement
-  executeCleanHover()
-  
-  // Activer le throttle
-  cleanHoverThrottleTimer = window.setTimeout(() => {
-    cleanHoverThrottleTimer = null
-    
-    // Si un nettoyage était en attente, l'exécuter maintenant
-    if (pendingCleanHover) {
-      pendingCleanHover = false
-      executeCleanHover()
-    }
-  }, 50) // Max 20 nettoyages/seconde pour éviter les artefacts visuels
-}
-
-function executeCleanHover() {
-  if (!planningScroll.value) return
-  
-  // Nettoyer tous les data attributes de hover
-  const hoveredElements = planningScroll.value.querySelectorAll('[data-column-hover], [data-row-hover]')
-  hoveredElements.forEach(el => {
-    el.removeAttribute('data-column-hover')
-    el.removeAttribute('data-row-hover')
-  })
-  
-  // Nettoyer les styles inline weekend
-  const weekendHoveredElements = planningScroll.value.querySelectorAll('.excel-cell.day-6, .excel-cell.day-0')
-  weekendHoveredElements.forEach(el => {
-    (el as HTMLElement).style.backgroundColor = ''
-  })
-}
-
-// Plus aucune synchronisation JS nécessaire: header et colonne gauche sont sticky
 
 // === HELPER FUNCTIONS ===
 
 // Générer un ID collaborateur standardisé (compatible avec les docs Firestore)
-// (generateCollaborateurId supprimée – inutilisée)
 
-// Disponibilités
-function getDisponibilites(collaborateurId: string, date: string): Disponibilite[] {
-  // Ne retourner que les disponibilités du jour.
-  // Les continuations (overnight/slot-night) de la veille sont gérées explicitement
-  // par getCellDispos et par l’enrichissement de la modale.
-  const dayDispos = disponibilitesCache.value.get(date) || []
-  return dayDispos.filter(d => d.collaborateurId === collaborateurId)
-}
-
-const slotOrder: Record<string, number> = {
-  morning: 1,
-  midday: 2,
-  afternoon: 3,
-  evening: 4,
-  night: 5,
-}
-
-// (timeKey supprimée – inutilisée)
-
-function typePriority(d: Disponibilite): number {
-  const t = resolveDispoKind(d).type
-  // priorité d’affichage par type dans une case: disponible (haut) < mission < indisponible (bas)
-  if (t === 'disponible') return 1
-  if (t === 'mission') return 2
-  if (t === 'indisponible') return 3
-  return 4
-}
-
-// Détermine si une dispo "range" couvre ce jour (start, middle, end) en gérant overnight
-function partForDay(d: Disponibilite, day: string): 'start'|'middle'|'end'|null {
-  const k = resolveDispoKind(d)
-  if ((k.timeKind !== 'range' && k.timeKind !== 'overnight') || !d.heure_debut || !d.heure_fin) return null
-  
-  const s = toMinutes(d.heure_debut)
-  const e = toMinutes(d.heure_fin)
-  if (s == null || e == null) return null
-  
-  // Pour les missions overnight détectées automatiquement ou explicitement
-  const isOvernightMission = k.timeKind === 'overnight' || e < s
-  
-  if (d.date === day) {
-    if (isOvernightMission) return 'start' // overnight: commence ce jour
-    return 'start' // mission normale du même jour
-  }
-  
-  // overnight continuation on next day
-  const next = addDaysStr(d.date, 1)
-  if (next === day && isOvernightMission) return 'end'
-  
-  return null
-}
-
-// (timeLabelForCell supprimée – inutilisée)
-
-// (fullTimeLabel supprimée – remplacée par getTemporalDisplay unifié)
-
-function getCellDispos(collaborateurId: string, date: string): CellDispo[] {
-  const list = getDisponibilites(collaborateurId, date)
-  const out: CellDispo[] = []
-  for (const d of list) {
-    const k = resolveDispoKind(d)
-    if (k.timeKind !== 'range' || !d.heure_debut || !d.heure_fin) { out.push(d as CellDispo); continue }
-    const part = partForDay(d, date)
-    if (part) out.push({ ...(d as any), _cont: part })
-    else out.push(d as CellDispo)
-  }
-  // NOTE: Les continuations overnight ont été désactivées à la demande des utilisateurs
-  // Les disponibilités de nuit n'apparaissent maintenant que sur le jour de début
-  // pour simplifier l'affichage et éviter la confusion
-  return out
-}
-
-// Cache memoizé pour éviter de recalculer le tri à chaque render
-function getCellDisposSorted(collaborateurId: string, date: string): CellDispo[] {
-  // Clé de cache unique
-  const cacheKey = `${collaborateurId}-${date}-${cellDisposCacheVersion}`
-  
-  // Vérifier le cache
-  const cached = cellDisposSortedCache.get(cacheKey)
-  if (cached !== undefined) {
-    return cached
-  }
-  
-  // Calculer et mettre en cache
-  const result = computeCellDisposSorted(collaborateurId, date)
-  cellDisposSortedCache.set(cacheKey, result)
-  
-  // Limiter la taille du cache (garder les 1000 dernières entrées)
-  if (cellDisposSortedCache.size > 1000) {
-    const firstKey = cellDisposSortedCache.keys().next().value
-    if (firstKey) cellDisposSortedCache.delete(firstKey)
-  }
-  
-  return result
-}
-
-// Fonction de calcul effectif (appelée seulement si pas en cache)
-function computeCellDisposSorted(collaborateurId: string, date: string): CellDispo[] {
-  const toMin = (t?: string) => {
-    if (!t) return 10_000
-    const [h, m] = (t || '').split(':').map(Number)
-    return (h || 0) * 60 + (m || 0)
-  }
-  const slotKey = (d: CellDispo) => {
-    const k = resolveDispoKind(d)
-    if (k.timeKind !== 'slot' || !k.slots?.length) return 10_000
-    const sorted = [...k.slots].sort((a, b) => (slotOrder[a] || 99) - (slotOrder[b] || 99))
-    return slotOrder[sorted[0]] || 99
-  }
-  const rangeKey = (d: CellDispo) => toMin(d.heure_debut)
-  const continuationKey = (d: CellDispo) => {
-    const k = resolveDispoKind(d)
-    // Continuation slot-night: considérer une fin à 06:00
-    if (k.timeKind === 'slot' && Array.isArray(k.slots) && k.slots.includes('night')) return 6 * 60
-    return toMin(d.heure_fin)
-  }
-  return getCellDispos(collaborateurId, date)
-    .slice()
-    .sort((a, b) => {
-      const ka = resolveDispoKind(a)
-      const kb = resolveDispoKind(b)
-
-      // full-day toujours après
-      const aIsFull = ka.timeKind === 'full-day'
-      const bIsFull = kb.timeKind === 'full-day'
-      if (aIsFull && !bIsFull) return 1
-      if (bIsFull && !aIsFull) return -1
-
-      // continuations overnight (_cont==='end') en premier, triées par heure de fin
-      const aIsCont = a._cont === 'end'
-      const bIsCont = b._cont === 'end'
-      if (aIsCont && bIsCont) return continuationKey(a) - continuationKey(b)
-      if (aIsCont && !bIsCont) return -1
-      if (bIsCont && !aIsCont) return 1
-
-      // slots ensuite (ordre logique)
-      const aIsSlot = ka.timeKind === 'slot'
-      const bIsSlot = kb.timeKind === 'slot'
-      if (aIsSlot && bIsSlot) return slotKey(a) - slotKey(b)
-      if (aIsSlot && !bIsSlot) return -1
-      if (bIsSlot && !aIsSlot) return 1
-
-      // ranges et overnight starts: trier par heure de début
-      return rangeKey(a) - rangeKey(b) || (typePriority(a) - typePriority(b))
-    })
-}
-
-function resolveDispoKind(dispo: Disponibilite) {
-  // Supporter modèles multiples:
-  // - Legacy: type in {'mission','disponible','indisponible'}, timeKind in {'range','slot','full-day','overnight'}
-  // - RTDB alt: type in {'standard','formation','urgence','maintenance'}, timeKind in {'fixed','flexible','oncall'}
-  let type = dispo.type as any
-  let timeKind = dispo.timeKind as any
-  const slots = dispo.slots
-
-  // Mapper types alternatifs vers legacy pour l’UI
-  const mapTypeAltToLegacy = (t: string | undefined) => {
-    switch (t) {
-      case 'maintenance': return 'indisponible'
-      case 'urgence': return 'mission'
-      case 'formation': return 'mission'
-      case 'standard': return 'disponible' // défaut neutre
-      default: return t
-    }
-  }
-  const mapTimeKindAltToLegacy = (k: string | undefined) => {
-    switch (k) {
-      case 'fixed':
-        // fixed: si des slots existent, considérer comme 'slot', sinon fallback sur 'range'
-        if (Array.isArray(dispo.slots) && dispo.slots.length > 0) return 'slot'
-        if (dispo.heure_debut && dispo.heure_fin) return 'range'
-        return 'range'
-      case 'oncall': return 'slot'
-      case 'flexible':
-        // flexible: heures => range, slots => slot, sinon full-day
-        if (dispo.heure_debut && dispo.heure_fin) return 'range'
-        if (Array.isArray(dispo.slots) && dispo.slots.length > 0) return 'slot'
-        return deriveTimeKindFromData(dispo) // ✅ garde le fallback centralisé
-      default: return k
-    }
-  }
-
-  type = mapTypeAltToLegacy(type)
-  timeKind = mapTimeKindAltToLegacy(timeKind)
-
-  if (type) {
-    return { type, timeKind: (timeKind as any) || 'full-day', slots: slots || [] as string[] }
-  }
-  
-  // Fallback legacy via lieu/heures/slots implicites
-  const canon = canonicalizeLieu(dispo.lieu || '')
-  const originalLieu = dispo.lieu || ''
-  
-  if (canon === 'INDISPONIBLE') return { type: 'indisponible', timeKind: 'full-day', slots: [] }
-  if (canon === 'DISPO JOURNEE') return { type: 'disponible', timeKind: 'full-day', slots: [] }
-  
-  const hasHours = !!(dispo.heure_debut && dispo.heure_fin)
-  const inferredSlots = detectSlotsFromText(dispo.lieu || '')
-  
-  if ((canon === '' || canon === 'DISPONIBLE') && inferredSlots.length > 0) {
-    return { type: 'disponible', timeKind: 'slot', slots: inferredSlots }
-  }
-  
-  // Logique unifiée pour les missions : toute dispo avec un lieu spécifique est une mission
-  const hasSpecificLocation = originalLieu && 
-    originalLieu !== 'DISPONIBLE' && 
-    originalLieu !== 'DISPO' && 
-    originalLieu !== 'INDISPONIBLE' &&
-    originalLieu.trim() !== ''
-  
-  // Détection automatique des missions de nuit qui dépassent sur deux jours
-  let detectedTimeKind = 'full-day'
-  if (hasHours) {
-    const startTime = parseInt(dispo.heure_debut!.split(':')[0])
-    const endTime = parseInt(dispo.heure_fin!.split(':')[0])
-    
-    // Si l'heure de fin est plus petite que l'heure de début, c'est une mission de nuit
-    if (endTime < startTime) {
-      detectedTimeKind = 'overnight'
-    } else {
-      detectedTimeKind = 'range'
-    }
-  }
-  
-  if (hasHours) {
-    return { type: hasSpecificLocation ? 'mission' : 'disponible', timeKind: detectedTimeKind as any, slots: [] }
-  }
-  return { type: hasSpecificLocation ? 'mission' : 'disponible', timeKind: 'full-day', slots: [] }
-}
+setGetCellDispos(getCellDispos)
 
 // Assainir une disponibilité en fonction du couple type/timeKind et nettoyer les champs incompatibles
 function sanitizeDisposition(d: Partial<Disponibilite>): Partial<Disponibilite> {
@@ -2882,80 +2434,10 @@ function sanitizeDisposition(d: Partial<Disponibilite>): Partial<Disponibilite> 
   return d
 }
 
-// (handlers remplacés par setNewType/setNewTimeKind)
-
-// function limitSlotSelection(val: string[]) {
-//   // Déduplique et garde l’ordre logique
-//   const uniq = Array.from(new Set(val || []))
-//   const allowed = ['morning','midday','afternoon','evening','night']
-//   const filtered = uniq.filter(s => allowed.includes(s))
-//   // Si l’ensemble des créneaux diurnes est couvert, basculer en full-day
-//   const coverAll = ['morning','midday','afternoon','evening'].every(s => filtered.includes(s))
-//   if (coverAll) {
-//     newDispo.value.timeKind = 'full-day'
-//     newDispo.value.slots = []
-//     newDispo.value.isFullDay = true
-//     return
-//   }
-//   newDispo.value.slots = filtered
-// }
-
-// (getDispoBarClass supprimée – ancien style)
-
-function isOvernightContinuation(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, _cellDate: string) {
-  // Si c'est marqué comme continuation, c'est une continuation
-  if (dispo._cont === 'end') return true
-  
-  return false
-}
-
-function isOvernightStart(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, _cellDate: string) {
-  // Si c'est une continuation, ce n'est pas un start
-  if (dispo._cont === 'end') return false
-  
-  // Vérifier les slots pour "night"
-  const k = resolveDispoKind(dispo as Disponibilite)
-  if (k.timeKind === 'slot' && k.slots?.includes('night')) {
-    return true
-  }
-  
-  // Vérifier les horaires pour overnight
-  if (dispo.heure_debut && dispo.heure_fin) {
-    const startHour = parseInt(dispo.heure_debut.split(':')[0])
-    const endHour = parseInt(dispo.heure_fin.split(':')[0])
-    return endHour < startHour
-  }
-  
-  return false
-}
-
-function getDispoContinuationClass(dispo: Partial<Disponibilite> & { _cont?: 'start'|'end' }, cellDate: string) {
-  if (isOvernightContinuation(dispo, cellDate)) return 'dispo-continuation cont-from-prev'
-  if (isOvernightStart(dispo, cellDate)) return 'dispo-continuation cont-to-next'
-  return ''
-}
-
-function getDispoTypeClass(dispo: Partial<Disponibilite>) {
-  const t = resolveDispoKind(dispo as Disponibilite).type
-  if (t === 'mission') return 'card-mission'
-  if (t === 'disponible') return 'card-dispo'  
-  if (t === 'indisponible') return 'card-indispo'
-  return 'card-mission' // fallback unifié vers mission
-}
-
-// Classe dominante d'une cellule selon les dispos présentes (priorité: indisponible > mission > disponible)
-// Utilise getCellDisposSorted (memoizé) pour éviter les recalculs
-function getCellKindClass(collaborateurId: string, date: string) {
-  const list = getCellDisposSorted(collaborateurId, date)
-  if (!list.length) return 'cell-empty'
-  const hasInd = list.some(d => resolveDispoKind(d).type === 'indisponible')
-  if (hasInd) return 'cell-indispo'
-  const hasMission = list.some(d => resolveDispoKind(d).type === 'mission')
-  if (hasMission) return 'cell-mission'
-  return 'cell-dispo'
-}
-
-// (getDispoBarStyle supprimée – inutilisée)
+// NOTE: Les fonctions suivantes sont maintenant fournies par usePlanningCellStyles:
+// - isOvernightContinuation, isOvernightStart
+// - getDispoContinuationClass, getDispoTypeClass
+// - getCellKindClass, getDispoCardClass, getDispoCardStyle, getDispoTypeIcon
 
 // Info-bulle compacte pour chaque barre (léger: utilise l'attribut title natif)
 function getDispoBarTitle(dispo: Disponibilite, _cellDate: string): string {
@@ -3018,143 +2500,26 @@ function getDispoBarTitle(dispo: Disponibilite, _cellDate: string): string {
 // NOUVELLES FONCTIONS POUR LE DESIGN AMÉLIORÉ
 // ============================================
 
-function getDispoCardClass(dispo: Disponibilite) {
-  const k = resolveDispoKind(dispo)
-  return `dispo-card-${k.type}`
-}
-
-function getDispoCardStyle(_dispo: Disponibilite) {
-  return { width: '100%' }
-}
-
-function getDispoTypeIcon(dispo: Disponibilite) {
-  return sharedGetDispoTypeIcon(dispo as any)
-}
-
-// (getDispoDisplayLabel supprimée – inutilisée)
-
-// (formatTimeForCard supprimée – inutilisée)
-
-// (slotLabel supprimée – inutilisée)
+// NOTE: getDispoCardClass, getDispoCardStyle, getDispoTypeIcon sont maintenant fournis par usePlanningCellStyles
 
 // Fonction unifiée pour l'affichage temporel (horaire/créneau/journée)
 function getTemporalDisplay(dispo: Disponibilite, _cellDate: string): string {
   return sharedGetTemporalDisplay(dispo as any)
 }
 
-// (slotsBadge retiré – retour à des pills individuelles)
-
 // Contenu du tooltip pour une barre de disponibilité/mission
-// (supprimé) Popover info: retiré pour revenir à l’état antérieur
 
-// Helpers horaires
-function toMinutes(hhmm?: string): number | null {
-  if (!hhmm) return null
-  const m = hhmm.match(/^(\d{2}):(\d{2})$/)
-  if (!m) return null
-  const h = Number(m[1]); const mi = Number(m[2])
-  if (h < 0 || h > 23 || mi < 0 || mi > 59) return null
-  return h * 60 + mi
-}
-// Normalise une plage avec gestion nuit: retourne [startMin, endMin, overnight]
-function normalizeRange(start?: string, end?: string): { s: number | null; e: number | null; overnight: boolean } {
-  const s = toMinutes(start)
-  const e = toMinutes(end)
-  if (s == null || e == null) return { s, e, overnight: false }
-  if (e < s) return { s, e: e + 24 * 60, overnight: true }
-  return { s, e, overnight: false }
-}
-function rangesOverlap(aS: number, aE: number, bS: number, bE: number): boolean {
-  return aS < bE && bS < aE
-}
-function slotsToRanges(slots: string[]): Array<[number, number]> {
-  const map: Record<string, [number, number]> = {
-    morning: [8 * 60, 12 * 60],
-    midday: [12 * 60, 14 * 60],
-    afternoon: [14 * 60, 18 * 60],
-    evening: [18 * 60, 22 * 60],
-    night: [22 * 60, 30 * 60], // 22:00 → 06:00 (+480) = 1800
-  }
-  return slots.map(s => map[s]).filter(Boolean) as Array<[number, number]>
-}
+// NOTE: Helpers horaires (normalizeRange, rangesOverlap, slotsToRanges) et
+// violatesMissionDispoOverlap sont maintenant fournis par useDispoConflicts
 
-function violatesMissionDispoOverlap(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): boolean {
-  const kC = resolveDispoKind(candidate as Disponibilite)
-  // Full-day vs mission traité ailleurs
-  if (kC.type === 'disponible' && kC.timeKind === 'range' && candidate.heure_debut && candidate.heure_fin) {
-    const c = normalizeRange(candidate.heure_debut, candidate.heure_fin)
-    for (const d of existing) {
-      const k = resolveDispoKind(d as Disponibilite)
-      if (k.type !== 'mission') continue
-      if (k.timeKind === 'full-day') return true
-      if (k.timeKind === 'range' && d.heure_debut && d.heure_fin) {
-        const r = normalizeRange(d.heure_debut, d.heure_fin)
-        if (c.s != null && c.e != null && r.s != null && r.e != null && rangesOverlap(c.s, c.e, r.s, r.e)) return true
-      }
-      if (k.timeKind === 'slot' && k.slots?.length) {
-        const ranges = slotsToRanges(k.slots)
-        if (c.s != null && c.e != null && ranges.some(([s, e]) => rangesOverlap(c.s!, c.e!, s, e))) return true
-      }
-    }
-  }
-  if (kC.type === 'disponible' && kC.timeKind === 'slot' && kC.slots?.length) {
-    const cRanges = slotsToRanges(kC.slots)
-    for (const d of existing) {
-      const k = resolveDispoKind(d as Disponibilite)
-      if (k.type !== 'mission') continue
-      if (k.timeKind === 'full-day') return true
-      if (k.timeKind === 'range' && d.heure_debut && d.heure_fin) {
-        const r = normalizeRange(d.heure_debut, d.heure_fin)
-        if (r.s != null && r.e != null && cRanges.some(([s, e]) => rangesOverlap(s, e, r.s!, r.e!))) return true
-      }
-      if (k.timeKind === 'slot' && k.slots?.length) {
-        // intersection slots
-        if (k.slots.some(s => kC.slots!.includes(s))) return true
-      }
-    }
-  }
-  return false
-}
-// (onStartTimeChange supprimée – inutilisée)
-
-// Utils d'affichage
-
-// Fonction pour corriger les missions overnight existantes
-// (detectAndFixExistingOvernightMissions supprimée – maintenance manuelle)
-
-// Fonction pour analyser les missions overnight sans les corriger (dry-run)
-// (analyzeOvernightMissions supprimée – maintenance manuelle)
-
-function formatPhone(phone: string) {
-  return formatPhoneUtil(phone)
-}
-
-// Ancien calcul par durée — non utilisé depuis le layout vertical
-
-// Layout des barres dans une cellule: single => une barre occupe toute la hauteur; dual => 2 barres se partagent à 50%; multi => barres partagent la hauteur
-function getDispoBarsLayoutClass(collaborateurId: string, date: string) {
-  // Utiliser les dispos enrichies de la cellule (inclut continuations de la veille)
-  const count = getCellDispos(collaborateurId, date).length
-  return sharedGetDispoBarsLayoutClass(count)
-}
-
-// Ancien calcul de durée supprimé (non utilisé)
+// NOTE: getDispoBarsLayoutClass est maintenant géré par usePlanningLayout
 
 // Modal
 function openDispoModal(collaborateurId: string, date: string) {
-
-  
   // Vérifier si la cellule est verrouillée par un autre utilisateur
   if (collaborationService && collaborationService.isCellLocked(collaborateurId, date)) {
     const lock = collaborationService.getCellLock(collaborateurId, date)
     if (lock) {
-      // notify({
-      //   title: 'Cellule verrouillée',
-      //   message: `${lock.userName} est en train d'éditer cette cellule`,
-      //   color: 'warning',
-      //   duration: 3000
-      // })
-
       return
     }
   }
@@ -3164,14 +2529,8 @@ function openDispoModal(collaborateurId: string, date: string) {
     collaborationService.lockCellForEditing(collaborateurId, date)
       .then(success => {
         if (!success) {
-          // notify({
-          //   title: 'Cellule verrouillée',
-          //   message: 'Un autre utilisateur a verrouillé cette cellule en même temps',
-          //   color: 'warning'
-          // })
           return
         }
-
       })
   }
   
@@ -3237,7 +2596,6 @@ function openDispoModal(collaborateurId: string, date: string) {
   showDispoModal.value = true
 }
 
-
 function getSelectedCollaborateur(): Collaborateur | null {
   // En mode batch, utiliser batchCollaborateurId
   if (isBatchMode.value && batchCollaborateurId.value) {
@@ -3249,17 +2607,6 @@ function getSelectedCollaborateur(): Collaborateur | null {
   if (!selectedCell.value) return null
   const c = filteredCollaborateurs.value.find(c => c.id === selectedCell.value!.collaborateurId)
   return c || null
-}
-
-function formatModalDate(date: string) {
-  // CORRECTION: Utiliser T12:00:00 pour éviter les problèmes de timezone UTC
-  // Le problème "clic sur 22 → affichage 21" vient du décalage timezone
-  return new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    year: 'numeric', 
-    month: 'long',
-    day: 'numeric'
-  })
 }
 
 /**
@@ -3315,8 +2662,6 @@ function openBatchModal() {
     slots: Array.isArray(prefs.slots) ? prefs.slots : []
   }
   
-  // console.debug('Prefs:', prefs)
-  
   // Ouvrir le modal
   isBatchMode.value = true
   isAddingNewDispo.value = true
@@ -3326,7 +2671,6 @@ function openBatchModal() {
     if (!showDispoModal.value) showDispoModal.value = true
   }, 0)
 }
-
 
 const canAddDispo = computed(() => {
   const d = newDispo.value
@@ -3363,128 +2707,12 @@ const canAddDispo = computed(() => {
   return true
 })
 
-function dispoSignature(d: Partial<Disponibilite>) {
-  const t = d.type
-  const k = d.timeKind
-  if (t === 'indisponible') return 'indisponible:full-day'
-  if (t === 'mission') {
-  if (k === 'slot') return `mission:slot:${(d.slots || []).slice().sort().join(',')}:${d.lieu || ''}`
-  if (k === 'range') return `mission:range:${d.lieu || ''}:${d.heure_debut || ''}-${d.heure_fin || ''}`
-  return `mission:full-day:${d.lieu || ''}`
-  }
-  if (t === 'disponible') {
-    if (k === 'slot') return `disponible:slot:${(d.slots || []).slice().sort().join(',')}`
-    if (k === 'range') return `disponible:range:${d.heure_debut || ''}-${d.heure_fin || ''}`
-    return 'disponible:full-day'
-  }
-  return 'other'
-}
+// NOTE: dispoSignature fournie par useDispoConflicts (wrapper défini plus haut)
 
 function hasDuplicateInModal(sig: string): boolean {
   // Vérifie dans la liste existante de la modale + le brouillon courant
   const list = selectedCellDispos.value
   return list.some(x => dispoSignature(x) === sig)
-}
-
-// Conflits d'exclusivité pour une journée donnée:
-// - Indisponible (full-day) ne peut coexister avec aucune Disponibilité (peu importe le format)
-// - Disponible full-day ne peut coexister avec Disponible en créneaux ou plage horaire
-function listHasIndispo(list: Partial<Disponibilite>[]) {
-  return list.some(d => resolveDispoKind(d as Disponibilite).type === 'indisponible')
-}
-function listHasDispoAny(list: Partial<Disponibilite>[]) {
-  return list.some(d => resolveDispoKind(d as Disponibilite).type === 'disponible')
-}
-function listHasDispoFullDay(list: Partial<Disponibilite>[]) {
-  return list.some(d => {
-    const k = resolveDispoKind(d as Disponibilite)
-    return k.type === 'disponible' && k.timeKind === 'full-day'
-  })
-}
-function listHasDispoPartial(list: Partial<Disponibilite>[]) {
-  return list.some(d => {
-    const k = resolveDispoKind(d as Disponibilite)
-    return k.type === 'disponible' && (k.timeKind === 'slot' || k.timeKind === 'range')
-  })
-}
-// Fonction utilitaire pour identifier les continuations overnight de la veille (pour validation de conflit)
-function isOvernightContinuationFromPrevDay(dispo: Partial<Disponibilite>): boolean {
-  return (dispo as any)._cont === 'end'
-}
-
-function wouldConflict(list: Partial<Disponibilite>[]): boolean {
-  const hasIndispo = listHasIndispo(list)
-  const hasDispo = listHasDispoAny(list)
-  const hasDispoFD = listHasDispoFullDay(list)
-  const hasDispoPartial = listHasDispoPartial(list)
-  // Règles de base
-  if (hasIndispo && hasDispo) return true
-  if (hasDispoFD && hasDispoPartial) return true
-  // Règles mission vs (dispo full-day | indispo full-day)
-  const hasMission = list.some(d => resolveDispoKind(d as Disponibilite).type === 'mission')
-  if (hasMission) {
-    // Bloquer uniquement si une mission coexiste avec une indisponibilité journée complète
-    const hasIndispoFD = list.some(d => {
-      const k = resolveDispoKind(d as Disponibilite)
-      return k.type === 'indisponible' && k.timeKind === 'full-day'
-    })
-    if (hasIndispoFD) return true
-
-    // Laisser passer la cohabitation mission + disponible (elle sera nettoyée par handleAutoReplacementLogic)
-  }
-  return false
-}
-function wouldConflictWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): boolean {
-  // Si le candidat est full-day et qu'il n'y a que des continuations overnight de la veille,
-  // permettre l'ajout car une disponibilité full-day peut coexister avec des continuations overnight
-  const candidateKind = resolveDispoKind(sanitizeDisposition({ ...candidate }) as Disponibilite)
-  if (candidateKind.timeKind === 'full-day') {
-    // Vérifier si toutes les disponibilités existantes sont des continuations overnight
-    const onlyOvernightContinuations = existing.every(d => isOvernightContinuationFromPrevDay(d))
-    if (onlyOvernightContinuations) {
-      return false // Pas de conflit : full-day peut coexister avec des continuations overnight
-    }
-    
-    // Filtrer les continuations overnight pour les autres vérifications de conflit
-    const realExisting = existing.filter(d => !isOvernightContinuationFromPrevDay(d))
-    const list = [...realExisting.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })]
-    return wouldConflict(list)
-  }
-  
-  // Pour les autres types, appliquer la logique normale
-  const list = [...existing.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })]
-  return wouldConflict(list)
-}
-
-function getConflictMessage(list: Partial<Disponibilite>[]): string | null {
-  const hasIndispo = listHasIndispo(list)
-  const hasDispo = listHasDispoAny(list)
-  const hasDispoFD = listHasDispoFullDay(list)
-  const hasDispoPartial = listHasDispoPartial(list)
-  if (hasIndispo && hasDispo) return 'Conflit: “Indisponible (journée)” ne peut pas coexister avec “Disponible” le même jour.'
-  if (hasDispoFD && hasDispoPartial) return 'Conflit: “Disponible (journée)” ne peut pas coexister avec des créneaux ou une plage horaire le même jour.'
-  const hasMission = list.some(d => resolveDispoKind(d as Disponibilite).type === 'mission')
-  if (hasMission) {
-    if (list.some(d => { const k = resolveDispoKind(d as Disponibilite); return k.type === 'indisponible' && k.timeKind === 'full-day' })) {
-      return 'Conflit: “Indisponible (journée)” ne peut pas coexister avec une mission le même jour.'
-    }
-  }
-  return null
-}
-function getConflictMessageWithCandidate(existing: Partial<Disponibilite>[], candidate: Partial<Disponibilite>): string | null {
-  // Appliquer la même logique que wouldConflictWithCandidate
-  const candidateKind = resolveDispoKind(sanitizeDisposition({ ...candidate }) as Disponibilite)
-  if (candidateKind.timeKind === 'full-day') {
-    const onlyOvernightContinuations = existing.every(d => isOvernightContinuationFromPrevDay(d))
-    if (onlyOvernightContinuations) {
-      return null // Pas de message de conflit
-    }
-    
-    const realExisting = existing.filter(d => !isOvernightContinuationFromPrevDay(d))
-    return getConflictMessage([...realExisting.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })])
-  }
-  
-  return getConflictMessage([...existing.map(x => ({ ...x })), sanitizeDisposition({ ...candidate })])
 }
 
 function addNewDispo() {
@@ -3552,8 +2780,6 @@ function addNewDispo() {
   }
 }
 
-// (addInlineRow supprimée – inutilisée)
-
 function removeDispo(index: number) {
   selectedCellDispos.value.splice(index, 1)
   // Enregistrer automatiquement après suppression
@@ -3568,56 +2794,6 @@ function editDispo(dispo: Disponibilite | (Disponibilite & { _cont?: 'start'|'en
   openDispoModal((dispo as any).collaborateurId || `${dispo.nom}-${dispo.prenom}`, targetDate)
 }
 
-// Conversion rapide disponibilité → mission
-/*
-async function convertDispoToMission(dispo: Disponibilite, newLieu?: string) {
-  if (!dispo.id) {
-    console.error('❌ Impossible de convertir: ID manquant')
-    return
-  }
-
-  try {
-    const currentKind = resolveDispoKind(dispo)
-    
-    // Si c'est déjà une mission, ne rien faire
-    if (currentKind.type === 'mission') {
-      notify({
-        message: 'Cette disponibilité est déjà une mission',
-        color: 'info'
-      })
-      return
-    }
-
-    const lieu = newLieu || prompt('Lieu de la mission:', dispo.lieu || '') || dispo.lieu || 'Mission'
-    
-    const updates = {
-      lieu: lieu,
-      type: 'urgence' as const, // Type RTDB pour mission
-      version: (dispo.version || 0) + 1,
-      updatedAt: Date.now(),
-      updatedBy: 'conversion-rapide'
-    }
-
-    await disponibilitesRTDBService.updateDisponibilite(dispo.id, updates)
-    
-    notify({
-      message: `✅ Disponibilité convertie en mission: ${lieu}`,
-      color: 'success'
-    })
-
-    // Rafraîchir l'affichage
-    await refreshDisponibilites(false)
-    
-  } catch (error) {
-    console.error('❌ Erreur lors de la conversion:', error)
-    notify({
-      message: 'Erreur lors de la conversion',
-      color: 'danger'
-    })
-  }
-}
-*/
-
 // Gestion du remplacement automatique des disponibilités en conflit avec les missions
 async function handleAutoReplacementLogic(date: string, collabId: string, newDispos: any[]): Promise<{ removedIds: string[]; removedEntries: Disponibilite[] }> {
   
@@ -3626,12 +2802,8 @@ async function handleAutoReplacementLogic(date: string, collabId: string, newDis
     d.collaborateurId === collabId && !(d as any)._cont
   )
 
-  
-
   // Identifier les nouvelles missions
   const newMissions = newDispos.filter(d => resolveDispoKind(d).type === 'mission')
-
-  
 
   const removedIds: string[] = []
   const removedEntries: Disponibilite[] = []
@@ -3661,7 +2833,7 @@ async function handleAutoReplacementLogic(date: string, collabId: string, newDis
         // Retirer du cache local
         const cached = disponibilitesCache.value.get(date) || []
         const filtered = cached.filter(d => d.id !== conflicting.id)
-        disponibilitesCache.value.set(date, filtered)
+        setCacheDispos(date, filtered)
         
         notify({
           message: `🔄 Disponibilité remplacée par la mission`,
@@ -3713,57 +2885,14 @@ function hasTimeConflict(dispo1: any, dispo2: any): boolean {
   return false
 }
 
-// (setExistingType supprimée – inutilisée)
-
-// (setExistingTimeKind supprimée – inutilisée)
-
-// (limitExistingSlots supprimée – non utilisée)
-
 // === HELPER FUNCTIONS POUR BOUTONS ===
-
-function getTypeColor(type: string): string {
-  switch(type) {
-    case 'mission': return 'primary'
-    case 'disponible': return 'success'
-    case 'indisponible': return 'danger'
-    default: return 'secondary'
-  }
-}
-
-function getTypeIcon(type: string | undefined): string {
-  switch(type) {
-    case 'mission': return 'work'
-    case 'disponible': return 'check_circle'
-    case 'indisponible': return 'cancel'
-    default: return 'help'
-  }
-}
-
-function getTimeKindIcon(timeKind: string): string {
-  switch(timeKind) {
-    case 'full-day': return 'today'
-    case 'range': return 'schedule'
-    case 'slot': return 'view_module'
-    default: return 'help'
-  }
-}
-
-// (toggleExistingSlot supprimée – inutilisée)
+// NOTE: getTypeColor, getTypeIcon, getTimeKindIcon, getSlotText sont importés depuis @/utils/dispoTypeHelpers
 
 // === FONCTIONS GESTION ÉDITION LIGNE ===
 
 function getTypeText(type: string | undefined): string {
   const typeOpt = (typeOptions.value as any[]).find((opt: any) => opt.value === type)
   return typeOpt?.text || type || 'Non défini'
-}
-
-function getSlotText(slots: string[] = []): string {
-  if (slots.length === 0) return 'Aucun créneau'
-  const slotNames = slots.map(slot => {
-    const slotOpt = slotOptions.find(opt => opt.value === slot)
-    return slotOpt?.text || slot
-  })
-  return slotNames.join(', ')
 }
 
 function editDispoLine(index: number) {
@@ -4009,7 +3138,7 @@ async function saveBatchDispos() {
         slots: newDispo.slots || [],
         tenantId,
       }
-      disponibilitesCache.value.set(date, [...filteredCache, localDispo])
+      setCacheDispos(date, [...filteredCache, localDispo])
       
       // 3) Suppression distante des disponibilités existantes
       for (const existingDispo of existingDispos) {
@@ -4157,7 +3286,7 @@ async function deleteBatchDispos() {
       // 1) Suppression optimiste du cache local
       const existingCache = disponibilitesCache.value.get(date) || []
       const filteredCache = existingCache.filter(d => d.collaborateurId !== collabId)
-      disponibilitesCache.value.set(date, filteredCache)
+      setCacheDispos(date, filteredCache)
       
       // 2) Suppression distante (RTDB)
       for (const dispo of existingDispos) {
@@ -4393,8 +3522,7 @@ async function saveDispos() {
     }
     
     // Mettre à jour le cache
-    disponibilitesCache.value.set(date, updatedForDate)
-
+    setCacheDispos(date, updatedForDate)
 
     // Forcer un rafraîchissement visuel
     await nextTick()
@@ -4444,22 +3572,16 @@ function goToToday() {
   // Plus besoin d'updateTodayOverlayX - highlights gérés par CSS
 }
 
-// (goToNextWeek supprimée – inutilisée)
-
 // Chargement des données
-// (loadCollaborateursFromFirebase supprimée – gérée par composable)
 
 async function loadDisponibilitesFromRTDB(dateDebut: string, dateFin: string) {
   if (loadingDisponibilites.value) return []
   
   try {
     loadingDisponibilites.value = true
-
-    
     // Utiliser le nouveau service RTDB (0 lecture Firestore!)
     const disponibilites = await disponibilitesRTDBService.getDisponibilitesByDateRange(dateDebut, dateFin)
     
-    // console.log(`✅ RTDB: ${disponibilites.length} disponibilités chargées`)
     
     // Transformer les données RTDB vers le format existant pour compatibilité
     const formattedDisponibilites = disponibilites.map((dispo: DisponibiliteRTDB) => {
@@ -4575,9 +3697,7 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
   const missing = computeMissingSubranges(dateDebut, dateFin, loadedDateRanges.value)
   if (missing.length === 0) {
     // Rien à charger depuis Firestore
-    // console.log(`📅 Fenêtre ${dateDebut} → ${dateFin} déjà en cache, pas de fetch`)
   } else {
-    // console.log(`📅 Chargement dispos (sous-plages manquantes):`, missing)
     fetchingRanges.value = true
     try {
       for (const sub of missing) {
@@ -4601,16 +3721,18 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
         for (const [date, dispos] of byDate) {
           const existing = disponibilitesCache.value.get(date) || []
           // Varier la stratégie: ici on remplace la journée entière par les dernières données
+          // Note: on utilise set directement ici car on notifie une seule fois après la boucle
           disponibilitesCache.value.set(date, dispos.length ? dispos : existing)
         }
         // Marquer comme chargée cette sous-plage
         addLoadedRange(sub.start, sub.end)
+        // Notifier le changement après toutes les mises à jour
+        notifyDisponibilitesChanged()
       }
       
       // Log final du cache
       let totalDispos = 0
       disponibilitesCache.value.forEach(dispos => totalDispos += dispos.length)
-      // console.log(`📊 TOTAL CACHE après chargement: ${totalDispos} disponibilités sur ${disponibilitesCache.value.size} jours`)
       
     } finally {
       fetchingRanges.value = false
@@ -4646,7 +3768,6 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
             default: return 'disponible'
           }
         }
-  // (mapTimeKindAnyToLegacy supprimée – non utilisée)
 
         disponibilites.forEach(dispo => {
           const canonLieu = canonicalizeLieu(dispo.lieu || '')
@@ -4691,10 +3812,15 @@ async function generateDisponibilitesForDateRange(dateDebutOpt?: string, dateFin
         byDate.forEach((dispos, date) => {
           disponibilitesCache.value.set(date, dispos)
         })
+        // Notifier une seule fois après toutes les mises à jour
+        notifyDisponibilitesChanged()
       }
     }
   )
 }
+
+// Late-binding: passer la vraie fonction au composable scroll
+setGenerateDisponibilitesForDateRange(generateDisponibilitesForDateRange)
 
 // ==========================================
 // SYNCHRONISATION TEMPS RÉEL
@@ -4749,7 +3875,6 @@ function startRealtimeSync() {
           default: return 'disponible'
         }
       }
-  // (mapTimeKindAnyToLegacy supprimée – non utilisée)
 
       disponibilites.forEach(dispo => {
         const date = dispo.date
@@ -4798,8 +3923,8 @@ function startRealtimeSync() {
       byDate.forEach((dispos, date) => {
         disponibilitesCache.value.set(date, dispos)
       })
-
-      
+      // Notifier une seule fois après toutes les mises à jour
+      notifyDisponibilitesChanged()
     }
   )
   
@@ -4845,14 +3970,6 @@ function stopRealtimeSync() {
 function showRealtimeStats() {
   // Migration RTDB: anciennes stats Firestore désactivées
   collaborationService.getStats()
-  
-  
-  // notify({
-  //   message: `📡 ${stats.activeListeners} listener(s) • 👥 ${collaborationStats.totalUsers + collaborationStats.totalActivities + collaborationStats.totalLocks} état(s) actif(s)`,
-  //   color: 'info',
-  //   position: 'top-right',
-  //   duration: 4000
-  // })
 }
 
 // ==========================================
@@ -4869,7 +3986,6 @@ function getActiveUsers() {
   
   // Logique unidirectionnelle : les collaborateurs ne voient que les admins,
   // mais les admins voient tout le monde
-  // (currentUserIsCollaborateur supprimé – non utilisé)
   
   // Ajouter les utilisateurs avec présence active
   collaborationService.presence.forEach(user => {
@@ -4931,14 +4047,12 @@ function getUserStatusTooltip(user: DisplayUser): string {
 /**
  * Vérifier si un utilisateur a plusieurs sessions
  */
-// (isUserWithMultipleSessions supprimée – non utilisée)
 
 /**
  * Gestionnaire pour les mises à jour de préférences depuis d'autres composants
  */
 function handleUserPreferencesUpdate(event: Event) {
   const customEvent = event as CustomEvent
-  // console.log('📢 Réception d\'un événement de changement de préférences:', customEvent.detail)
   
   if (customEvent.detail.colorChanged) {
     // Mise à jour forcée des couleurs dans le planning
@@ -5098,11 +4212,9 @@ async function initializePresence() {
     const user = auth.currentUser
     
     if (!user) {
-      // console.log('❌ Aucun utilisateur connecté pour la collaboration')
       return
     }
     
-    // console.log('👤 Utilisateur trouvé:', user.displayName || user.email)
     
     if (USE_NEW_COLLABORATION) {
       // Initialisation simplifiée similaire au collaborateur
@@ -5134,7 +4246,6 @@ async function initializePresence() {
     
     // S'abonner aux changements de sélections distantes
     selectionUnsubscribe.value = collaborationService.onSelectionChange(() => {
-      // console.log('📋 Sélections distantes mises à jour')
       debouncedUpdatePresenceSets()
       // Les initiales sont maintenant gérées de manière réactive via :data-initials dans le template
     })
@@ -5154,7 +4265,6 @@ async function initializePresence() {
 /**
  * Mettre à jour la vue actuelle pour la présence
  */
-// (updatePresenceView supprimée – plus nécessaire)
 
 // Fallback impératif: met à jour les classes CSS des cellules survolées par d'autres (basé sur RTDB direct)
 function updateDomHoverIndicators() {
@@ -5225,12 +4335,10 @@ function isCellLockedByOther(collaborateurId: string, date: string): boolean {
 /**
  * Obtenir les informations de verrouillage d'une cellule
  */
-// (getCellLockInfo supprimée – non utilisée)
 
 /**
  * Vérifier si un utilisateur édite une cellule spécifique
  */
-// (isUserEditingCell supprimée – non utilisée)
 
 /**
  * Obtenir les classes CSS pour une cellule en fonction de son état de verrouillage
@@ -5249,53 +4357,8 @@ function getCellLockClasses(collaborateurId: string, date: string): string[] {
 /**
  * Obtenir les utilisateurs qui survolent une cellule spécifique
  */
-// (getHoveringUsers supprimée – non utilisée)
 
-/**
- * Gérer le survol d'une cellule (instantané)
- */
-function handleCellHover(collaborateurId: string, date: string) {
-  
-  // Annuler le timer de fin de hover si on revient rapidement
-  if (hoverEndGraceTimer) {
-    clearTimeout(hoverEndGraceTimer)
-    hoverEndGraceTimer = null
-  }
-
-  // Annuler le timer précédent de debounce s'il existe
-  if (hoverDebounceTimer) {
-    clearTimeout(hoverDebounceTimer)
-    hoverDebounceTimer = null
-  }
-
-  // Mise à jour instantanée pour une réactivité maximale
-  if (collaborationService && typeof collaborationService.updateHoveredCell === 'function') {
-    collaborationService.updateHoveredCell(collaborateurId, date)
-  }
-}
-
-/**
- * Gérer la sortie du survol d'une cellule (instantané)
- */
-function handleCellHoverEnd() {
-  // Annuler le timer de debounce (on ne veut plus envoyer un nouveau hover)
-  if (hoverDebounceTimer) {
-    clearTimeout(hoverDebounceTimer)
-    hoverDebounceTimer = null
-  }
-
-  // Si on reçoit un leave, appliquer une petite grâce avant de nettoyer pour éviter le flicker
-  if (hoverEndGraceTimer) {
-    clearTimeout(hoverEndGraceTimer)
-    hoverEndGraceTimer = null
-  }
-  hoverEndGraceTimer = setTimeout(() => {
-    if (collaborationService && typeof collaborationService.clearHoveredCell === 'function') {
-      collaborationService.clearHoveredCell()
-    }
-    hoverEndGraceTimer = null
-  }, 250)
-}
+// NOTE: handleCellHover et handleCellHoverEnd sont maintenant gérés par usePlanningHover
 
 /**
  * Gérer l'ouverture d'une cellule pour l'édition
@@ -5335,84 +4398,41 @@ function handleEditClose() {
 /**
  * Gérer les changements temps réel reçus
  */
-// (handleRealtimeChanges supprimée – non utilisée)
 
 function generateInitialDays() {
-  const days: any[] = []
-  const today = new Date()
-  const todayStr = toDateStr(today)
+  const daysAhead = 90 // jours vers le futur par défaut
   
-  // CORRECTION : Respecter les filtres de dates
-  let startStr: string
-  let endStr: string
+  // Utiliser l'utilitaire pour générer les jours
+  const days = generateDays({
+    dateFrom: dateFrom.value || undefined,
+    dateTo: dateTo.value || undefined,
+    minPastDate: minPastDate.value,
+    daysAhead
+  })
   
-  // Si on a une date de début définie, partir de là
-  if (dateFrom.value) {
-    startStr = dateFrom.value
-  } else if (dateTo.value) {
-    // Si on a seulement une date de fin, partir de 1 an dans le passé à partir de cette date
-    const endDate = new Date(dateTo.value)
-    const startDate = new Date(endDate)
-    startDate.setFullYear(endDate.getFullYear() - 1)
-    startStr = toDateStr(startDate)
-  } else {
-    // Sinon, partir de 3 mois dans le passé
-    startStr = minPastDate.value
-  }
-  
-  // Si on a une date de fin définie, s'arrêter là
-  if (dateTo.value) {
-    endStr = dateTo.value
-  } else {
-    // Sinon, aller dans le futur
-    const daysAhead = isCollaborateurInterface.value ? 60 : 14
-    endStr = addDaysStr(todayStr, daysAhead)
-  }
-  
-  // Génère de startStr -> endStr inclus
-  let cursor = new Date(startStr)
-  const end = new Date(endStr)
-  while (cursor <= end) {
-    const dateStr = toDateStr(cursor)
-    days.push({
-      date: dateStr,
-      name: cursor.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
-      dayNumber: cursor.getDate(),
-      isToday: dateStr === todayStr,
-      isWeekend: cursor.getDay() === 0 || cursor.getDay() === 6,
-      dayOfWeek: cursor.getDay() // 0=dimanche, 6=samedi
-    })
-    cursor.setDate(cursor.getDate() + 1)
-  }
   loadedDays.value = days
   
-  // CORRECTION : Positionner le scroll intelligemment selon les filtres
+  // Positionner le scroll intelligemment selon les filtres
   setTimeout(() => {
     const scroller = planningScroll.value
     if (!scroller) return
     
-    // Si on a une date de fin mais pas de date de début, scroller vers la fin
-    if (dateTo.value && !dateFrom.value) {
-      // Positionner vers la fin de la plage visible
-      const endIndex = days.findIndex(d => d.date === dateTo.value)
-      if (endIndex >= 0) {
-        const centerOffset = Math.max(0, endIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
-        scroller.scrollLeft = centerOffset
-      }
-    } else {
-      // Sinon, centrer sur aujourd'hui (comportement par défaut)
-      const todayIndex = days.findIndex(d => d.isToday)
-      if (todayIndex >= 0) {
-        const centerOffset = Math.max(0, todayIndex * dayWidth.value - (scroller.clientWidth - stickyLeftWidth.value) / 2)
-        scroller.scrollLeft = centerOffset
-      }
-    }
+    // Calculer l'offset à utiliser
+    const scrollOffset = calculateScrollOffset({
+      days,
+      dateFrom: dateFrom.value || null,
+      dateTo: dateTo.value || null,
+      dayWidth: dayWidth.value,
+      clientWidth: scroller.clientWidth,
+      stickyWidth: stickyLeftWidth.value
+    })
+    
+    scroller.scrollLeft = scrollOffset
   }, 100) // Délai pour s'assurer que le DOM est prêt
 }
 
-// Extension dynamique lors du scroll
-let scrollDebounceTimer: number | null = null
-let scrollEndTimer: number | null = null
+// Extension dynamique lors du scroll - timers maintenant gérés par usePlanningScroll
+// NOTE: scrollDebounceTimer et scrollEndTimer sont maintenant dans usePlanningScroll
 
 async function ensureRightBuffer(scroller: HTMLElement) {
   const { scrollLeft, clientWidth, scrollWidth } = scroller
@@ -5429,502 +4449,30 @@ async function ensureRightBuffer(scroller: HTMLElement) {
   }
 }
 
-async function onScrollExtend(e: Event) {
-  const scroller = e.currentTarget as HTMLElement
-  if (!scroller) return
+// NOTE: onScrollExtend est maintenant dans usePlanningScroll
 
-  // OPTIMISATION: Pendant l'auto-scroll de sélection, ignorer complètement
-  // La boucle d'auto-scroll gère son propre recompute avec throttling
-  if (isAutoScrolling.value) {
-    return
-  }
+// NOTE: updateCurrentVisibleMonth, updateHoverOnScroll, executeUpdateHover,
+// triggerHoverAtCursor, executeTriggerHover sont maintenant dans usePlanningScroll
 
-  // Nettoyer les highlights de hover pendant le scroll SEULEMENT si pas en scroll rapide
-  if (!isScrollingFast.value) {
-    cleanHoverHighlights()
-  }
-  
-  // Maintenir le hover pendant le scroll
-  updateHoverOnScroll(scroller)
-  
-  // Calculer le mois visible
-  updateCurrentVisibleMonth(scroller)
-  
-  // Recalcule la fenêtre virtualisée
-  recomputeWindow(scroller)
-
-  // Extension dynamique conditionnelle:
-  // - Avec uniquement une borne de début (dateFrom), on autorise l'extension vers la droite
-  // - Avec uniquement une borne de fin (dateTo), on autorise l'extension vers la gauche et on borne à droite
-  // - Avec les deux bornes, on n'étend pas
-  const hasFromOnly = !!dateFrom.value && !dateTo.value
-  const hasToOnly = !!dateTo.value && !dateFrom.value
-  const hasBothBounds = !!dateFrom.value && !!dateTo.value
-  
-  // Bloquer le scroll horizontal quand les deux dates sont définies
-  if (hasBothBounds) {
-    // Calculer les indices de début et fin dans loadedDays qui correspondent aux dates filtrées
-    const firstVisibleDate = visibleDays.value[0]?.date
-    const lastVisibleDate = visibleDays.value[visibleDays.value.length - 1]?.date
-    
-    if (firstVisibleDate && lastVisibleDate) {
-      const firstLoadedIndex = loadedDays.value.findIndex(d => d.date === firstVisibleDate)
-      const lastLoadedIndex = loadedDays.value.findIndex(d => d.date === lastVisibleDate)
-      
-      if (firstLoadedIndex !== -1 && lastLoadedIndex !== -1) {
-        // Calculer les limites de scroll
-        const minScrollLeft = firstLoadedIndex * dayWidth.value
-        const maxScrollLeft = Math.max(minScrollLeft, (lastLoadedIndex + 1) * dayWidth.value - scroller.clientWidth)
-        
-        // Clamper le scroll dans ces limites
-        if (scroller.scrollLeft < minScrollLeft) {
-          scroller.scrollLeft = minScrollLeft
-        } else if (scroller.scrollLeft > maxScrollLeft) {
-          scroller.scrollLeft = maxScrollLeft
-        }
-      }
-    }
-    return
-  }
-
-  // Debounce adaptatif selon la vitesse de scroll
-  if (scrollDebounceTimer) {
-    clearTimeout(scrollDebounceTimer)
-  }
-
-  // Délai plus court pour scroll rapide
-  const debounceDelay = isScrollingFast.value ? 50 : 100
-
-  scrollDebounceTimer = setTimeout(() => {
-    const { scrollLeft, clientWidth } = scroller
-  const totalCols = loadedDays.value.length
-  const firstVisibleIdx = Math.floor(scrollLeft / dayWidth.value)
-  const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scrollLeft + clientWidth) / dayWidth.value))
-
-  // Réserves adaptatives selon la vitesse de scroll
-  const baseLeftReserve = 150
-  const baseRightReserve = 150
-  const fastScrollMultiplier = isScrollingFast.value ? 2 : 1
-  
-  const targetLeftReserve = baseLeftReserve * fastScrollMultiplier
-  const minLeftReserve = Math.floor(90 * fastScrollMultiplier)
-  const targetRightReserve = baseRightReserve * fastScrollMultiplier
-  const minRightReserve = Math.floor(90 * fastScrollMultiplier)
-
-  // GAUCHE: si la réserve visuelle est basse, pré-précharger en un bloc
-  // En mode from-only (plage ouverte vers le futur), ne pas étendre vers la gauche
-  const leftReserve = firstVisibleIdx
-  if (!hasFromOnly && leftReserve < minLeftReserve && !extending.value) {
-      extending.value = true
-      try {
-        const beforeWidth = loadedDays.value.length * dayWidth.value
-        const firstDate = loadedDays.value[0]?.date
-        if (firstDate) {
-          // Ne pas dépasser la borne minimale
-          const maxCanPrepend = Math.max(0, diffDays(minPastDate.value, firstDate))
-          const needed = Math.min(targetLeftReserve - leftReserve, maxCanPrepend)
-          if (needed > 0) {
-            // Préprend sans bloquer; charger les données pour l’intervalle ajouté
-            const newFirst = addDaysStr(firstDate, -needed)
-            const dayBeforeFirst = addDaysStr(firstDate, -1)
-            prependDays(needed)
-            generateDisponibilitesForDateRange(newFirst, dayBeforeFirst)
-            // Conserver la colonne apparente
-            const afterWidth = loadedDays.value.length * dayWidth.value
-            scroller.scrollLeft += afterWidth - beforeWidth
-          }
-        }
-      } finally {
-        extending.value = false
-      }
-    }
-
-      // DROITE: si la réserve est basse, ajouter un gros bloc (borné par dateTo si hasToOnly)
-      const rightReserve = (totalCols - 1) - lastVisibleIdx
-      if (rightReserve < minRightReserve) {
-        const lastDate = loadedDays.value[loadedDays.value.length - 1]?.date
-        let toAdd = targetRightReserve - rightReserve
-        if (toAdd > 0) {
-          // Si seule la borne de fin est définie, ne pas dépasser dateTo
-          if (hasToOnly && dateTo.value && lastDate) {
-            const remaining = Math.max(0, diffDays(lastDate, dateTo.value))
-            toAdd = Math.min(toAdd, remaining)
-          }
-          if (toAdd > 0) {
-            appendDays(toAdd)
-            if (lastDate) {
-              const start = addDaysStr(lastDate, 1)
-              const end = addDaysStr(lastDate, toAdd)
-            
-              // Préchargement agressif pour scroll rapide
-              if (isScrollingFast.value) {
-                // Charger immédiatement sans attendre
-                generateDisponibilitesForDateRange(start, end).catch(console.error)
-              } else {
-                generateDisponibilitesForDateRange(start, end)
-              }
-            }
-          }
-        }
-      }
-
-    // Décharger visuellement (cache conservé)
-    prunePastIfFar(scroller)
-    pruneFutureIfFar(scroller)
-    
-    // PREFETCH INTELLIGENT: Charger les données des semaines adjacentes en arrière-plan
-    // Ne pas prefetcher pendant le scroll rapide ou si les deux bornes sont définies
-    if (!isScrollingFast.value && !hasBothBounds) {
-      const firstVisibleDate = loadedDays.value[firstVisibleIdx]?.date
-      const lastVisibleDate = loadedDays.value[lastVisibleIdx]?.date
-      if (firstVisibleDate && lastVisibleDate) {
-        planningData.triggerPrefetch(firstVisibleDate, lastVisibleDate)
-      }
-    }
-  }, debounceDelay)
-  
-  // Détecter la fin de scroll pour déclencher le hover sous le curseur
-  if (scrollEndTimer) {
-    clearTimeout(scrollEndTimer)
-  }
-  
-  scrollEndTimer = setTimeout(() => {
-    // Déclencher le hover sur la cellule sous le curseur quand le scroll se termine
-    if (_lastPointerX && _lastPointerY) {
-      triggerHoverAtCursor()
-    }
-  }, debounceDelay + 50) // Délai légèrement plus long que le debounce principal
-}
-
-function formatDate(d: Date) {
-  // même format local que toDateStr
-  return toDateStr(d)
-}
-
-// (formatDateLong supprimée – non utilisée)
-
-// Mettre à jour le mois actuellement visible
-function updateCurrentVisibleMonth(scroller: HTMLElement) {
-  if (!visibleDays.value.length) return
-  
-  const scrollLeft = scroller.scrollLeft
-  const gridLeft = stickyLeftWidth.value
-  const pitch = dayWidth.value + 1
-  const viewportWidth = scroller.clientWidth
-  
-  // Calculer le jour au centre de la vue
-  const centerX = scrollLeft + viewportWidth / 2
-  const dayIndex = Math.floor((centerX - gridLeft) / pitch)
-  const clampedIndex = Math.max(0, Math.min(dayIndex, visibleDays.value.length - 1))
-  
-  if (clampedIndex < visibleDays.value.length) {
-    const day = visibleDays.value[clampedIndex]
-    const monthName = new Date(day.date).toLocaleDateString('fr-FR', { 
-      month: 'long', 
-      year: 'numeric' 
-    })
-    // Capitaliser la première lettre
-    currentVisibleMonth.value = monthName.charAt(0).toUpperCase() + monthName.slice(1)
-  }
-}
-
-// Repositionne les overlays de hover en se basant sur la dernière position pointeur, utile pendant un scroll sans mousemove
-// Throttle pour updateHoverOnScroll - max 30fps (33ms)
-let updateHoverThrottleTimer: number | null = null
-let pendingUpdateHover: HTMLElement | null = null
-
-function updateHoverOnScroll(scroller: HTMLElement) {
-  if (!_lastPointerX && !_lastPointerY) return
-  
-  // Si un update est déjà programmé, mémoriser le scroller pour plus tard
-  if (updateHoverThrottleTimer !== null) {
-    pendingUpdateHover = scroller
-    return
-  }
-  
-  // Exécuter immédiatement
-  executeUpdateHover(scroller)
-  
-  // Activer le throttle
-  updateHoverThrottleTimer = window.setTimeout(() => {
-    updateHoverThrottleTimer = null
-    
-    // Si un update était en attente, l'exécuter maintenant
-    if (pendingUpdateHover) {
-      const scrollerToUpdate = pendingUpdateHover
-      pendingUpdateHover = null
-      executeUpdateHover(scrollerToUpdate)
-    }
-  }, 50) // Max 20 updates/seconde pour éviter les artefacts visuels
-}
-
-function executeUpdateHover(scroller: HTMLElement) {
-  if (!_lastPointerX && !_lastPointerY) return
-  
-  // Utiliser le cache ou recalculer si nécessaire
-  const now = performance.now()
-  if (!_cachedGridValues || (now - _cachedGridValues.timestamp) > 100) {
-    const rowsEl = rowsRef.value
-    _cachedGridValues = {
-      gridLeft: gridLeftBodyPx.value || (stickyLeftWidth.value),
-      pitch: dayPitchBodyPx.value || (dayWidth.value + 1),
-      rowsOffset: rowsEl ? rowsEl.offsetTop : 0,
-      nRows: paginatedCollaborateurs.value.length,
-      rect: scroller.getBoundingClientRect(),
-      timestamp: now
-    }
-  }
-  
-  const { gridLeft, pitch, rowsOffset, nRows, rect } = _cachedGridValues
-  
-  // Colonne (X)
-  const xContent = _lastPointerX - rect.left + scroller.scrollLeft
-  const colIdx = Math.floor((xContent - gridLeft) / pitch)
-  const colX = colIdx * pitch
-  
-  if (colIdx < 0 || colIdx >= visibleDays.value.length) {
-    colHoverEl.value && (colHoverEl.value.style.transform = 'translate3d(-9999px,0,0)')
-    colHoverHeaderEl.value && (colHoverHeaderEl.value.style.transform = 'translate3d(-9999px,0,0)')
-  } else {
-    const tx = `translate3d(${colX}px,0,0)`
-    colHoverEl.value && (colHoverEl.value.style.transform = tx)
-    colHoverHeaderEl.value && (colHoverHeaderEl.value.style.transform = tx)
-  }
-  
-  // Ligne (Y)
-  const yContent = _lastPointerY - rect.top + scroller.scrollTop - rowsOffset
-  if (yContent < 0) {
-    rowHoverEl.value && (rowHoverEl.value.style.transform = 'translate3d(0,-9999px,0)')
-    return
-  }
-  
-  let rowIdx = Math.floor(yContent / rowPitchPx.value)
-  if (rowIdx < 0 || rowIdx >= nRows) {
-    rowHoverEl.value && (rowHoverEl.value.style.transform = 'translate3d(0,-9999px,0)')
-    return
-  }
-  
-  rowIdx = Math.max(0, Math.min(nRows - 1, rowIdx))
-  const topPx = Math.round(rowIdx * rowPitchPx.value)
-  rowHoverEl.value && (rowHoverEl.value.style.transform = `translate3d(0,${topPx}px,0)`)
-}
-
-/**
- * Détecter et déclencher le hover sur la cellule sous le curseur après scroll
- * Debounced pour réduire les appels à elementsFromPoint
- */
-let triggerHoverDebounceTimer: number | null = null
-
-function triggerHoverAtCursor() {
-  // Debounce à 150ms pour éviter les artefacts visuels lors de mouvements rapides
-  if (triggerHoverDebounceTimer) {
-    clearTimeout(triggerHoverDebounceTimer)
-  }
-  
-  triggerHoverDebounceTimer = window.setTimeout(() => {
-    executeTriggerHover()
-  }, 150)
-}
-
-function executeTriggerHover() {
-  if (!_lastPointerX || !_lastPointerY || !planningScroll.value) return
-  
-  // Obtenir l'élément directement sous la position du curseur
-  const elementsAtCursor = document.elementsFromPoint(_lastPointerX, _lastPointerY)
-  
-  // Trouver la cellule excel dans la pile d'éléments
-  let cellElement: HTMLElement | null = null
-  for (const element of elementsAtCursor) {
-    if (element.classList.contains('excel-cell')) {
-      cellElement = element as HTMLElement
-      break
-    }
-  }
-  
-  if (cellElement) {
-    // Extraire les IDs de la cellule
-    const cellId = cellElement.getAttribute('data-cell-id')
-    const dayDate = cellElement.getAttribute('data-day-date')
-    
-    if (cellId && dayDate) {
-      const collaborateurId = cellId.split('_')[0]
-      
-      // Déclencher le hover sur cette cellule
-      handleCellMouseEnter(collaborateurId, dayDate)
-      
-      // Mettre à jour les highlights visuels aussi
-      const dayIndexStr = cellElement.getAttribute('data-day-index')
-      const rowIndexStr = cellElement.getAttribute('data-row-index')
-      
-      if (dayIndexStr && rowIndexStr) {
-        const dayIndex = parseInt(dayIndexStr, 10)
-        const rowIndex = parseInt(rowIndexStr, 10)
-        
-        // Nettoyer les highlights précédents
-        cleanHoverHighlights()
-        
-        // Utiliser les sélecteurs directs (plus fiable)
-        const columnSelector = `[data-day-index="${dayIndex}"]`
-        const rowSelector = `[data-row-index="${rowIndex}"]`
-        
-        const columnCells = planningScroll.value.querySelectorAll(columnSelector)
-        if (columnCells) {
-          columnCells.forEach(cell => {
-            cell.setAttribute('data-column-hover', 'true')
-          })
-        }
-        
-        const rowCells = planningScroll.value.querySelectorAll(rowSelector)
-        if (rowCells) {
-          rowCells.forEach(cell => {
-            cell.setAttribute('data-row-hover', 'true')
-          })
-        }
-      }
-    }
-  }
-}
+// NOTE: Le code de scroll est maintenant dans usePlanningScroll
 
 // S'assurer qu'une date est présente dans loadedDays; étend à gauche/droite si besoin et charge les dispo
-// (ensureDatePresent supprimée – non utilisée)
 
 // S'assurer qu'une plage [start,end] est présente (et chargée) avant scroll
-// (ensureRangePresent supprimée – non utilisée)
 
+// NOTE: appendDays, prependDays, prunePastIfFar, pruneFutureIfFar sont maintenant dans usePlanningDays
+// Wrappers pour compatibilité avec le code existant (utilise les fonctions du composable)
 async function appendDays(count: number) {
-  if (loadedDays.value.length === 0) {
-    console.warn('⚠️ Impossible d\'ajouter des jours: loadedDays vide')
-    return
-  }
-  
-  const lastDay = loadedDays.value[loadedDays.value.length - 1]
-  if (!lastDay) {
-    console.warn('⚠️ Impossible d\'ajouter des jours: dernier jour non défini')
-    return
-  }
-  
-  const lastDateStr = lastDay.date
-  const last = new Date(lastDateStr)
-  const todayStr = toDateStr(new Date())
-  
-  
-  for (let i = 1; i <= count; i++) {
-    const date = new Date(last)
-    date.setDate(last.getDate() + i) // +i = jours FUTURS
-    const dateStr = formatDate(date)
-    loadedDays.value.push({
-      date: dateStr,
-      name: date.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
-      dayNumber: date.getDate(),
-      isToday: dateStr === todayStr,
-      isWeekend: date.getDay() === 0 || date.getDay() === 6,
-      dayOfWeek: date.getDay() // 0=dimanche, 6=samedi
-    })
-  }
-  // Recalibrer la hauteur de header (si contenu wrap) et buffer
-  if (planningScroll.value) {
-    measureAndSetHeaderHeight()
-  }
+  return appendDaysFromComposable(count)
 }
 
 async function prependDays(count: number) {
-  const firstDateStr = loadedDays.value[0].date
-  const first = new Date(firstDateStr)
-  const toPrepend: any[] = []
-  const todayStr = formatDate(new Date())
-  
-  
-  for (let i = count; i >= 1; i--) {
-    const date = new Date(first)
-    date.setDate(first.getDate() - i) // -i = jours PASSÉS
-    const dateStr = formatDate(date)
-    toPrepend.push({
-      date: dateStr,
-      name: date.toLocaleDateString('fr-FR', { weekday: 'short' }).substring(0, 3),
-      dayNumber: date.getDate(),
-      isToday: dateStr === todayStr,
-      isWeekend: date.getDay() === 0 || date.getDay() === 6,
-      dayOfWeek: date.getDay() // 0=dimanche, 6=samedi
-    })
-  }
-  loadedDays.value = [...toPrepend, ...loadedDays.value]
-  
-  // rien - highlights gérés par CSS
+  return prependDaysFromComposable(count)
 }
 
-// Décharge les jours (et données) trop à gauche pour garder l'UI fluide
-function prunePastIfFar(scroller: HTMLElement) {
-  const leftBufferDays = 150 // garder ~5 mois de tampon à gauche
-  const firstVisibleIdx = Math.floor(scroller.scrollLeft / dayWidth.value)
-  if (firstVisibleIdx <= leftBufferDays) return
-  const removeCount = firstVisibleIdx - leftBufferDays
-  if (removeCount <= 0) return
-
-  // Supprimer les premiers jours et ajuster le scroll pour éviter le saut
-  loadedDays.value.splice(0, removeCount)
-  scroller.scrollLeft -= removeCount * dayWidth.value
-  // Ne pas toucher aux plages chargées: on conserve l'information pour éviter de re-fetch
-}
-
-// Symétrique: décharger visuellement les jours lointains à droite sans vider le cache
-function pruneFutureIfFar(scroller: HTMLElement) {
-  const rightBufferDays = 150 // garder ~5 mois de tampon à droite
-  const totalCols = loadedDays.value.length
-  const lastVisibleIdx = Math.min(totalCols - 1, Math.floor((scroller.scrollLeft + scroller.clientWidth) / dayWidth.value))
-  const targetMaxIdx = lastVisibleIdx + rightBufferDays
-  if (totalCols - 1 <= targetMaxIdx) return
-  const removeFrom = targetMaxIdx + 1
-  const removeCount = totalCols - removeFrom
-  if (removeCount <= 0) return
-  // Supprimer les jours trop loin dans le futur, on garde le cache pour accès instantané si on revient
-  loadedDays.value.splice(removeFrom, removeCount)
-  // Ne pas toucher aux plages chargées: on conserve l'information pour éviter de re-fetch
-}
-
-// Initialisation
-function measureAndSetHeaderHeight() {
-  const scroller = planningScroll.value
-  if (!scroller) return
-  const header = scroller.querySelector('.sticky-header-row') as HTMLElement | null
-  const headerH = header ? header.getBoundingClientRect().height : 0
-  scroller.style.setProperty('--header-h', `${headerH}px`)
-  // Mesure fine: hauteur de la rangée des mois (pour arrêter les traits de semaine au-dessus)
-  scroller.querySelector('.excel-weeks-row')
-  const monthsH = 0 // Plus besoin de calculer la hauteur des mois puisqu'on les a supprimés
-  scroller.style.setProperty('--months-h', `${monthsH}px`)
-}
-
-const onResize = () => measureAndSetHeaderHeight()
-
-// MAJ de la position locale du jour courant pour les overlays
-// Plus besoin d'updateTodayOverlayX - les highlights sont gérés par CSS directement sur les cellules
-  
-  // Plus besoin de forcer les z-index, gérés par les props de la modale
-  watch(() => showDispoModal.value, () => {
-    // Réservé pour logique future si nécessaire
-  })
+// NOTE: measureAndSetHeaderHeight et onResize sont maintenant dans usePlanningMeasure
 
 // ===== NOUVELLES FONCTIONNALITÉS =====
-
-// Gestion du scroll infini (version simplifiée)
-async function setupInfiniteScroll() {
-  try {
-    // Pour l'instant, on utilise le système existant
-    // Infinite scroll configuré
-  } catch (error) {
-    console.error('❌ Erreur configuration infinite scroll:', error)
-  }
-}
-
-// Gestion des interactions planning (version simplifiée)
-async function setupPlanningInteractions() {
-  try {
-    // Pour l'instant, on gère localement
-    // Interactions planning configurées
-  } catch (error) {
-    console.error('❌ Erreur configuration interactions:', error)
-  }
-}
 
 // Nouvelle fonction de gestion de clic de cellule
 function handleCellClickNew(collaborateurId: string, date: string, event: MouseEvent) {
@@ -6016,6 +4564,10 @@ function onInnerAddClick(collaborateurId: string, date: string, event: MouseEven
   openModalForCollaborateur(collaborateurId, date)
 }
 
+// === FONCTIONS DE SÉLECTION ===
+// NOTE: Ces fonctions pourraient être migrées vers usePlanningSelection
+// Elles restent locales car elles interagissent avec d'autres composables (usePlanningScroll)
+
 // Vider la sélection
 function clearSelection() {
   selectedCells.value.clear()
@@ -6025,8 +4577,6 @@ function clearSelection() {
   if (collaborationService.isActive) {
     collaborationService.clearSelectedCells()
   }
-  
-  
 }
 
 // Fonction pour toggler le mode sélection sur mobile
@@ -6037,24 +4587,23 @@ function toggleSelectionMode() {
   if (!isSelectionMode.value) {
     clearSelection()
   }
-  
-  
+}
+
+// Pattern regex pour extraire la date d'un cellId "collaborateurId-YYYY-MM-DD"
+const CELL_DATE_REGEX = /-(\d{4}-\d{2}-\d{2})$/
+
+// Extrait l'ID du collaborateur d'un cellId
+function extractCollaborateurIdFromCell(cellId: string): string | null {
+  const match = cellId.match(CELL_DATE_REGEX)
+  if (!match) return null
+  return cellId.substring(0, cellId.length - match[1].length - 1)
 }
 
 // Obtenir le collaborateur actuellement sélectionné (s'il y en a un)
 function getCurrentSelectedCollaborateur(): string | null {
   if (selectedCells.value.size === 0) return null
-  
-  // Prendre la première cellule sélectionnée pour déterminer le collaborateur
   const firstCellId = Array.from(selectedCells.value)[0]
-  // L'ID est au format "collaborateurId-YYYY-MM-DD"
-  // On cherche le pattern de date YYYY-MM-DD à la fin
-  const dateRegex = /-(\d{4}-\d{2}-\d{2})$/
-  const match = firstCellId.match(dateRegex)
-  if (!match) return null
-  
-  // Retourner tout ce qui précède la date
-  return firstCellId.substring(0, firstCellId.length - match[1].length - 1)
+  return extractCollaborateurIdFromCell(firstCellId)
 }
 
 // Valider que toutes les cellules sélectionnées appartiennent au même collaborateur
@@ -6062,17 +4611,10 @@ function validateSingleCollaboratorSelection(): boolean {
   if (selectedCells.value.size <= 1) return true
   
   const collaborateurs = new Set<string>()
-  
   for (const cellId of selectedCells.value) {
-    // Chercher le pattern de date YYYY-MM-DD à la fin
-    const dateRegex = /-(\d{4}-\d{2}-\d{2})$/
-    const match = cellId.match(dateRegex)
-    if (!match) continue
-    
-    const collaborateurId = cellId.substring(0, cellId.length - match[1].length - 1)
-    collaborateurs.add(collaborateurId)
+    const collabId = extractCollaborateurIdFromCell(cellId)
+    if (collabId) collaborateurs.add(collabId)
   }
-  
   return collaborateurs.size <= 1
 }
 
@@ -6084,19 +4626,12 @@ function cleanSelectionToSingleCollaborator() {
   if (!currentCollaborateur) return
   
   const validCells = new Set<string>()
-  
   for (const cellId of selectedCells.value) {
-    // Chercher le pattern de date YYYY-MM-DD à la fin
-    const dateRegex = /-(\d{4}-\d{2}-\d{2})$/
-    const match = cellId.match(dateRegex)
-    if (!match) continue
-    
-    const collaborateurId = cellId.substring(0, cellId.length - match[1].length - 1)
-    if (collaborateurId === currentCollaborateur) {
+    const collabId = extractCollaborateurIdFromCell(cellId)
+    if (collabId === currentCollaborateur) {
       validCells.add(cellId)
     }
   }
-  
   selectedCells.value = validCells
 }
 
@@ -6109,8 +4644,6 @@ function canAddCellToSelection(collaborateurId: string): boolean {
 
 // Gestion du clic-glisser pour la sélection multiple
 function handleCellMouseDown(collaborateurId: string, date: string, event: MouseEvent) {
-  
-  
   if (event.ctrlKey || event.metaKey) {
     event.preventDefault()
     
@@ -6194,6 +4727,9 @@ function handleCellMouseEnter(collaborateurId: string, date: string) {
   }, 100)
 }
 
+// Late-binding: passer handleCellMouseEnter au composable scroll pour triggerHoverAtCursor
+setHandleCellMouseEnter(handleCellMouseEnter)
+
 function handleCellMouseUp() {
   if (isDraggingSelection.value) {
     isDraggingSelection.value = false
@@ -6212,8 +4748,6 @@ function handleCellMouseUp() {
     if (isCollaborateurInterface.value && !canAccessAdminFeatures.value) {
       isSelectionMode.value = false
     }
-
-    
   }
 }
 
@@ -6309,8 +4843,7 @@ async function refreshDisponibilites(clearCache = true) {
   try {
     if (clearCache) {
       // Vider le cache pour forcer le rechargement
-      
-      disponibilitesCache.value.clear()
+      clearDisposCache()
       
       // Reset de l'état de chargement des ranges
       // Reset des ranges chargées
@@ -6505,10 +5038,6 @@ onMounted(async () => {
   // Ajouter un listener pour les changements de préférences depuis d'autres composants
   document.addEventListener('userPreferencesUpdated', handleUserPreferencesUpdate)
   
-  // Initialiser les nouveaux services
-  await setupInfiniteScroll()
-  await setupPlanningInteractions()
-  
   // Initialiser la présence utilisateur
   await initializePresence()
   
@@ -6628,7 +5157,7 @@ onMounted(async () => {
   
   measureAndSetHeaderHeight()
   recomputeWindow(planningScroll.value || null)
-  scheduleMeasurements(true) // Système optimisé : mesures + overlay aujourd'hui
+  scheduleMeasurements() // Système optimisé
   
   // Charger immédiatement les dispos pour la fenêtre initiale complète
   if (loadedDays.value.length > 0) {
@@ -6652,13 +5181,13 @@ onMounted(async () => {
   window.addEventListener('resize', onResize)
   window.addEventListener('resize', () => {
     // Utiliser le système optimisé pour les re-mesures
-    scheduleMeasurements(true)
+    scheduleMeasurements()
   })
   // Pré-remplir la droite pour garder un gros buffer
   if (planningScroll.value) {
     await ensureRightBuffer(planningScroll.value)
     recomputeWindow(planningScroll.value)
-    scheduleMeasurements(false) // Pas besoin de l'overlay ici, fait après
+    scheduleMeasurements()
   // today overlay piloté par CSS vars
     // Centrer la date du jour
     const todayIndex = loadedDays.value.findIndex(d => d.isToday)
@@ -6707,13 +5236,9 @@ onUnmounted(() => {
     _hoverRafId = null
   }
   
-  if (scrollDebounceTimer) {
-    clearTimeout(scrollDebounceTimer)
-    scrollDebounceTimer = null
-  }
-  
-  // Invalider les caches
-  _cachedGridValues = null
+  // Cleanup du composable de scroll (timers, caches)
+  planningScroll_.cleanup()
+  invalidateHoverCache()
 })
 
 // Réagir à toute mutation des jours chargés (append/prepend)
@@ -6724,7 +5249,7 @@ const loadedDaysDebounced = (() => {
     clearTimeout(timeoutId)
     timeoutId = setTimeout(() => {
       recomputeWindow(planningScroll.value || null)
-      scheduleMeasurements(true) // Système optimisé
+      scheduleMeasurements()
     }, 100)
   }
 })()
@@ -6850,7 +5375,7 @@ watch(() => route.path, async (newPath, oldPath) => {
 watch(allCollaborateurs, () => {
   // Nettoyer le cache lors du changement des collaborateurs (géré par le composable)
   
-}, { deep: true })
+}, { deep: false })
 
 // Quand les filtres structurants changent, régénérer les jours et ajuster le scroll
 // Note: Le chargement des données est géré automatiquement par usePlanningData
@@ -6902,7 +5427,6 @@ watch(() => planningFilters.hasActiveFilters.value, (active, prev) => {
 
 watch(() => searchTerm.value, () => {
   // Le cache de recherche est maintenant géré par le composable usePlanningFilters
-  // (log supprimé)
 
   // Pendant la recherche, éviter que scrollTop reste hors bornes si la liste se réduit
   nextTick(() => {
@@ -7033,7 +5557,7 @@ function onPanStart(e: MouseEvent) {
 onUnmounted(() => {
   if (moveListener) window.removeEventListener('mousemove', moveListener)
   if (upListener) window.removeEventListener('mouseup', upListener)
-  if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer)
+  planningScroll_.cleanup() // Nettoyer les timers du composable scroll
   
   // Nettoyer les gestionnaires d'événements de sélection par lot
   document.removeEventListener('keydown', handleKeyDown)

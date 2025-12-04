@@ -2588,12 +2588,11 @@
   position: relative;
   z-index: 1; /* Contexte de base pour les cellules - sous les hover */
   cursor: pointer;
-  /* Optimisations performance globales */
-  will-change: auto; /* Pas de will-change par défaut, seulement au hover */
-  transform: translate3d(0, 0, 0); /* Force GPU layer pour consistance */
-  /* CSS Containment complet - Isoler layout, style ET paint */
-  contain: layout style paint;
-  /* Pas de transforms ici pour fiabiliser sticky */
+  /* Optimisations performance */
+  will-change: auto;
+  /* CSS Containment - Isoler layout et paint */
+  contain: layout paint;
+  /* Pas de content-visibility car on fait déjà du virtual scrolling */
   transition: none !important;
 }
 
